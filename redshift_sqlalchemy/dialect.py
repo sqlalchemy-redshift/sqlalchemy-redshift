@@ -1,5 +1,6 @@
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
+from sqlalchemy import util, exc
 
 class RedshiftDialect(PGDialect_psycopg2):
     @reflection.cache
@@ -16,7 +17,29 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         return []
 
-    def set_isolation_level(self, connection, level):
-        from psycopg2 import extensions
-        connection.set_isolation_level(extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+    #def set_isolation_level(self, connection, level):
+    #    from psycopg2 import extensions
+    #    connection.set_isolation_level(extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
+    @util.memoized_property
+    def _isolation_lookup(self):
+        extensions = __import__('psycopg2.extensions').extensions
+        return {
+            'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
+            'READ UNCOMMITTED': extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
+            'REPEATABLE READ': extensions.ISOLATION_LEVEL_REPEATABLE_READ,
+            'SERIALIZABLE': extensions.ISOLATION_LEVEL_SERIALIZABLE,
+            'AUTOCOMMIT': extensions.ISOLATION_LEVEL_AUTOCOMMIT
+        }
+
+    def set_isolation_level(self, connection, level):
+        try:
+            level = self._isolation_lookup[level.replace('_', ' ')]
+        except KeyError:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s" %
+                (level, self.name, ", ".join(self._isolation_lookup))
+            )
+
+        connection.set_isolation_level(level)
