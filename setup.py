@@ -4,7 +4,7 @@ setup(
     name='redshift-sqlalchemy',
     version='0.1',
     description='Amazon Redshift Dialect for sqlalchemy',
-    long_description=open("README.md").read(),
+    long_description=open("README.rst").read(),
     author='Matt George',
     author_email='mgeorge@gmail.com',
     license="MIT",
