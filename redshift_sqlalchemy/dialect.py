@@ -1,6 +1,7 @@
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy import util, exc
+from sqlalchemy.types import VARCHAR, NullType
 
 class RedshiftDialect(PGDialect_psycopg2):
     @reflection.cache
@@ -43,3 +44,10 @@ class RedshiftDialect(PGDialect_psycopg2):
             )
 
         connection.set_isolation_level(level)
+
+    def _get_column_info(self, name, format_type, default,
+                         notnull, domains, enums, schema):
+        column_info = super(RedshiftDialect, self)._get_column_info(name, format_type, default, notnull, domains, enums, schema)
+        if isinstance(column_info['type'], VARCHAR) and column_info['type'].length is None:
+            column_info['type'] = NullType()
+        return column_info
