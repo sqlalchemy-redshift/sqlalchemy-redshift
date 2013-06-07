@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='redshift-sqlalchemy',
-    version='0.1',
+    version='0.2',
     description='Amazon Redshift Dialect for sqlalchemy',
     long_description=open("README.rst").read(),
     author='Matt George',
@@ -10,11 +10,11 @@ setup(
     license="MIT",
     url='https://github.com/binarydud/redshift_sqlalchemy',
     packages=['redshift_sqlalchemy'],
-    install_requires=['psycopg2 >= 2.4.1'],
+    install_requires=['psycopg2 >= 2.5'],
     include_package_data=True,
     zip_safe=False,
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
