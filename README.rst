@@ -3,6 +3,8 @@ redshift_sqlalchemy
 
 Amazon Redshift dialect for sqlalchemy.
 
+..image:: https://travis-ci.org/binarydud/redshift_sqlalchemy.png?branch=master
+
 Requirements
 -------------
 * pysocpg2 >= 2.5
