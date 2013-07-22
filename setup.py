@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='redshift-sqlalchemy',
-    version='0.2.1',
+    version='0.3',
     description='Amazon Redshift Dialect for sqlalchemy',
     long_description=open("README.rst").read(),
     author='Matt George',
