@@ -2,6 +2,9 @@ from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy import util, exc
 from sqlalchemy.types import VARCHAR, NullType
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import Executable, ClauseElement
+
 
 class RedshiftDialect(PGDialect_psycopg2):
     @reflection.cache
@@ -51,3 +54,20 @@ class RedshiftDialect(PGDialect_psycopg2):
         if isinstance(column_info['type'], VARCHAR) and column_info['type'].length is None:
             column_info['type'] = NullType()
         return column_info
+
+
+class UnloadFromSelect(Executable, ClauseElement):
+    def __init__(self, select, bucket, access_key, secret_key):
+        self.select = select
+        self.bucket = bucket
+        self.access_key = access_key
+        self.secret_key = secret_key
+
+@compiles(UnloadFromSelect)
+def visit_unload_from_select(element, compiler, **kw):
+    return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s'" % {
+        'query': element.select,
+        'bucket': element.bucket,
+        'access_key': element.access_key,
+        'secret_key': element.secret_key,
+    }
