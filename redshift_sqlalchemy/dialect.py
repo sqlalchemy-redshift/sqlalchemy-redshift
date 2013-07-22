@@ -80,7 +80,7 @@ def visit_unload_from_select(element, compiler, **kw):
     ''' Returns the actual sql query for the UnloadFromSelect class
     '''
     return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s'" % {
-        'query': element.select,
+        'query': compiler.process(element.select),
         'bucket': element.bucket,
         'access_key': element.access_key,
         'secret_key': element.secret_key,
