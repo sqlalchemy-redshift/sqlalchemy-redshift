@@ -1,18 +1,15 @@
 from unittest import TestCase
-from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey, create_engine
+from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy.sql import select, func
-from sqlalchemy.types import NullType, VARCHAR
-from redshift_sqlalchemy.dialect import RedshiftDialect, UnloadFromSelect, visit_unload_from_select
+from redshift_sqlalchemy.dialect import UnloadFromSelect
 
 
 class TestUnloadFromSelect(TestCase):
     def setUp(self):
-        ''' Sets up a in memory sqlite instance with a table
+        ''' Sets up a table and associate meta data for the test queries to build against
         '''
         self.metadata = MetaData()
         self.t1 = Table('t1', self.metadata, Column('id', Integer, primary_key=True), Column('name', String))
-        self.engine = create_engine('sqlite:///:memory:', echo=True)
-        self.metadata.create_all(self.engine)
 
     def test_basic_unload_case(self):
         ''' Tests that the simplest type of UnloadFromSelect works
