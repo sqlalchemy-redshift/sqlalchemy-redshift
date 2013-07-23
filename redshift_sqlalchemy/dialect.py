@@ -4,6 +4,7 @@ from sqlalchemy import util, exc
 from sqlalchemy.types import VARCHAR, NullType
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement
+from sqlalchemy.sql.expression import BindParameter
 
 
 class RedshiftDialect(PGDialect_psycopg2):
@@ -80,10 +81,19 @@ def visit_unload_from_select(element, compiler, **kw):
     ''' Returns the actual sql query for the UnloadFromSelect class
     '''
     return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s' delimiter ',' addquotes" % {
-        'query': compiler.process(element.select),
+        'query': compiler.process(element.select, unload_select=True, literal_binds=True),
         'bucket': element.bucket,
         'access_key': element.access_key,
         'secret_key': element.secret_key,
     }
 
-
+@compiles(BindParameter)
+def visit_bindparam(bindparam, compiler, **kw):
+    #print bindparam
+    res = compiler.visit_bindparam(bindparam, **kw)
+    if 'unload_select' in kw:
+        #process param and return
+        res = res.replace("'", "\\'")
+        return res
+    else:
+        return res
