@@ -76,11 +76,12 @@ class UnloadFromSelect(Executable, ClauseElement):
         self.access_key = access_key
         self.secret_key = secret_key
 
+
 @compiles(UnloadFromSelect)
 def visit_unload_from_select(element, compiler, **kw):
     ''' Returns the actual sql query for the UnloadFromSelect class
     '''
-    return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s' delimiter ',' addquotes" % {
+    return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s' delimiter ',' addquotes allowoverwrite" % {
         'query': compiler.process(element.select, unload_select=True, literal_binds=True),
         'bucket': element.bucket,
         'access_key': element.access_key,
