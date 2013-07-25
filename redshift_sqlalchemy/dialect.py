@@ -81,8 +81,6 @@ class UnloadFromSelect(Executable, ClauseElement):
 def visit_unload_from_select(element, compiler, **kw):
     ''' Returns the actual sql query for the UnloadFromSelect class
     '''
-    query = compiler.process(element.select)
-    query_str = str(query).replace("'", "\'")
     return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s' delimiter ',' addquotes allowoverwrite" % {
         'query': compiler.process(element.select, unload_select=True, literal_binds=True),
         'bucket': element.bucket,
