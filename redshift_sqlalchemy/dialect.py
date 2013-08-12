@@ -95,6 +95,7 @@ def visit_bindparam(bindparam, compiler, **kw):
     if 'unload_select' in kw:
         #process param and return
         res = res.replace("'", "\\'")
+        res = res.replace('%', '%%')
         return res
     else:
         return res
