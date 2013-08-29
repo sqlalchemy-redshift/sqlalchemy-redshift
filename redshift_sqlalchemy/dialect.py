@@ -8,6 +8,7 @@ from sqlalchemy.sql.expression import BindParameter
 
 
 class RedshiftDialect(PGDialect_psycopg2):
+    name = 'redshift'
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """
