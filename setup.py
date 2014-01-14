@@ -10,7 +10,7 @@ setup(
     license="MIT",
     url='https://github.com/binarydud/redshift_sqlalchemy',
     packages=['redshift_sqlalchemy'],
-    install_requires=['psycopg2==2.5', 'SQLAlchemy>=0.8.0'],
+    install_requires=['psycopg2>=2.5', 'SQLAlchemy>=0.8.0'],
     include_package_data=True,
     zip_safe=False,
     classifiers=[
