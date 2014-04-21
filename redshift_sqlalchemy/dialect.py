@@ -1,14 +1,91 @@
+from sqlalchemy import schema, util, exc
+from sqlalchemy.dialects.postgresql.base import PGDDLCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
-from sqlalchemy import util, exc
-from sqlalchemy.types import VARCHAR, NullType
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import Executable, ClauseElement
-from sqlalchemy.sql.expression import BindParameter
+from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement
+from sqlalchemy.types import VARCHAR, NullType
 
+
+class RedShiftDDLCompiler(PGDDLCompiler):
+
+    def post_create_table(self, table):
+        text = ""
+        info = table.dialect_options['redshift']
+        diststyle = info.get('diststyle', None)
+        if diststyle:
+            diststyle = diststyle.upper()
+            if diststyle not in ('EVEN', 'KEY', 'ALL'):
+                raise exc.CompileError(
+                               u"diststyle {0} is invalid".format(diststyle))
+            text += " DISTSTYLE " + diststyle
+
+        distkey = info.get('distkey', None)
+        if distkey:
+            text += " DISTKEY ({0})".format(distkey)
+
+        sortkey = info.get('sortkey', None)
+        if sortkey:
+            if isinstance(sortkey, basestring):
+                keys = (sortkey,)
+            else:
+                keys = sortkey
+            text += " SORTKEY ({0})".format(", ".join(keys))
+        return text
+
+    def get_column_specification(self, column, **kwargs):
+        ''' Redshift doesn't support serial types, so they have been removed 
+        here.
+        '''
+        colspec = self.preparer.format_column(column)
+        colspec += " " + self.dialect.type_compiler.process(column.type)
+ 
+        colspec += self._fetch_redshift_column_attributes(column)
+ 
+        default = self.get_column_default_string(column)
+        if default is not None:
+            colspec += " DEFAULT " + default
+ 
+        if not column.nullable:
+            colspec += " NOT NULL"
+        return colspec
+
+    def _fetch_redshift_column_attributes(self, column):
+        text = ""
+        if not hasattr(column, 'info'):
+            return text
+        info = column.info
+        encode = info.get('encode', None)
+        if encode:
+            text += " ENCODE " + encode
+
+        distkey = info.get('distkey', None)
+        if distkey:
+            text += " DISTKEY"
+
+        sortkey = info.get('sortkey', None)
+        if sortkey:
+            text += " SORTKEY"
+        return text
 
 class RedshiftDialect(PGDialect_psycopg2):
     name = 'redshift'
+    ddl_compiler = RedShiftDDLCompiler
+    
+    construct_arguments = [
+                            (schema.Index, {
+                                "using": False,
+                                "where": None,
+                                "ops": {}
+                            }),
+                            (schema.Table, {
+                                "ignore_search_path": False,
+                                'diststyle': None,
+                                'distkey': None,
+                                'sortkey': None
+                            }),
+                           ]
+    
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """
