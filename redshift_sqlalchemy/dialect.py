@@ -67,7 +67,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
 
         sortkey = info.get('sortkey', None)
         if sortkey:
-            if isinstance(sortkey, basestring):
+            if isinstance(sortkey, str):
                 keys = (sortkey,)
             else:
                 keys = sortkey
