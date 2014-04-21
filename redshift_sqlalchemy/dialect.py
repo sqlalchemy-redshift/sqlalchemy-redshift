@@ -8,6 +8,47 @@ from sqlalchemy.types import VARCHAR, NullType
 
 
 class RedShiftDDLCompiler(PGDDLCompiler):
+    ''' Handles Redshift specific create table syntax.
+    
+    Users can specify the DISTSTYLE, DISTKEY, SORTKEY and ENCODE properties per
+    table and per column. 
+    
+    Table level properties can be set using the dialect specific syntax. For 
+    example, to specify a distkey and style you apply the following ::
+    
+        table = Table(metadata, 
+                      Column('id', Integer, primary_key=True),
+                      Column('name', String),
+                      redshift_diststyle="KEY",
+                      redshift_distkey="id"
+                      redshift_sortkey=["id", "name"]
+                      )
+                      
+    A single sortkey can be applied without a wrapping list ::
+    
+        table = Table(metadata, 
+                      Column('id', Integer, primary_key=True),
+                      Column('name', String),
+                      redshift_sortkey="id"
+                      )
+                      
+    Column level special syntax can also be applied using the column info 
+    dictionary. For example, we can specify the encode for a column ::
+    
+        table = Table(metadata, 
+                      Column('id', Integer, primary_key=True),
+                      Column('name', String, info={"encode":"lzo"})
+                      )
+                      
+    We can also specify the distkey and sortkey options ::
+    
+        table = Table(metadata, 
+                      Column('id', Integer, primary_key=True),
+                      Column('name', String, 
+                             info={"distkey":True, "sortkey":True})
+                      )
+                      
+    '''
 
     def post_create_table(self, table):
         text = ""
@@ -34,9 +75,8 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         return text
 
     def get_column_specification(self, column, **kwargs):
-        ''' Redshift doesn't support serial types, so they have been removed 
-        here.
-        '''
+        # aron - Apr 21, 2014: Redshift doesn't support serial types. So I
+        # removed support for them here.
         colspec = self.preparer.format_column(column)
         colspec += " " + self.dialect.type_compiler.process(column.type)
  
