@@ -188,7 +188,7 @@ class UnloadFromSelect(Executable, ClauseElement):
             bucket: The Amazon S3 bucket where the result will be stored
             access_key: The Amazon Access Key ID
             secret_key: The Amazon Secret Access Key
-	    parallel: If 'ON' the result will be written to multiple files. If
+            parallel: If 'ON' the result will be written to multiple files. If
                 'OFF' the result will write to one (1) file up to 6.2GB before
                 splitting
         '''
@@ -196,7 +196,7 @@ class UnloadFromSelect(Executable, ClauseElement):
         self.bucket = bucket
         self.access_key = access_key
         self.secret_key = secret_key
-	self.parallel = parallel
+        self.parallel = parallel
 
 
 @compiles(UnloadFromSelect)
@@ -208,7 +208,7 @@ def visit_unload_from_select(element, compiler, **kw):
         'bucket': element.bucket,
         'access_key': element.access_key,
         'secret_key': element.secret_key,
-	'parallel': element.parallel,
+        'parallel': element.parallel,
     }
 
 @compiles(BindParameter)
