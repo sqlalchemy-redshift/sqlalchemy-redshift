@@ -179,7 +179,7 @@ class UnloadFromSelect(Executable, ClauseElement):
     ''' Prepares a RedShift unload statement to drop a query to Amazon S3
     http://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
     '''
-    def __init__(self, select, bucket, access_key, secret_key):
+    def __init__(self, select, bucket, access_key, secret_key, parallel='on'):
         ''' Initializes an UnloadFromSelect instance
 
         Args:
@@ -188,22 +188,27 @@ class UnloadFromSelect(Executable, ClauseElement):
             bucket: The Amazon S3 bucket where the result will be stored
             access_key: The Amazon Access Key ID
             secret_key: The Amazon Secret Access Key
+            parallel: If 'ON' the result will be written to multiple files. If
+                'OFF' the result will write to one (1) file up to 6.2GB before
+                splitting
         '''
         self.select = select
         self.bucket = bucket
         self.access_key = access_key
         self.secret_key = secret_key
+        self.parallel = parallel
 
 
 @compiles(UnloadFromSelect)
 def visit_unload_from_select(element, compiler, **kw):
     ''' Returns the actual sql query for the UnloadFromSelect class
     '''
-    return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s' delimiter ',' addquotes allowoverwrite" % {
+    return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s' delimiter ',' addquotes allowoverwrite parallel %(parallel)s" % {
         'query': compiler.process(element.select, unload_select=True, literal_binds=True),
         'bucket': element.bucket,
         'access_key': element.access_key,
         'secret_key': element.secret_key,
+        'parallel': element.parallel,
     }
 
 @compiles(BindParameter)
