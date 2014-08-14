@@ -1,7 +1,7 @@
 import difflib
 
 from pytest import fixture
-from sqlalchemy import Table, Column, Integer, String, MetaData
+from sqlalchemy import Table, Column, Integer, String, Sequence, MetaData
 from sqlalchemy.exc import CompileError
 from sqlalchemy.schema import CreateTable
 
@@ -36,6 +36,22 @@ class TestDDLCompiler(object):
         actual = compiler.process(create_table)
         expected =  u"\nCREATE TABLE t1 ("\
                     u"\n\tid INTEGER NOT NULL, "\
+                    u"\n\tname VARCHAR, "\
+                    u"\n\tPRIMARY KEY (id)\n)\n\n"
+        assert expected == actual, self._compare_strings(expected, actual)
+
+    def test_create_table_with_identity(self, compiler):
+
+        table = Table('t1',
+                      MetaData(),
+                      Column('id', Integer, primary_key=True, info={'identity': [1, 2]}),
+                      Column('name', String))
+
+
+        create_table = CreateTable(table)
+        actual = compiler.process(create_table)
+        expected =  u"\nCREATE TABLE t1 ("\
+                    u"\n\tid INTEGER IDENTITY(1,2) NOT NULL, "\
                     u"\n\tname VARCHAR, "\
                     u"\n\tPRIMARY KEY (id)\n)\n\n"
         assert expected == actual, self._compare_strings(expected, actual)
