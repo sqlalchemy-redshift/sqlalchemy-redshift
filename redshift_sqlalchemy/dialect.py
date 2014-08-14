@@ -9,45 +9,45 @@ from sqlalchemy.types import VARCHAR, NullType
 
 class RedShiftDDLCompiler(PGDDLCompiler):
     ''' Handles Redshift specific create table syntax.
-    
+
     Users can specify the DISTSTYLE, DISTKEY, SORTKEY and ENCODE properties per
-    table and per column. 
-    
-    Table level properties can be set using the dialect specific syntax. For 
+    table and per column.
+
+    Table level properties can be set using the dialect specific syntax. For
     example, to specify a distkey and style you apply the following ::
-    
-        table = Table(metadata, 
+
+        table = Table(metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', String),
                       redshift_diststyle="KEY",
                       redshift_distkey="id"
                       redshift_sortkey=["id", "name"]
                       )
-                      
+
     A single sortkey can be applied without a wrapping list ::
-    
-        table = Table(metadata, 
+
+        table = Table(metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', String),
                       redshift_sortkey="id"
                       )
-                      
-    Column level special syntax can also be applied using the column info 
+
+    Column level special syntax can also be applied using the column info
     dictionary. For example, we can specify the encode for a column ::
-    
-        table = Table(metadata, 
+
+        table = Table(metadata,
                       Column('id', Integer, primary_key=True),
                       Column('name', String, info={"encode":"lzo"})
                       )
-                      
+
     We can also specify the distkey and sortkey options ::
-    
-        table = Table(metadata, 
+
+        table = Table(metadata,
                       Column('id', Integer, primary_key=True),
-                      Column('name', String, 
+                      Column('name', String,
                              info={"distkey":True, "sortkey":True})
                       )
-                      
+
     '''
 
     def post_create_table(self, table):
@@ -79,13 +79,13 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         # removed support for them here.
         colspec = self.preparer.format_column(column)
         colspec += " " + self.dialect.type_compiler.process(column.type)
- 
+
         colspec += self._fetch_redshift_column_attributes(column)
- 
+
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
- 
+
         if not column.nullable:
             colspec += " NOT NULL"
         return colspec
@@ -111,7 +111,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
 class RedshiftDialect(PGDialect_psycopg2):
     name = 'redshift'
     ddl_compiler = RedShiftDDLCompiler
-    
+
     construct_arguments = [
                             (schema.Index, {
                                 "using": False,
@@ -125,7 +125,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                                 'sortkey': None
                             }),
                            ]
-    
+
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """
