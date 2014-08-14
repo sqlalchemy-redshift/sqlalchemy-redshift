@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement
-from sqlalchemy.types import VARCHAR, NullType
+from sqlalchemy.types import VARCHAR, NullType, BigInteger, Integer
 
 
 class RedShiftDDLCompiler(PGDDLCompiler):
@@ -75,16 +75,15 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         return text
 
     def get_column_specification(self, column, **kwargs):
-        # aron - Apr 21, 2014: Redshift doesn't support serial types. So I
-        # removed support for them here.
         colspec = self.preparer.format_column(column)
-        colspec += " " + self.dialect.type_compiler.process(column.type)
 
-        colspec += self._fetch_redshift_column_attributes(column)
+        colspec += " " + self.dialect.type_compiler.process(column.type)
 
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
+
+        colspec += self._fetch_redshift_column_attributes(column)
 
         if not column.nullable:
             colspec += " NOT NULL"
@@ -95,6 +94,10 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         if not hasattr(column, 'info'):
             return text
         info = column.info
+        identity = info.get('identity', None)
+        if identity:
+            text += " IDENTITY({0},{1})".format(identity[0], identity[1])
+
         encode = info.get('encode', None)
         if encode:
             text += " ENCODE " + encode
