@@ -211,6 +211,44 @@ def visit_unload_from_select(element, compiler, **kw):
         'parallel': element.parallel,
     }
 
+
+class CopyCommand(Executable, ClauseElement):
+    ''' Prepares a RedShift unload statement to drop a query to Amazon S3
+    http://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
+    '''
+    def __init__(self, table_name, bucket, access_key, secret_key, options={}, parallel='on'):
+        ''' Initializes an UnloadFromSelect instance
+
+        Args:
+            self: An instance of UnloadFromSelect
+            select: The select statement to be unloaded
+            bucket: The Amazon S3 bucket where the result will be stored
+            access_key: The Amazon Access Key ID
+            secret_key: The Amazon Secret Access Key
+            parallel: If 'ON' the result will be written to multiple files. If
+                'OFF' the result will write to one (1) file up to 6.2GB before
+                splitting
+        '''
+        self.table_name = table_name
+        self.bucket = bucket
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.options = options
+
+
+@compiles(CopyCommand)
+def visit_copy_command(element, compiler, **kw):
+    ''' Returns the actual sql query for the UnloadFromSelect class
+    '''
+    return "copy %(table_name)s from '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s'" % {
+        'table_name': element.table_name,
+        'bucket': element.bucket,
+        'access_key': element.access_key,
+        'secret_key': element.secret_key,
+        'options': element.options,
+    }
+
+
 @compiles(BindParameter)
 def visit_bindparam(bindparam, compiler, **kw):
     #print bindparam
