@@ -108,6 +108,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
             text += " SORTKEY"
         return text
 
+
 class RedshiftDialect(PGDialect_psycopg2):
     name = 'redshift'
     ddl_compiler = RedShiftDDLCompiler
@@ -179,74 +180,110 @@ class UnloadFromSelect(Executable, ClauseElement):
     ''' Prepares a RedShift unload statement to drop a query to Amazon S3
     http://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
     '''
-    def __init__(self, select, bucket, access_key, secret_key, parallel='on'):
+    def __init__(self, select, unload_location, access_key, secret_key, session_token='', options={}):
         ''' Initializes an UnloadFromSelect instance
 
         Args:
             self: An instance of UnloadFromSelect
             select: The select statement to be unloaded
-            bucket: The Amazon S3 bucket where the result will be stored
-            access_key: The Amazon Access Key ID
-            secret_key: The Amazon Secret Access Key
-            parallel: If 'ON' the result will be written to multiple files. If
-                'OFF' the result will write to one (1) file up to 6.2GB before
-                splitting
+            unload_location: The Amazon S3 bucket where the result will be stored
+            access_key - AWS Access Key (required)
+            secret_key - AWS Secret Key (required)
+            session_token - AWS STS Session Token (optional)
+            options - Set of optional parameters to modify the UNLOAD sql
+                parallel: If 'ON' the result will be written to multiple files. If
+                    'OFF' the result will write to one (1) file up to 6.2GB before
+                    splitting
+                delimiter - File delimiter. Defaults to ','
         '''
         self.select = select
-        self.bucket = bucket
+        self.unload_location = unload_location
         self.access_key = access_key
         self.secret_key = secret_key
-        self.parallel = parallel
+        self.session_token = session_token
+        self.options = options
 
 
 @compiles(UnloadFromSelect)
 def visit_unload_from_select(element, compiler, **kw):
     ''' Returns the actual sql query for the UnloadFromSelect class
+
     '''
-    return "unload ('%(query)s') to '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s' delimiter ',' addquotes allowoverwrite parallel %(parallel)s" % {
-        'query': compiler.process(element.select, unload_select=True, literal_binds=True),
-        'bucket': element.bucket,
-        'access_key': element.access_key,
-        'secret_key': element.secret_key,
-        'parallel': element.parallel,
-    }
+    return """
+           UNLOAD ('%(query)s') TO '%(unload_location)s'
+           CREDENTIALS 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s%(session_token)s'
+           DELIMITER '%(delimiter)s'
+           ADDQUOTES
+           ALLOWOVERWRITE
+           PARALLEL %(parallel)s"
+           """ % \
+           {'query': compiler.process(element.select, unload_select=True, literal_binds=True),
+            'unload_location': element.unload_location,
+            'access_key': element.access_key,
+            'secret_key': element.secret_key,
+            'session_token': ';token=%s' % element.session_token if element.session_token else '',
+            'delimiter': element.options.get('delimiter', ','),
+            'parallel': element.optiongs.get('parallel', 'ON')}
 
 
 class CopyCommand(Executable, ClauseElement):
-    ''' Prepares a RedShift unload statement to drop a query to Amazon S3
-    http://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
+    ''' Prepares a RedShift COPY statement
     '''
-    def __init__(self, table_name, bucket, access_key, secret_key, options={}, parallel='on'):
-        ''' Initializes an UnloadFromSelect instance
+    def __init__(self, schema_name, table_name, data_location, access_key, secret_key, session_token='', options={}):
+        ''' Initializes a CopyCommand instance
 
         Args:
-            self: An instance of UnloadFromSelect
-            select: The select statement to be unloaded
-            bucket: The Amazon S3 bucket where the result will be stored
-            access_key: The Amazon Access Key ID
-            secret_key: The Amazon Secret Access Key
-            parallel: If 'ON' the result will be written to multiple files. If
-                'OFF' the result will write to one (1) file up to 6.2GB before
-                splitting
+            self: An instance of CopyCommand
+            schema_name - Schema associated with the table_name
+            table_name: The table to copy the data into
+            data_location The Amazon S3 location from where to copy
+            access_key - AWS Access Key (required)
+            secret_key - AWS Secret Key (required)
+            session_token - AWS STS Session Token (optional)
+            options - Set of optional parameters to modify the COPY sql
+                delimiter - File delimiter. Defaults to ','
+                ignore_header - Integer value of number of lines to skip at the start of each file
+                null - String value denoting what to interpret as a NULL value from the file
+                empty_as_null - Boolean value denoting whether to load VARCHAR fields with
+                                empty values as NULL instead of empty string
+                blanks_as_null - Boolean value denoting whether to load VARCHAR fields with
+                                 whitespace only values as NULL instead of whitespace
         '''
+        self.schema_name = schema_name
         self.table_name = table_name
-        self.bucket = bucket
+        self.data_location = data_location
         self.access_key = access_key
         self.secret_key = secret_key
+        self.session_token = session_token
         self.options = options
 
 
 @compiles(CopyCommand)
 def visit_copy_command(element, compiler, **kw):
-    ''' Returns the actual sql query for the UnloadFromSelect class
+    ''' Returns the actual sql query for the CopyCommand class
     '''
-    return "copy %(table_name)s from '%(bucket)s' credentials 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s'" % {
-        'table_name': element.table_name,
-        'bucket': element.bucket,
-        'access_key': element.access_key,
-        'secret_key': element.secret_key,
-        'options': element.options,
-    }
+    return """
+           COPY %(schema_name)s.%(table_name)s FROM '%(data_location)s'
+           CREDENTIALS 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s%(session_token)s'
+           TRUNCATECOLUMNS
+           CSV
+           DELIMITER '%(delimiter)s'
+           IGNOREHEADER %(ignore_header)s
+           NULL '%(null)s'
+           %(empty_as_null)s
+           %(blanks_as_null)s
+           """ % \
+           {'schema_name': element.schema_name,
+            'table_name': element.table_name,
+            'data_location': element.data_location,
+            'access_key': element.access_key,
+            'secret_key': element.secret_key,
+            'session_token': ';token=%s' % element.session_token if element.session_token else '',
+            'null': element.options.get('null', '---'),
+            'delimiter': element.options.get('delimiter', ','),
+            'ignore_header': element.options.get('ignore_header', 0),
+            'empty_as_null': 'EMPTYASNULL' if bool(element.options.get('empty_as_null', True)) else '',
+            'blanks_as_null': 'BLANKSASNULL' if bool(element.options.get('blanks_as_null', True)) else ''}
 
 
 @compiles(BindParameter)
