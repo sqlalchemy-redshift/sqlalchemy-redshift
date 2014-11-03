@@ -194,6 +194,7 @@ class UnloadFromSelect(Executable, ClauseElement):
                 parallel: If 'ON' the result will be written to multiple files. If
                     'OFF' the result will write to one (1) file up to 6.2GB before
                     splitting
+                add_quotes: Boolean value for ADDQUOTES; defaults to True
                 delimiter - File delimiter. Defaults to ','
         '''
         self.select = select
@@ -213,17 +214,18 @@ def visit_unload_from_select(element, compiler, **kw):
            UNLOAD ('%(query)s') TO '%(unload_location)s'
            CREDENTIALS 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s%(session_token)s'
            DELIMITER '%(delimiter)s'
-           ADDQUOTES
+           %(add_quotes)s
            ALLOWOVERWRITE
-           PARALLEL %(parallel)s"
+           PARALLEL %(parallel)s;
            """ % \
            {'query': compiler.process(element.select, unload_select=True, literal_binds=True),
             'unload_location': element.unload_location,
             'access_key': element.access_key,
             'secret_key': element.secret_key,
             'session_token': ';token=%s' % element.session_token if element.session_token else '',
+            'add_quotes': 'ADDQUOTES' if bool(element.options.get('add_quotes', True)) else '',
             'delimiter': element.options.get('delimiter', ','),
-            'parallel': element.optiongs.get('parallel', 'ON')}
+            'parallel': element.options.get('parallel', 'ON')}
 
 
 class CopyCommand(Executable, ClauseElement):
@@ -241,13 +243,13 @@ class CopyCommand(Executable, ClauseElement):
             secret_key - AWS Secret Key (required)
             session_token - AWS STS Session Token (optional)
             options - Set of optional parameters to modify the COPY sql
-                delimiter - File delimiter. Defaults to ','
+                delimiter - File delimiter; defaults to ','
                 ignore_header - Integer value of number of lines to skip at the start of each file
-                null - String value denoting what to interpret as a NULL value from the file
+                null - String value denoting what to interpret as a NULL value from the file; defaults to '---'
                 empty_as_null - Boolean value denoting whether to load VARCHAR fields with
-                                empty values as NULL instead of empty string
+                                empty values as NULL instead of empty string; defaults to True
                 blanks_as_null - Boolean value denoting whether to load VARCHAR fields with
-                                 whitespace only values as NULL instead of whitespace
+                                 whitespace only values as NULL instead of whitespace; defaults to True
         '''
         self.schema_name = schema_name
         self.table_name = table_name
@@ -265,13 +267,13 @@ def visit_copy_command(element, compiler, **kw):
     return """
            COPY %(schema_name)s.%(table_name)s FROM '%(data_location)s'
            CREDENTIALS 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s%(session_token)s'
-           TRUNCATECOLUMNS
            CSV
+           TRUNCATECOLUMNS
            DELIMITER '%(delimiter)s'
            IGNOREHEADER %(ignore_header)s
            NULL '%(null)s'
            %(empty_as_null)s
-           %(blanks_as_null)s
+           %(blanks_as_null)s;
            """ % \
            {'schema_name': element.schema_name,
             'table_name': element.table_name,
