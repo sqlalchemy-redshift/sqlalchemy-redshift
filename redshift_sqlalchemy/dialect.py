@@ -241,7 +241,7 @@ class CopyCommand(Executable, ClauseElement):
             self: An instance of CopyCommand
             schema_name - Schema associated with the table_name
             table_name: The table to copy the data into
-            data_location The Amazon S3 location from where to copy
+            data_location The Amazon S3 location from where to copy - or a manifest file if 'manifest' option is used
             access_key - AWS Access Key (required)
             secret_key - AWS Secret Key (required)
             session_token - AWS STS Session Token (optional)
@@ -249,6 +249,7 @@ class CopyCommand(Executable, ClauseElement):
                 delimiter - File delimiter; defaults to ','
                 ignore_header - Integer value of number of lines to skip at the start of each file
                 null - Optional string value denoting what to interpret as a NULL value from the file
+                manifest - Boolean value denoting whether data_location is a manifest file; defaults to False
                 empty_as_null - Boolean value denoting whether to load VARCHAR fields with
                                 empty values as NULL instead of empty string; defaults to True
                 blanks_as_null - Boolean value denoting whether to load VARCHAR fields with
@@ -275,6 +276,7 @@ def visit_copy_command(element, compiler, **kw):
            DELIMITER '%(delimiter)s'
            IGNOREHEADER %(ignore_header)s
            %(null)s
+           %(manifest)s
            %(empty_as_null)s
            %(blanks_as_null)s;
            """ % \
@@ -287,6 +289,7 @@ def visit_copy_command(element, compiler, **kw):
             'null': ("NULL '%s'" % element.options.get('null')) if element.options.get('null') else '',
             'delimiter': element.options.get('delimiter', ','),
             'ignore_header': element.options.get('ignore_header', 0),
+            'manifest': 'MANIFEST' if bool(element.options.get('manifest', False)) else '',
             'empty_as_null': 'EMPTYASNULL' if bool(element.options.get('empty_as_null', True)) else '',
             'blanks_as_null': 'BLANKSASNULL' if bool(element.options.get('blanks_as_null', True)) else ''}
 
