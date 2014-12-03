@@ -10,7 +10,7 @@ class PyTest(TestCommand):
 
 setup(
     name='redshift-sqlalchemy',
-    version='0.4.1',
+    version='0.5.1a',
     description='Amazon Redshift Dialect for sqlalchemy',
     long_description=open("README.rst").read(),
     author='Matt George',
