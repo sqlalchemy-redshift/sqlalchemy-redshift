@@ -7,7 +7,7 @@ Amazon Redshift dialect for sqlalchemy.
 
 Requirements
 -------------
-* pysocpg2 >= 2.5
+* psycopg2 >= 2.5
 * SQLAlchemy 0.8
 
 
