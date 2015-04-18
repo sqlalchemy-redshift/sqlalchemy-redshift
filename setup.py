@@ -18,7 +18,7 @@ setup(
     license="MIT",
     url='https://github.com/binarydud/redshift_sqlalchemy',
     packages=['redshift_sqlalchemy'],
-    install_requires=['psycopg2>=2.5', 'SQLAlchemy>=0.8.0'],
+    install_requires=['psycopg2>=2.5', 'SQLAlchemy>=0.8.0,<1.0.0'],
     tests_require=['pytest>=2.5.2'],
     test_suite="tests",
     cmdclass = {'test': PyTest},
