@@ -1,10 +1,11 @@
 language: python
-python:
-  - "2.6"
-  - "2.7"
-  - "3.3"
+python: 3.4
+env:
+  - TOX_ENV=py26
+  - TOX_ENV=py27
+  - TOX_ENV=py33
+  - TOX_ENV=lint
 install:
-  - "python setup.py develop"
-# command to run tests
+  - pip install tox
 script:
-  - python runtests.py -x
+  - tox -e $TOX_ENV
