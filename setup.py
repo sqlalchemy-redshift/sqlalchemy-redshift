@@ -1,29 +1,21 @@
 from setuptools import setup
-from setuptools.command.test import test as TestCommand
-import sys
 
-class PyTest(TestCommand):
-    def run_tests(self):
-        import pytest
-        errno = pytest.main(self.test_args)
-        sys.exit(errno)
+readme = open('README.rst').read()
+history = open('CHANGES.rst').read().replace('.. :changelog:', '')
 
 setup(
-    name='redshift-sqlalchemy',
-    version='0.5.1a',
+    name='sqlalchemy-redshift',
+    version='0.1.0',
     description='Amazon Redshift Dialect for sqlalchemy',
-    long_description=open("README.rst").read(),
+    long_description=readme + '\n\n' + history,
     author='Matt George',
     author_email='mgeorge@gmail.com',
+    maintainer='Thomas Grainger',
+    maintainer_email='sqlalchemy-redshift@graingert.co.uk',
     license="MIT",
-    url='https://github.com/binarydud/redshift_sqlalchemy',
+    url='https://github.com/graingert/redshift_sqlalchemy',
     packages=['redshift_sqlalchemy'],
     install_requires=['psycopg2>=2.5', 'SQLAlchemy>=0.8.0'],
-    tests_require=['pytest>=2.5.2'],
-    test_suite="tests",
-    cmdclass = {'test': PyTest},
-    include_package_data=True,
-    zip_safe=False,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",
