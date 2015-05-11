@@ -1,5 +1,5 @@
 redshift_sqlalchemy
-==================
+===================
 
 Amazon Redshift dialect for sqlalchemy.
 
