@@ -239,7 +239,8 @@ def visit_unload_from_select(element, compiler, **kw):
 class CopyCommand(Executable, ClauseElement):
     ''' Prepares a RedShift COPY statement
     '''
-    def __init__(self, schema_name, table_name, data_location, access_key, secret_key, format='CSV', session_token='', options={}):
+    def __init__(self, schema_name, table_name, data_location, access_key,
+                 secret_key, format='CSV', session_token='', options={}):
         ''' Initializes a CopyCommand instance
 
         Args:
