@@ -3,6 +3,10 @@ from redshift_sqlalchemy.dialect import CopyCommand
 import re
 
 
+def clean(query):
+    return re.sub(r'\s+', ' ', query).strip()
+
+
 class TestCopyCommand(TestCase):
 
     def setUp(self):
@@ -12,12 +16,12 @@ class TestCopyCommand(TestCase):
         '''
             Tests that the simplest type of CopyCommand works
         '''
-        expected_result = re.sub(r'\s+', ' ',
-                                  "COPY schema1.t1 FROM 's3://mybucket/data/listing/' "
-                                  "CREDENTIALS 'aws_access_key_id=cookies;aws_secret_access_key=cookies' "
-                                  "CSV TRUNCATECOLUMNS DELIMITER ',' IGNOREHEADER 0 EMPTYASNULL BLANKSASNULL;").strip()
+        expected_result = """
+        COPY schema1.t1 FROM 's3://mybucket/data/listing/'
+        CREDENTIALS 'aws_access_key_id=cookies;aws_secret_access_key=cookies'
+        CSV TRUNCATECOLUMNS DELIMITER ',' IGNOREHEADER 0 EMPTYASNULL BLANKSASNULL;
+        """
+
         copy = CopyCommand('schema1', 't1', 's3://mybucket/data/listing/', 'cookies', 'cookies')
 
-        copy_str = re.sub(r'\s+', ' ', str(copy)).strip()
-
-        self.assertEqual(expected_result, copy_str)
+        assert clean(expected_result) == clean(str(copy))

@@ -1,6 +1,10 @@
 from unittest import TestCase
+
 from sqlalchemy.types import NullType, VARCHAR
+
 from redshift_sqlalchemy.dialect import RedshiftDialect
+
+
 class TestColumnReflection(TestCase):
     def test_varchar_as_nulltype(self):
         """

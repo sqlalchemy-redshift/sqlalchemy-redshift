@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement
-from sqlalchemy.types import VARCHAR, NullType, BigInteger, Integer
+from sqlalchemy.types import VARCHAR, NullType
 
 
 class RedShiftDDLCompiler(PGDDLCompiler):
@@ -58,7 +58,8 @@ class RedShiftDDLCompiler(PGDDLCompiler):
             diststyle = diststyle.upper()
             if diststyle not in ('EVEN', 'KEY', 'ALL'):
                 raise exc.CompileError(
-                               u"diststyle {0} is invalid".format(diststyle))
+                    u"diststyle {0} is invalid".format(diststyle)
+                )
             text += " DISTSTYLE " + diststyle
 
         distkey = info.get('distkey', None)
@@ -117,23 +118,24 @@ class RedshiftDialect(PGDialect_psycopg2):
     ddl_compiler = RedShiftDDLCompiler
 
     construct_arguments = [
-                            (schema.Index, {
-                                "using": False,
-                                "where": None,
-                                "ops": {}
-                            }),
-                            (schema.Table, {
-                                "ignore_search_path": False,
-                                'diststyle': None,
-                                'distkey': None,
-                                'sortkey': None
-                            }),
-                           ]
+        (schema.Index, {
+            "using": False,
+            "where": None,
+            "ops": {}
+        }),
+        (schema.Table, {
+            "ignore_search_path": False,
+            'diststyle': None,
+            'distkey': None,
+            'sortkey': None
+        }),
+    ]
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """
-        Constraints in redshift are informational only. This allows reflection to work
+        Constraints in redshift are informational only. This allows reflection
+        to work.
         """
         return {'constrained_columns': [], 'name': ''}
 
@@ -143,10 +145,6 @@ class RedshiftDialect(PGDialect_psycopg2):
         Redshift does not use traditional indexes.
         """
         return []
-
-    #def set_isolation_level(self, connection, level):
-    #    from psycopg2 import extensions
-    #    connection.set_isolation_level(extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
     @util.memoized_property
     def _isolation_lookup(self):
@@ -171,11 +169,15 @@ class RedshiftDialect(PGDialect_psycopg2):
 
         connection.set_isolation_level(level)
 
-    def _get_column_info(self, name, format_type, default,
-                         notnull, domains, enums, schema):
-        column_info = super(RedshiftDialect, self)._get_column_info(name, format_type, default, notnull, domains, enums, schema)
-        if isinstance(column_info['type'], VARCHAR) and column_info['type'].length is None:
-            column_info['type'] = NullType()
+    def _get_column_info(self, *args, **kwargs):
+        column_info = super(RedshiftDialect, self)._get_column_info(
+            *args,
+            **kwargs
+        )
+        if isinstance(column_info['type'], VARCHAR):
+            if column_info['type'].length is None:
+                column_info['type'] = NullType()
+
         return column_info
 
 
@@ -299,10 +301,9 @@ def visit_copy_command(element, compiler, **kw):
 
 @compiles(BindParameter)
 def visit_bindparam(bindparam, compiler, **kw):
-    #print bindparam
     res = compiler.visit_bindparam(bindparam, **kw)
     if 'unload_select' in kw:
-        #process param and return
+        # process param and return
         res = res.replace("'", "\\'")
         res = res.replace('%', '%%')
         return res
