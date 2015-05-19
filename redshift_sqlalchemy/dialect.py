@@ -1,3 +1,4 @@
+import pkg_resources
 from sqlalchemy import schema, util, exc
 from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
@@ -248,6 +249,20 @@ class RedshiftDialect(PGDialect_psycopg2):
                 column_info['type'] = NullType()
 
         return column_info
+
+    def create_connect_args(self, *args, **kwargs):
+        default_args = {
+            'sslmode': 'verify-full',
+            'sslrootcert': pkg_resources.resource_filename(
+                __name__,
+                'redshift-ssl-ca-cert.pem'
+            ),
+        }
+        cargs, cparams = super(RedshiftDialect, self).create_connect_args(
+            *args, **kwargs
+        )
+        default_args.update(cparams)
+        return cargs, default_args
 
 
 class UnloadFromSelect(Executable, ClauseElement):
