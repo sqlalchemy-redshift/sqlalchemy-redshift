@@ -1,6 +1,5 @@
 import os
 
-import pkg_resources
 import sqlalchemy as sa
 from sqlalchemy.engine import url as sa_url
 
@@ -37,11 +36,5 @@ def redshift_engine_definition():
             database='dev',
             query={'client_encoding': 'utf8'},
         ),
-        connect_args={
-            'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                'redshift_sqlalchemy',
-                'redshift-ssl-ca-cert.pem',
-            )
-        }
+        connect_args={},
     )
