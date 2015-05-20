@@ -7,6 +7,15 @@ from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement
 from sqlalchemy.types import VARCHAR, NullType
 
 
+try:
+    from alembic.ddl import postgresql
+except ImportError:
+    pass
+else:
+    class RedshiftImpl(postgresql.PostgresqlImpl):
+        __dialect__ = 'redshift'
+
+
 class RedShiftDDLCompiler(PGDDLCompiler):
     ''' Handles Redshift specific create table syntax.
 
