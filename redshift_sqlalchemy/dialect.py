@@ -266,17 +266,17 @@ class RedshiftDialect(PGDialect_psycopg2):
         columns = []
         for row in rows:
             column_info = self._get_column_info(
-                row.name,
-                row.format_type,
-                row.default,
-                row.notnull,
+                row['attname'],
+                row['format_type'],
+                row['default'],
+                row['attnotnull'],
                 domains,
                 enums,
                 schema,
             )
             info = {}
             for info_key in ['encoding', 'distkey', 'sortkey']:
-                info_value = getattr(row, info_key)
+                info_value = row[info_key]
                 if info_value:
                     info[info_key] = info_value
 
