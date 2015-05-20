@@ -5,6 +5,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement
 from sqlalchemy.types import VARCHAR, NullType
+from sqlalchemy import sql, types as sqltypes
 
 
 try:
@@ -188,6 +189,101 @@ class RedshiftDialect(PGDialect_psycopg2):
                 column_info['type'] = NullType()
 
         return column_info
+
+    @reflection.cache
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        """
+        Enable reflection of encoding, distkey and sortkey.
+        """
+
+        table_oid = self.get_table_oid(connection, table_name, schema,
+                                       info_cache=kw.get('info_cache'))
+
+        SQL_COLS = """
+            SELECT a.attname,
+              pg_catalog.format_type(a.atttypid, a.atttypmod),
+              (SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+                FROM pg_catalog.pg_attrdef d
+               WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum
+               AND a.atthasdef)
+              AS DEFAULT,
+              a.attnotnull, a.attnum, a.attrelid as table_oid,
+              pg_table_def.encoding,
+              pg_table_def.distkey,
+              pg_table_def.sortkey
+            FROM pg_catalog.pg_attribute a
+              JOIN pg_table_def ON a.attname = pg_table_def.column
+            WHERE a.attrelid = :table_oid
+              AND pg_table_def.tablename = :table_name
+              AND (
+                  pg_table_def.schemaname = :schema_name OR
+                  :any_schema
+              )
+            AND a.attnum > 0 AND NOT a.attisdropped
+            ORDER BY a.attnum
+        """
+        s = sql.text(
+            SQL_COLS,
+            bindparams=[
+                sql.bindparam('table_oid', type_=sqltypes.Integer),
+                sql.bindparam('table_name', type_=sqltypes.Unicode),
+                sql.bindparam('schema_name', type_=sqltypes.Unicode),
+                sql.bindparam('any_schema', type_=sqltypes.Boolean),
+            ],
+            typemap={
+                'attname': sqltypes.Unicode,
+                'default': sqltypes.Unicode,
+                'encoding': sqltypes.Unicode,
+                'distkey': sqltypes.Unicode,
+                'sortkey': sqltypes.Unicode,
+            }
+        )
+
+        if schema is not None:
+            schema_name = schema
+            any_schema = False
+        else:
+            schema_name = u''
+            any_schema = True
+
+        c = connection.execute(
+            s,
+            table_oid=table_oid,
+            table_name=table_name,
+            schema_name=schema_name,
+            any_schema=any_schema,
+        )
+        rows = c.fetchall()
+        domains = self._load_domains(connection)
+        enums = dict(
+            (
+                "%s.%s" % (rec['schema'], rec['name'])
+                if not rec['visible'] else rec['name'], rec) for rec in
+            self._load_enums(connection, schema='*')
+        )
+
+        # format columns
+        columns = []
+        for row in rows:
+            column_info = self._get_column_info(
+                row.name,
+                row.format_type,
+                row.default,
+                row.notnull,
+                domains,
+                enums,
+                schema,
+            )
+            info = {}
+            for info_key in ['encoding', 'distkey', 'sortkey']:
+                info_value = getattr(row, info_key)
+                if info_value:
+                    info[info_key] = info_value
+
+            column_info.setdefault('info', {})
+            column_info['info'].update(info)
+            columns.append(column_info)
+        return columns
 
 
 class UnloadFromSelect(Executable, ClauseElement):
