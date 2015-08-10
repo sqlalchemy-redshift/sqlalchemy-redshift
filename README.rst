@@ -1,7 +1,7 @@
 redshift_sqlalchemy
 ===================
 
-Amazon Redshift dialect for sqlalchemy.
+Amazon Redshift dialect for SQLAlchemy.
 
 .. image:: https://travis-ci.org/graingert/redshift_sqlalchemy.png?branch=master
 
@@ -13,7 +13,7 @@ Requirements
 
 Usage
 -----
-DSN format is simpilar to that of regular postgres:
+The DSN format is similar to that of regular Postgres:
 
 	from sqlalchemy import create_engine
 	
@@ -22,5 +22,5 @@ DSN format is simpilar to that of regular postgres:
 Notes
 -----
 
-Currently, contraints and indexes return nothing when intropecting tables. This comes from the redshift implementation of the postgresql api == 8.0
+Currently, constraints and indexes return nothing when introspecting tables. This is because Redshift implements version 8.0 of the PostgreSQL API.
 
