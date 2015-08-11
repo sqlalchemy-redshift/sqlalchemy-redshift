@@ -17,7 +17,7 @@ The DSN format is similar to that of regular Postgres:
 
 	from sqlalchemy import create_engine
 	
-	engine = create_engine("redshift+psycopg2://username@host.amazonaws.com:5439/database"
+	engine = create_engine("redshift+psycopg2://username@host.amazonaws.com:5439/database")
 
 Notes
 -----
