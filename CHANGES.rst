@@ -2,7 +2,10 @@
 0.1.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Register postgresql.visit_rename_table for redshift's
+  alembic RenameTable.
+  Thanks `bouk <https://github.com/bouk>`_.
+  (`Issue #7 <https://github.com/graingert/redshift_sqlalchemy/pull/7>`_)
 
 
 0.1.1 (2015-05-20)
