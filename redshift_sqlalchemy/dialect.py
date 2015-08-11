@@ -12,6 +12,9 @@ try:
 except ImportError:
     pass
 else:
+    from alembic.ddl.base import RenameTable
+    compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
+
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
 
