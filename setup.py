@@ -44,9 +44,9 @@ setup(
     ],
     entry_points={
         'sqlalchemy.dialects': [
-            'redshift = sqlalchemy_redshift.dialect:PyscopgRedshiftDialect',
-            'redshift.psycopg2 = sqlalchemy_redshift.dialect:PyscopgRedshiftDialect',
-            'redshift.psycopg2cffi = sqlalchemy_redshift.dialect:PyscopgCFFIRedshiftDialect',
+            'redshift = sqlalchemy_redshift.dialect:PsycopgRedshiftDialect',
+            'redshift.psycopg2 = sqlalchemy_redshift.dialect:PsycopgRedshiftDialect',
+            'redshift.psycopg2cffi = sqlalchemy_redshift.dialect:PsycopgCFFIRedshiftDialect',
             'redshift.pg8000 = sqlalchemy_redshift.dialect:Pg8000RedshiftDialect',
             'redshift.pypostgresql = sqlalchemy_redshift.dialect:PypostgresqlRedshiftDialect',
             'redshift.zxjdbc = sqlalchemy_redshift.dialect:ZxjdbcRedshiftDialect',

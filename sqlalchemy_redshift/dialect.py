@@ -702,7 +702,7 @@ class RedshiftDialectMixin(object):
         elif sa_version >= Version('1.4.0') and 'identity' not in kw:
             kw['identity'] = None
 
-        column_info = super(RedshiftDialect, self)._get_column_info(
+        column_info = super(RedshiftDialectMixin, self)._get_column_info(
             *args,
             **kw
         )
@@ -884,11 +884,11 @@ class RedshiftDialectMixin(object):
         return all_constraints
 
 
-class PyscopgRedshiftDialect(RedshiftDialectMixin, psycopg.dialect):
+class PsycopgRedshiftDialect(RedshiftDialectMixin, psycopg2.dialect):
     pass
 
 
-class PyscopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
+class PsycopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
     pass
 
 

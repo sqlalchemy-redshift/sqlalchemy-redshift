@@ -5,14 +5,14 @@ from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.schema import CreateTable
 
-from sqlalchemy_redshift.dialect import RedshiftDDLCompiler, RedshiftDialect
+from sqlalchemy_redshift.dialect import RedshiftDDLCompiler
 
 
 class TestDDLCompiler(object):
 
     @pytest.fixture
-    def compiler(self):
-        compiler = RedshiftDDLCompiler(RedshiftDialect(), None)
+    def compiler(self, redshift_dialect):
+        compiler = RedshiftDDLCompiler(redshift_dialect, None)
         return compiler
 
     def _compare_strings(self, expected, actual):

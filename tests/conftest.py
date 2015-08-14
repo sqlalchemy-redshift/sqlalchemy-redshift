@@ -126,12 +126,20 @@ def _redshift_engine_and_definition(_redshift_database_tool):
         yield database
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='function', params=[
+    'redshift', 'redshift+pg8000', 'redshift+psycopg2',
+    'redshift+psycopg2cffi',
+])
 def redshift_engine(_redshift_engine_and_definition):
     """
     A redshift engine for a freshly migrated database.
     """
     return _redshift_engine_and_definition['engine']
+
+
+@pytest.fixture
+def redshift_dialect(redshift_engine):
+    return redshift_engine.dialect
 
 
 @pytest.fixture(scope='function')
