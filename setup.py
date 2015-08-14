@@ -15,7 +15,7 @@ setup(
     maintainer_email='sqlalchemy-redshift@graingert.co.uk',
     license="MIT",
     url='https://github.com/sqlalchemy-redshift/sqlalchemy-redshift',
-    packages=['sqlalchemy_redshift', 'redshift_sqlalchemy'],
+    packages=['sqlalchemy_redshift', 'sqlalchemy_redshift'],
     package_data={'sqlalchemy_redshift': ['redshift-ca-bundle.crt']},
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*',
     install_requires=[
@@ -44,8 +44,12 @@ setup(
     ],
     entry_points={
         'sqlalchemy.dialects': [
-            'redshift = sqlalchemy_redshift.dialect:RedshiftDialect',
-            'redshift.psycopg2 = sqlalchemy_redshift.dialect:RedshiftDialect',
+            'redshift = sqlalchemy_redshift.dialect:PyscopgRedshiftDialect',
+            'redshift.psycopg2 = sqlalchemy_redshift.dialect:PyscopgRedshiftDialect',
+            'redshift.psycopg2cffi = sqlalchemy_redshift.dialect:PyscopgCFFIRedshiftDialect',
+            'redshift.pg8000 = sqlalchemy_redshift.dialect:Pg8000RedshiftDialect',
+            'redshift.pypostgresql = sqlalchemy_redshift.dialect:PypostgresqlRedshiftDialect',
+            'redshift.zxjdbc = sqlalchemy_redshift.dialect:ZxjdbcRedshiftDialect',
         ]
     },
 )

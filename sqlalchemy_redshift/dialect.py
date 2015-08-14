@@ -8,7 +8,9 @@ from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql.base import (
     PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
 )
-from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql import (
+    pg8000, psycopg2, psycopg2cffi, pypostgresql, zxjdbc,
+)
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -431,7 +433,7 @@ class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
 
-class RedshiftDialect(PGDialect_psycopg2):
+class RedshiftDialectMixin(object):
     """
     Define Redshift-specific behavior.
 
@@ -880,6 +882,26 @@ class RedshiftDialect(PGDialect_psycopg2):
             key = RelationKey(con.table_name, con.schema, connection)
             all_constraints[key].append(con)
         return all_constraints
+
+
+class PyscopgRedshiftDialect(RedshiftDialectMixin, psycopg.dialect):
+    pass
+
+
+class PyscopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
+    pass
+
+
+class Pg8000RedshiftDialect(RedshiftDialectMixin, pg8000.dialect):
+    pass
+
+
+class PypostgresqlRedshiftDialect(RedshiftDialectMixin, pypostgresql.dialect):
+    pass
+
+
+class ZxjdbcRedshiftDialect(RedshiftDialectMixin, zxjdbc.dialect):
+    pass
 
 
 def gen_columns_from_children(root):

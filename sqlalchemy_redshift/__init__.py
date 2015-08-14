@@ -25,3 +25,18 @@ registry.register("redshift", "sqlalchemy_redshift.dialect", "RedshiftDialect")
 registry.register(
     "redshift.psycopg2", "sqlalchemy_redshift.dialect", "RedshiftDialect"
 )
+
+registry.register(
+    'redshift+psycopg2cffi', 'sqlalchemy_redshift.dialect',
+    'PyscopgCFFIRedshiftDialect',
+)
+registry.register(
+    'redshift+pg8000', 'sqlalchemy_redshift.dialect', 'Pg8000RedshiftDialect'
+)
+registry.register(
+    'redshift+pypostgresql', 'sqlalchemy_redshift.dialect',
+    'PypostgresqlRedshiftDialect',
+)
+registry.register(
+    'redshift+zxjdbc', 'sqlalchemy_redshift.dialect', 'ZxjdbcRedshiftDialect'
+)
