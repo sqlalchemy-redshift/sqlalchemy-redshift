@@ -9,6 +9,8 @@
   (`Issue #20 <https://github.com/graingert/redshift_sqlalchemy/pull/20>`_)
 - Refactor of CopyCommand including support for specifying format and
   compression type. (`Issue #20 <https://github.com/graingert/redshift_sqlalchemy/pull/21>`_)
+- Explicitly require SQLAlchemy >= 0.9.2 for 'dialect_options'.
+  (`Issue #13 <https://github.com/graingert/redshift_sqlalchemy/pull/13>`_)
 
 
 0.1.2 (2015-08-11)
