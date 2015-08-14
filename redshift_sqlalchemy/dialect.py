@@ -184,7 +184,7 @@ class RedshiftDialectMixin(object):
         connection.set_isolation_level(level)
 
     def _get_column_info(self, *args, **kwargs):
-        column_info = super(RedshiftDialect, self)._get_column_info(
+        column_info = super(RedshiftDialectMixin, self)._get_column_info(
             *args,
             **kwargs
         )
@@ -195,11 +195,11 @@ class RedshiftDialectMixin(object):
         return column_info
 
 
-class PyscopgRedshiftDialect(RedshiftDialectMixin, psycopg.dialect):
+class PsycopgRedshiftDialect(RedshiftDialectMixin, psycopg2.dialect):
     pass
 
 
-class PyscopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
+class PsycopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
     pass
 
 

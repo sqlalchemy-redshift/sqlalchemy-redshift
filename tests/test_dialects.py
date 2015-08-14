@@ -14,8 +14,8 @@ from redshift_sqlalchemy import dialect
     ('redshift+pg8000', pg8000.dialect),
     ('redshift+psycopg2', psycopg2.dialect),
     ('redshift+psycopg2cffi', psycopg2cffi.dialect),
-    ('redshift+pypostgresql', pypostgresql.dialect),
-    ('redshift+zxjdbc', pypostgresql.zxjdbc),
+    # ('redshift+pypostgresql', pypostgresql.dialect),
+    # ('redshift+zxjdbc', zxjdbc.dialect),
 ])
 def test_dialect(name, expected_dialect):
     engine = sa.create_engine(URL(
