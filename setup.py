@@ -16,7 +16,12 @@ setup(
     url='https://github.com/graingert/redshift_sqlalchemy',
     packages=['redshift_sqlalchemy'],
     package_data={'redshift_sqlalchemy': ['redshift-ssl-ca-cert.pem']},
-    install_requires=['psycopg2>=2.5', 'SQLAlchemy>=0.8.0'],
+    install_requires=[
+        'psycopg2>=2.5',
+         # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in
+         # version 0.9.2
+        'SQLAlchemy>=0.9.2',
+    ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",
