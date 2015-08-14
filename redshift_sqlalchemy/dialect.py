@@ -1,6 +1,8 @@
 from sqlalchemy import schema, util, exc
 from sqlalchemy.dialects.postgresql.base import PGDDLCompiler
-from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql import (
+    pg8000, psycopg2, psycopg2cffi, pypostgresql, zxjdbc,
+)
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement
@@ -125,7 +127,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         return text
 
 
-class RedshiftDialect(PGDialect_psycopg2):
+class RedshiftDialectMixin(object):
     name = 'redshift'
     ddl_compiler = RedShiftDDLCompiler
 
@@ -182,7 +184,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         connection.set_isolation_level(level)
 
     def _get_column_info(self, *args, **kwargs):
-        column_info = super(RedshiftDialect, self)._get_column_info(
+        column_info = super(RedshiftDialectMixin, self)._get_column_info(
             *args,
             **kwargs
         )
@@ -191,6 +193,26 @@ class RedshiftDialect(PGDialect_psycopg2):
                 column_info['type'] = NullType()
 
         return column_info
+
+
+class PsycopgRedshiftDialect(RedshiftDialectMixin, psycopg2.dialect):
+    pass
+
+
+class PsycopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
+    pass
+
+
+class Pg8000RedshiftDialect(RedshiftDialectMixin, pg8000.dialect):
+    pass
+
+
+class PypostgresqlRedshiftDialect(RedshiftDialectMixin, pypostgresql.dialect):
+    pass
+
+
+class ZxjdbcRedshiftDialect(RedshiftDialectMixin, zxjdbc.dialect):
+    pass
 
 
 class UnloadFromSelect(Executable, ClauseElement):

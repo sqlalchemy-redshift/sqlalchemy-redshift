@@ -9,7 +9,7 @@ def test_configure_migration_context():
     assert isinstance(context.impl, dialect.RedshiftImpl)
 
 
-def test_rename_table():
-    compiler = dialect.RedShiftDDLCompiler(dialect.RedshiftDialect(), None)
+def test_rename_table(redshift_dialect):
+    compiler = dialect.RedShiftDDLCompiler(redshift_dialect, None)
     sql = compiler.process(RenameTable("old", "new", "scheme"))
     assert sql == 'ALTER TABLE scheme."old" RENAME TO "new"'
