@@ -15,7 +15,7 @@ setup(
     license="MIT",
     url='https://github.com/graingert/redshift_sqlalchemy',
     packages=['redshift_sqlalchemy'],
-    install_requires=['psycopg2>=2.5', 'SQLAlchemy>=0.8.0'],
+    install_requires=['SQLAlchemy>=0.8.0'],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",
@@ -26,9 +26,13 @@ setup(
     ],
     entry_points={
         'sqlalchemy.dialects': [
-            'redshift = redshift_sqlalchemy.dialect:RedshiftDialect',
-            'redshift.psycopg2 = redshift_sqlalchemy.dialect:RedshiftDialect',
-        ]
+            'redshift = redshift_sqlalchemy.dialect:PyscopgRedshiftDialect',
+            'redshift.psycopg2 = redshift_sqlalchemy.dialect:PyscopgRedshiftDialect',
+            'redshift.psycopg2cffi = redshift_sqlalchemy.dialect:PyscopgCFFIRedshiftDialect',
+            'redshift.pg8000 = redshift_sqlalchemy.dialect:Pg8000RedshiftDialect',
+            'redshift.pypostgresql = redshift_sqlalchemy.dialect:PypostgresqlRedshiftDialect',
+            'redshift.zxjdbc = redshift_sqlalchemy.dialect:ZxjdbcRedshiftDialect',
+        ],
     }
 )
 
