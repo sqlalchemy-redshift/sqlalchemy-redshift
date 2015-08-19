@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import schema, util, exc
 from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
@@ -17,6 +19,10 @@ else:
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
+
+
+# compiled regular expressions
+IDENTITY_RE = re.compile(r'"identity"\((?P<current>.*), (?P<base>.*), \'(?P<seed>\d+),(?P<step>\d+)\'.*\)')  ##noqa
 
 
 class RedshiftCompiler(PGCompiler):
@@ -149,7 +155,12 @@ class RedShiftDDLCompiler(PGDDLCompiler):
 
         default = self.get_column_default_string(column)
         if default is not None:
-            colspec += " DEFAULT " + default
+            m = IDENTITY_RE.match(default)
+            if m:
+                colspec += " IDENTITY({},{})".format(
+                    m.group('seed'), m.group('step'))
+            else:
+                colspec += " DEFAULT " + default
 
         colspec += self._fetch_redshift_column_attributes(column)
 
@@ -210,7 +221,7 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema, **kw):
-        """
+         """
         Redshift does not use traditional indexes.
         """
         return []
