@@ -2,7 +2,9 @@
 0.1.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Use SYSDATE instead of NOW().
+  Thanks `bouk <https://github.com/bouk>`_.
+  (`Issue #15 <https://github.com/graingert/redshift_sqlalchemy/pull/15>`_)
 
 
 0.1.2 (2015-08-11)

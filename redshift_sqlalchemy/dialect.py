@@ -1,5 +1,5 @@
 from sqlalchemy import schema, util, exc
-from sqlalchemy.dialects.postgresql.base import PGDDLCompiler
+from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
@@ -17,6 +17,12 @@ else:
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
+
+
+class RedshiftCompiler(PGCompiler):
+
+    def visit_now_func(self, fn, **kw):
+        return "SYSDATE"
 
 
 class RedShiftDDLCompiler(PGDDLCompiler):
@@ -127,6 +133,8 @@ class RedShiftDDLCompiler(PGDDLCompiler):
 
 class RedshiftDialect(PGDialect_psycopg2):
     name = 'redshift'
+
+    statement_compiler = RedshiftCompiler
     ddl_compiler = RedShiftDDLCompiler
 
     construct_arguments = [
