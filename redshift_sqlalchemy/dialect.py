@@ -20,7 +20,8 @@ else:
 
 
 class RedShiftDDLCompiler(PGDDLCompiler):
-    ''' Handles Redshift specific create table syntax.
+    """
+    Handles Redshift specific create table syntax.
 
     Users can specify the DISTSTYLE, DISTKEY, SORTKEY and ENCODE properties per
     table and per column.
@@ -28,39 +29,87 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     Table level properties can be set using the dialect specific syntax. For
     example, to specify a distkey and style you apply the following ::
 
-        table = Table(metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', String),
-                      redshift_diststyle="KEY",
-                      redshift_distkey="id"
-                      redshift_sortkey=["id", "name"]
-                      )
+    >>> import sqlalchemy as sa
+    >>> from sqlalchemy.schema import CreateTable
+    >>> engine = sa.create_engine('redshift+psycopg2://example')
+    >>> metadata = sa.MetaData()
+    >>> user = sa.Table(
+    ...     'user',
+    ...     metadata,
+    ...     sa.Column('id', sa.Integer, primary_key=True),
+    ...     sa.Column('name', sa.String),
+    ...     redshift_diststyle='KEY',
+    ...     redshift_distkey='id',
+    ...     redshift_sortkey=['id', 'name'],
+    ... )
+    >>> print(CreateTable(user).compile(engine))
+    <BLANKLINE>
+    CREATE TABLE "user" (
+        id INTEGER NOT NULL,
+        name VARCHAR,
+        PRIMARY KEY (id)
+    ) DISTSTYLE KEY DISTKEY (id) SORTKEY (id, name)
+    <BLANKLINE>
+    <BLANKLINE>
 
     A single sortkey can be applied without a wrapping list ::
 
-        table = Table(metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', String),
-                      redshift_sortkey="id"
-                      )
+    >>> customer = sa.Table(
+    ...     'customer',
+    ...     metadata,
+    ...     sa.Column('id', sa.Integer, primary_key=True),
+    ...     sa.Column('name', sa.String),
+    ...     redshift_sortkey='id',
+    ... )
+    >>> print(CreateTable(customer).compile(engine))
+    <BLANKLINE>
+    CREATE TABLE customer (
+        id INTEGER NOT NULL,
+        name VARCHAR,
+        PRIMARY KEY (id)
+    ) SORTKEY (id)
+    <BLANKLINE>
+    <BLANKLINE>
 
     Column level special syntax can also be applied using the column info
     dictionary. For example, we can specify the encode for a column ::
 
-        table = Table(metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', String, info={"encode":"lzo"})
-                      )
+    >>> product = sa.Table(
+    ...     'product',
+    ...     metadata,
+    ...     sa.Column('id', sa.Integer, primary_key=True),
+    ...     sa.Column('name', sa.String, info={'encode': 'lzo'})
+    ... )
+    >>> print(CreateTable(product).compile(engine))
+    <BLANKLINE>
+    CREATE TABLE product (
+        id INTEGER NOT NULL,
+        name VARCHAR ENCODE lzo,
+        PRIMARY KEY (id)
+    )
+    <BLANKLINE>
+    <BLANKLINE>
 
     We can also specify the distkey and sortkey options ::
 
-        table = Table(metadata,
-                      Column('id', Integer, primary_key=True),
-                      Column('name', String,
-                             info={"distkey":True, "sortkey":True})
-                      )
-
-    '''
+    >>> sku = sa.Table(
+    ...     'sku',
+    ...     metadata,
+    ...     sa.Column('id', sa.Integer, primary_key=True),
+    ...     sa.Column(
+    ...         'name', sa.String, info={'distkey': True, 'sortkey': True}
+    ...     )
+    ... )
+    >>> print(CreateTable(sku).compile(engine))
+    <BLANKLINE>
+    CREATE TABLE sku (
+        id INTEGER NOT NULL,
+        name VARCHAR DISTKEY SORTKEY,
+        PRIMARY KEY (id)
+    )
+    <BLANKLINE>
+    <BLANKLINE>
+    """
 
     def post_create_table(self, table):
         text = ""
