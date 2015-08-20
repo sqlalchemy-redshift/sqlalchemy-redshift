@@ -1,6 +1,8 @@
+from collections import namedtuple
+import itertools
 import re
 
-from sqlalchemy import schema, util, exc
+from sqlalchemy import schema, util, exc, inspect
 from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
@@ -21,9 +23,52 @@ else:
         __dialect__ = 'redshift'
 
 
-# compiled regular expressions
-IDENTITY_RE = re.compile(r'"identity"\((?P<current>.*), (?P<base>.*), \'(?P<seed>\d+),(?P<step>\d+)\'.*\)')  ##noqa
+## Constants
 
+COMPOUND_SORTKEY = 'compound'
+INTERLEAVED_SORTKEY = 'interleaved'
+
+
+## Regular expressions
+
+
+# For parsing adsrc, e.g.: "identity"(445178, 0, '1,1'::text)
+IDENTITY_RE = re.compile(r"""
+    "identity" \(
+      (?P<current>-?\d+)
+      ,\s
+      (?P<base>-?\d+)
+      ,\s
+      '(?P<seed>-?\d+),(?P<step>-?\d+)'
+      .*
+    \)
+""", re.VERBOSE)
+
+# For constraints, e.g.:
+#   FOREIGN KEY(col1) REFERENCES othertable (col2)
+# See https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
+# for a definition of valid SQL identifiers.
+FK_RE = re.compile(r"""
+  ^FOREIGN KEY \s* \(    # FOREIGN KEY, arbitrary whitespace, literal '('
+    (?P<columns>         # Start a group to capture the referring columns
+      (?:                # Start a non-capturing group
+        \s*              # Arbitrary whitespace
+        [_a-zA-Z][\w$]*  # SQL identifier
+        \s*              # Arbitrary whitespace
+        ,?               # There will be a colon if this isn't the last one
+      )+                 # Close the non-capturing group; require at least one
+    )                    # Close the 'columns' group
+  \s* \)                 # Arbitrary whitespace and literal ')'
+  \s* REFERENCES \s*
+  (?P<referred_table>    # Start a group to capture the referred table name
+    [_a-zA-Z][\w$]*      # SQL identifier
+  )
+  \s* \( \s*             # Literal '(' surrounded by arbitrary whitespace
+    (?P<referred_column> # Start a group to capture the referred column name
+      [_a-zA-Z][\w$]*    # SQL identifier
+    )
+  \s* \)                 # Arbitrary whitespace and literal ')'
+""", re.VERBOSE)
 
 class RedshiftCompiler(PGCompiler):
 
@@ -53,6 +98,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     ...     redshift_diststyle='KEY',
     ...     redshift_distkey='id',
     ...     redshift_sortkey=['id', 'name'],
+    ...     redshift_sortkey_type="interleaved",
     ... )
     >>> print(CreateTable(user).compile(engine))
     <BLANKLINE>
@@ -126,7 +172,8 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     def post_create_table(self, table):
         text = ""
         info = table.dialect_options['redshift']
-        diststyle = info.get('diststyle', None)
+        diststyle = info.get('diststyle')
+        sortkey_type = info.get('sortkey_type', COMPOUND_SORTKEY)
         if diststyle:
             diststyle = diststyle.upper()
             if diststyle not in ('EVEN', 'KEY', 'ALL'):
@@ -135,16 +182,18 @@ class RedShiftDDLCompiler(PGDDLCompiler):
                 )
             text += " DISTSTYLE " + diststyle
 
-        distkey = info.get('distkey', None)
+        distkey = info.get('distkey')
         if distkey:
             text += " DISTKEY ({0})".format(distkey)
 
-        sortkey = info.get('sortkey', None)
+        sortkey = info.get('sortkey')
         if sortkey:
             if isinstance(sortkey, str):
                 keys = (sortkey,)
             else:
                 keys = sortkey
+            if sortkey_type == INTERLEAVED_SORTKEY:
+                text += " INTERLEAVED"
             text += " SORTKEY ({0})".format(", ".join(keys))
         return text
 
@@ -173,19 +222,19 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         if not hasattr(column, 'info'):
             return text
         info = column.info
-        identity = info.get('identity', None)
+        identity = info.get('identity')
         if identity:
             text += " IDENTITY({0},{1})".format(identity[0], identity[1])
 
-        encode = info.get('encode', None)
+        encode = info.get('encode')
         if encode:
             text += " ENCODE " + encode
 
-        distkey = info.get('distkey', None)
+        distkey = info.get('distkey')
         if distkey:
             text += " DISTKEY"
 
-        sortkey = info.get('sortkey', None)
+        sortkey = info.get('sortkey')
         if sortkey:
             text += " SORTKEY"
         return text
@@ -205,23 +254,103 @@ class RedshiftDialect(PGDialect_psycopg2):
         }),
         (schema.Table, {
             "ignore_search_path": False,
-            'diststyle': None,
-            'distkey': None,
-            'sortkey': None
+            "diststyle": None,
+            "distkey": None,
+            "sortkey": None,
+            "sortkey_type": COMPOUND_SORTKEY,
         }),
     ]
 
     @reflection.cache
+    def get_table_options(self, connection, table_name, schema, **kw):
+        def keyfunc(column):
+            num = int(column.sortkey)
+            # If sortkey is interleaved, column numbers alternate
+            # negative values, so take abs.
+            return abs(num)
+        insp = inspect(connection)
+        key = (schema or insp.default_schema_name, table_name)
+        tables, views = self._get_all_table_and_view_info(connection)
+        table_info = tables[key]
+        column_info = self._get_all_column_info(connection)
+        columns = column_info[key]
+        sortkey_cols = sorted([col for col in columns if col.sortkey],
+                              key=keyfunc)
+        interleaved = any([int(col.sortkey) < 0 for col in sortkey_cols])
+        sortkey = [col.name for col in sortkey_cols]
+        sortkey_type = INTERLEAVED_SORTKEY if interleaved else COMPOUND_SORTKEY
+        distkeys = [col.name for col in columns if col.distkey]
+        distkey = distkeys[0] if distkeys else None
+        return {
+            'redshift_diststyle': table_info.diststyle,
+            'redshift_distkey': distkey,
+            'redshift_sortkey': sortkey,
+            'redshift_sortkey_type': sortkey_type,
+        }
+
+    @reflection.cache
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        all_columns = self._get_all_column_info(connection)
+        insp = inspect(connection)
+        key = (schema or insp.default_schema_name, table_name)
+        columns_for_this_table = all_columns[key]
+        domains = self._load_domains(connection)
+        columns = []
+        for col in columns_for_this_table:
+            column_info = self._get_column_info(
+                name=col.name, format_type=col.format_type, default=col.default,
+                notnull=col.notnull, domains=domains, enums=[],
+                schema=col.schema, encode=col.encode)
+            columns.append(column_info)
+        return columns
+
+    @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        """
-        Constraints in redshift are informational only. This allows reflection
-        to work.
-        """
-        return {'constrained_columns': [], 'name': ''}
+        all_constraints = self._get_all_constraint_info(connection)
+        insp = inspect(connection)
+        key = (schema or insp.default_schema_name, table_name)
+        constraints = all_constraints.get(key, [])
+        pk_constraints = [c for c in constraints if c.contype == 'p']
+        if not pk_constraints:
+            return {'constrained_columns': [], 'name': ''}
+        pk_constraint = pk_constraints[0]
+        # The slice here removes the 'PRIMARY KEY(' prefix and the ')' suffix
+        column_text = pk_constraint.condef[13:-1]
+        constrained_columns = column_text.split(', ')
+        return {
+            'constrained_columns': constrained_columns,
+            'name': None,
+        }
+
+    @reflection.cache
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        all_constraints = self._get_all_constraint_info(connection)
+        insp = inspect(connection)
+        key = (schema or insp.default_schema_name, table_name)
+        constraints = all_constraints.get(key, [])
+        fk_constraints = [c for c in constraints if c.contype == 'f']
+        fkeys = []
+        for constraint in fk_constraints:
+            m = FK_RE.match(constraint.condef)
+            colstring, referred_table, referred_key = m.groups()
+            referred_schema = None
+            if '.' in referred_table:
+                referred_table, referred_schema = referred_table.split('.')
+            constrained_columns = colstring.split(', ')
+            referred_columns = [referred_key]
+            fkey_d = {
+                'name': None,
+                'constrained_columns': constrained_columns,
+                'referred_schema': referred_schema,
+                'referred_table': referred_table,
+                'referred_columns': referred_columns,
+            }
+            fkeys.append(fkey_d)
+        return fkeys
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema, **kw):
-         """
+        """
         Redshift does not use traditional indexes.
         """
         return []
@@ -250,15 +379,114 @@ class RedshiftDialect(PGDialect_psycopg2):
         connection.set_isolation_level(level)
 
     def _get_column_info(self, *args, **kwargs):
+        kw = kwargs.copy()
+        encode = kw.pop('encode', None)
         column_info = super(RedshiftDialect, self)._get_column_info(
             *args,
-            **kwargs
+            **kw
         )
         if isinstance(column_info['type'], VARCHAR):
             if column_info['type'].length is None:
                 column_info['type'] = NullType()
-
+        if 'info' not in column_info:
+            column_info['info'] = {}
+        if encode and encode != 'none':
+            column_info['info']['encode'] = encode
         return column_info
+
+    @reflection.cache
+    def _get_all_table_and_view_info(self, connection):
+        def keyfunc(info):
+            return (info.schema, info.relname)
+        result = connection.execute("""
+        SELECT
+          c.relkind,
+          n.oid as "schema_oid",
+          n.nspname as "schema",
+          c.oid as "rel_oid",
+          c.relname,
+          CASE c.reldiststyle
+            WHEN 0 THEN 'EVEN' WHEN 1 THEN 'KEY' WHEN 8 THEN 'ALL' END
+            AS "diststyle",
+          c.relowner AS "owner_id",
+          u.usename AS "owner_name",
+          pg_get_viewdef(c.oid) AS "view_definition",
+          pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
+        FROM pg_catalog.pg_class c
+             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
+        WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
+          AND n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+        ORDER BY 1, 2, 3;
+        """)
+        RelationInfo = namedtuple('RelationInfo', result.keys())
+        relations = [RelationInfo(*args) for args in result]
+        tables, views = {}, {}
+        for r in relations:
+            key = keyfunc(r)
+            if r.relkind == 'r':
+                tables[key] = r
+            if r.relkind == 'v':
+                views[key] = r
+        return tables, views
+
+    @reflection.cache
+    def _get_all_column_info(self, connection):
+        def keyfunc(info):
+            return (info.schema, info.table_name)
+        result = connection.execute("""
+        SELECT
+          n.nspname as "schema",
+          c.relname as "table_name",
+          d.column as "name",
+          encoding as "encode"
+          type, distkey, sortkey, "notnull", adsrc, attnum,
+          pg_catalog.format_type(att.atttypid, att.atttypmod),
+          pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
+          n.oid as "schema_oid",
+          c.oid as "table_oid"
+        FROM pg_catalog.pg_class c
+        LEFT JOIN pg_catalog.pg_namespace n
+          ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_table_def d
+          ON (d.schemaname, d.tablename) = (n.nspname, c.relname)
+        JOIN pg_catalog.pg_attribute att
+          ON (att.attrelid, att.attname) = (c.oid, d.column)
+        LEFT JOIN pg_catalog.pg_attrdef ad
+          ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
+        WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+        ORDER BY n.nspname, c.relname
+        """)
+        ColumnInfo = namedtuple('ColumnInfo', result.keys())
+        columns = [ColumnInfo(*args) for args in result]
+        columns_by_table = {key: list(cols) for key, cols
+                            in itertools.groupby(columns, keyfunc)}
+        return columns_by_table
+
+    @reflection.cache
+    def _get_all_constraint_info(self, connection):
+        def keyfunc(info):
+            return (info.schema, info.relname)
+        result = connection.execute("""
+        SELECT
+          n.nspname as "schema",
+          c.relname as "table_name",
+          t.contype,
+          t.conname,
+          pg_catalog.pg_get_constraintdef(t.oid, true) as condef,
+          n.oid as "schema_oid",
+          c.oid as "rel_oid"
+        FROM pg_catalog.pg_class c
+        LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_constraint t ON t.conrelid = c.oid
+        WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+        ORDER BY n.nspname, c.relname
+        """)
+        ConstraintInfo = namedtuple('ConstraintInfo', result.keys())
+        constraints_raw = [ConstraintInfo(*args) for args in result]
+        constraints_by_table = {key: list(constraints) for key, constraints
+                                in itertools.groupby(constraints_raw, keyfunc)}
+        return constraints_by_table
 
 
 class UnloadFromSelect(Executable, ClauseElement):
