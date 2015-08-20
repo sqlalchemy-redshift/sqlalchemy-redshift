@@ -23,14 +23,13 @@ else:
         __dialect__ = 'redshift'
 
 
-## Constants
+#### Constants
 
 COMPOUND_SORTKEY = 'compound'
 INTERLEAVED_SORTKEY = 'interleaved'
 
 
-## Regular expressions
-
+#### Regular expressions
 
 # For parsing adsrc, e.g.: "identity"(445178, 0, '1,1'::text)
 IDENTITY_RE = re.compile(r"""
@@ -69,6 +68,7 @@ FK_RE = re.compile(r"""
     )
   \s* \)                 # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
+
 
 class RedshiftCompiler(PGCompiler):
 
