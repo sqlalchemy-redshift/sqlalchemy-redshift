@@ -23,15 +23,12 @@ else:
         __dialect__ = 'redshift'
 
 
-#### Constants
-
 COMPOUND_SORTKEY = 'compound'
 INTERLEAVED_SORTKEY = 'interleaved'
 
 
-#### Regular expressions
-
-# For parsing adsrc, e.g.: "identity"(445178, 0, '1,1'::text)
+# Regex for parsing and identity constraint out of adsrc, e.g.:
+#   "identity"(445178, 0, '1,1'::text)
 IDENTITY_RE = re.compile(r"""
     "identity" \(
       (?P<current>-?\d+)
@@ -43,7 +40,7 @@ IDENTITY_RE = re.compile(r"""
     \)
 """, re.VERBOSE)
 
-# For constraints, e.g.:
+# Regex for foreign key constraints, e.g.:
 #   FOREIGN KEY(col1) REFERENCES othertable (col2)
 # See https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
 # for a definition of valid SQL identifiers.
