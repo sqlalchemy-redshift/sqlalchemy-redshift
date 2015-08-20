@@ -106,7 +106,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         id INTEGER NOT NULL,
         name VARCHAR,
         PRIMARY KEY (id)
-    ) DISTSTYLE KEY DISTKEY (id) SORTKEY (id, name)
+    ) DISTSTYLE KEY DISTKEY (id) INTERLEAVED SORTKEY (id, name)
     <BLANKLINE>
     <BLANKLINE>
 
@@ -206,8 +206,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         if default is not None:
             m = IDENTITY_RE.match(default)
             if m:
-                colspec += " IDENTITY({},{})".format(
-                    m.group('seed'), m.group('step'))
+                colspec += " IDENTITY({seed},{step})".format(m.groupdict())
             else:
                 colspec += " DEFAULT " + default
 
@@ -332,11 +331,14 @@ class RedshiftDialect(PGDialect_psycopg2):
         fkeys = []
         for constraint in fk_constraints:
             m = FK_RE.match(constraint.condef)
-            colstring, referred_table, referred_key = m.groups()
+            groups = m.groupdict()
+            colstring = groups.get('columns')
+            referred_table = groups.get('referred_table')
+            referred_key = groups.get('referred_key')
             referred_schema = None
             if '.' in referred_table:
                 referred_table, referred_schema = referred_table.split('.')
-            constrained_columns = colstring.split(', ')
+            constrained_columns = [c.strip() for c in colstring.split(',')]
             referred_columns = [referred_key]
             fkey_d = {
                 'name': None,
@@ -458,9 +460,10 @@ class RedshiftDialect(PGDialect_psycopg2):
         ORDER BY n.nspname, c.relname
         """)
         ColumnInfo = namedtuple('ColumnInfo', result.keys())
-        columns = [ColumnInfo(*args) for args in result]
-        columns_by_table = {key: list(cols) for key, cols
-                            in itertools.groupby(columns, keyfunc)}
+        all_columns = [ColumnInfo(*args) for args in result]
+        columns_by_table = {}
+        for key, cols in itertools.groupby(all_columns, keyfunc):
+            columns_by_table[key] = list(cols)
         return columns_by_table
 
     @reflection.cache
@@ -483,9 +486,10 @@ class RedshiftDialect(PGDialect_psycopg2):
         ORDER BY n.nspname, c.relname
         """)
         ConstraintInfo = namedtuple('ConstraintInfo', result.keys())
-        constraints_raw = [ConstraintInfo(*args) for args in result]
-        constraints_by_table = {key: list(constraints) for key, constraints
-                                in itertools.groupby(constraints_raw, keyfunc)}
+        all_constraints = [ConstraintInfo(*args) for args in result]
+        constraints_by_table = {}
+        for key, constraints in itertools.groupby(all_constraints, keyfunc):
+            constraints_by_table[key] = list(constraints)
         return constraints_by_table
 
 
