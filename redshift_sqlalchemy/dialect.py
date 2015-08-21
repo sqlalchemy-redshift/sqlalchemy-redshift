@@ -1,5 +1,4 @@
 from collections import defaultdict
-import itertools
 import re
 
 from sqlalchemy import schema, util, exc, inspect
@@ -439,10 +438,11 @@ class RedshiftDialect(PGDialect_psycopg2):
             uc = uniques[row.conname]
             uc["key"] = row.conkey
             uc["cols"][row.attnum] = row.attname
+
         return [
             {'name': None,
              'column_names': [uc["cols"][i] for i in uc["key"]]}
-            for name, uc in uniques.items()
+            for name, uc in uniques.items()  # flake8: noqa
         ]
 
     def get_indexes(self, connection, table_name, schema, **kw):
