@@ -15,6 +15,7 @@ setup(
     license="MIT",
     url='https://github.com/graingert/redshift_sqlalchemy',
     packages=['redshift_sqlalchemy'],
+    package_data={'redshift_sqlalchemy': ['redshift-ssl-ca-cert.pem']},
     install_requires=['psycopg2>=2.5', 'SQLAlchemy>=0.8.0'],
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -29,6 +30,6 @@ setup(
             'redshift = redshift_sqlalchemy.dialect:RedshiftDialect',
             'redshift.psycopg2 = redshift_sqlalchemy.dialect:RedshiftDialect',
         ]
-    }
+    },
 )
 
