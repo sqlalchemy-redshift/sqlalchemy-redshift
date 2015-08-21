@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import defaultdict
 import itertools
 import re
 
@@ -45,7 +45,7 @@ IDENTITY_RE = re.compile(r"""
 # See https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
 # for a definition of valid SQL identifiers.
 FK_RE = re.compile(r"""
-  ^FOREIGN KEY \s* \(    # FOREIGN KEY, arbitrary whitespace, literal '('
+  ^FOREIGN\ KEY \s* \(   # FOREIGN KEY, arbitrary whitespace, literal '('
     (?P<columns>         # Start a group to capture the referring columns
       (?:                # Start a non-capturing group
         \s*              # Arbitrary whitespace
@@ -65,6 +65,20 @@ FK_RE = re.compile(r"""
     )
   \s* \)                 # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
+
+
+def _get_relation_key(name, schema):
+    if schema is None:
+        return name
+    else:
+        return schema + "." + name
+
+
+def _get_schema_and_relation(key):
+    before_dot, dot, after_dot = key.partition('.')
+    if dot:
+        return (before_dot, after_dot)
+    return (None, before_dot)
 
 
 class RedshiftCompiler(PGCompiler):
@@ -257,6 +271,13 @@ class RedshiftDialect(PGDialect_psycopg2):
         }),
     ]
 
+    def __init__(self, **kwargs):
+        super(RedshiftDialect, self).__init__(self, **kwargs)
+        self._all_tables_and_views = None
+        self._all_columns = None
+        self._all_constraints = None
+        self._domains = None
+
     @reflection.cache
     def get_table_options(self, connection, table_name, schema, **kw):
         def keyfunc(column):
@@ -264,12 +285,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             # If sortkey is interleaved, column numbers alternate
             # negative values, so take abs.
             return abs(num)
-        insp = inspect(connection)
-        key = (schema or insp.default_schema_name, table_name)
-        tables, views = self._get_all_table_and_view_info(connection)
-        table_info = tables[key]
-        column_info = self._get_all_column_info(connection)
-        columns = column_info[key]
+        table_info = self._get_cached_tables(connection, table_name, schema)
+        columns = self._get_cached_columns(connection, table_name, schema)
         sortkey_cols = sorted([col for col in columns if col.sortkey],
                               key=keyfunc)
         interleaved = any([int(col.sortkey) < 0 for col in sortkey_cols])
@@ -286,26 +303,32 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
-        all_columns = self._get_all_column_info(connection)
-        insp = inspect(connection)
-        key = (schema or insp.default_schema_name, table_name)
-        columns_for_this_table = all_columns[key]
-        domains = self._load_domains(connection)
+        """Return information about columns in `table_name`.
+
+        Interface defined in :meth:`~sqlalchemy.engine.Dialect.get_columns`.
+        """
+        cols = self._get_cached_columns(connection, table_name, schema)
+        if not self._domains:
+            self._domains = self._load_domains(connection)
+        domains = self._domains
         columns = []
-        for col in columns_for_this_table:
+        for col in cols:
             column_info = self._get_column_info(
-                name=col.name, format_type=col.format_type, default=col.default,
-                notnull=col.notnull, domains=domains, enums=[],
-                schema=col.schema, encode=col.encode)
+                name=col.name, format_type=col.format_type,
+                default=col.default, notnull=col.notnull, domains=domains,
+                enums=[], schema=col.schema, encode=col.encode)
             columns.append(column_info)
         return columns
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        all_constraints = self._get_all_constraint_info(connection)
-        insp = inspect(connection)
-        key = (schema or insp.default_schema_name, table_name)
-        constraints = all_constraints.get(key, [])
+        """
+        Return information about the primary key constraint on `table_name`.
+
+        Interface defined in :meth:`~sqlalchemy.engine.Dialect.get_pk_constraint`.
+        """
+        constraints = self._get_cached_constraints(connection, table_name,
+                                                   schema)
         pk_constraints = [c for c in constraints if c.contype == 'p']
         if not pk_constraints:
             return {'constrained_columns': [], 'name': ''}
@@ -320,23 +343,26 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
-        all_constraints = self._get_all_constraint_info(connection)
-        insp = inspect(connection)
-        key = (schema or insp.default_schema_name, table_name)
-        constraints = all_constraints.get(key, [])
+        """
+        Return information about foreign keys in `table_name`.
+
+        Interface defined in :meth:`~sqlalchemy.engine.Dialect.get_pk_constraint`.
+        """
+        constraints = self._get_cached_constraints(connection, table_name,
+                                                   schema)
         fk_constraints = [c for c in constraints if c.contype == 'f']
         fkeys = []
         for constraint in fk_constraints:
             m = FK_RE.match(constraint.condef)
             groups = m.groupdict()
-            colstring = groups.get('columns')
-            referred_table = groups.get('referred_table')
-            referred_key = groups.get('referred_key')
+            colstring = groups['columns']
+            referred_table = groups['referred_table']
+            referred_column = groups['referred_column']
             referred_schema = None
             if '.' in referred_table:
                 referred_table, referred_schema = referred_table.split('.')
             constrained_columns = [c.strip() for c in colstring.split(',')]
-            referred_columns = [referred_key]
+            referred_columns = [referred_column]
             fkey_d = {
                 'name': None,
                 'constrained_columns': constrained_columns,
@@ -348,11 +374,89 @@ class RedshiftDialect(PGDialect_psycopg2):
         return fkeys
 
     @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
+        """
+        Return a list of table names for `schema`.
+        """
+        all_tables, _ = self._get_all_table_and_view_info(connection)
+        table_names = []
+        for key in all_tables.keys():
+            s, t = _get_schema_and_relation(key)
+            if s == schema:
+                table_names.append(t)
+        return table_names
+
+    # TODO: Implement this
+    # def get_temp_table_names(self, connection, schema=None, **kw):
+    #     """Return a list of temporary table names on the given connection,
+    #     if supported by the underlying backend.
+    #     """
+
+    #     raise NotImplementedError()
+
+    @reflection.cache
+    def get_view_names(self, connection, schema=None, **kw):
+        """
+        Return a list of all view names available in the database.
+        """
+        _, all_views = self._get_all_table_and_view_info(connection)
+        view_names = []
+        for key in all_views.keys():
+            s, v = _get_schema_and_relation(key)
+            if s == schema:
+                view_names.append(v)
+        return view_names
+
+    # TODO: Implement this
+    # def get_temp_view_names(self, connection, schema=None, **kw):
+    #     """Return a list of temporary view names on the given connection,
+    #     if supported by the underlying backend.
+    #     """
+
+    #     raise NotImplementedError()
+
+    @reflection.cache
+    def get_view_definition(self, connection, view_name, schema=None, **kw):
+        """Return view definition.
+        Given a :class:`.Connection`, a string
+        `view_name`, and an optional string `schema`, return the view
+        definition.
+        """
+        view = self._get_cached_views(connection, view_name, schema)
+        return view.view_definition
+
+    @reflection.cache
+    def get_unique_constraints(self, connection, table_name,
+                               schema=None, **kw):
+        """Return information about unique constraints in `table_name`.
+        """
+        constraints = [c for c in
+                       self._get_cached_constraints(
+                           connection, table_name, schema)
+                       if c.contype == 'u']
+        uniques = defaultdict(lambda: defaultdict(dict))
+        for row in constraints:
+            uc = uniques[row.conname]
+            uc["key"] = row.conkey
+            uc["cols"][row.attnum] = row.attname
+        return [
+            {'name': None,
+             'column_names': [uc["cols"][i] for i in uc["key"]]}
+            for name, uc in uniques.items()
+        ]
+
     def get_indexes(self, connection, table_name, schema, **kw):
         """
         Redshift does not use traditional indexes.
         """
         return []
+
+    @reflection.cache
+    def has_table(self, connection, table_name, schema=None):
+        """Check the existence of a particular table in the database.
+        """
+        key = _get_relation_key(table_name, schema)
+        return key in self.get_table_names(connection, schema=schema)
 
     @util.memoized_property
     def _isolation_lookup(self):
@@ -393,10 +497,29 @@ class RedshiftDialect(PGDialect_psycopg2):
             column_info['info']['encode'] = encode
         return column_info
 
-    @reflection.cache
+    def _get_cached_tables(self, connection, table_name, schema=None):
+        key = _get_relation_key(table_name, schema)
+        all_tables, _ = self._get_all_table_and_view_info(connection)
+        return all_tables[key]
+
+    def _get_cached_views(self, connection, view_name, schema=None):
+        key = _get_relation_key(view_name, schema)
+        _, all_views = self._get_all_table_and_view_info(connection)
+        return all_views[key]
+
+    def _get_cached_columns(self, connection, table_name, schema=None):
+        key = _get_relation_key(table_name, schema)
+        all_columns = self._get_all_column_info(connection)
+        return all_columns[key]
+
+    def _get_cached_constraints(self, connection, table_name, schema=None):
+        key = _get_relation_key(table_name, schema)
+        all_constraints = self._get_all_constraint_info(connection)
+        return all_constraints[key]
+
     def _get_all_table_and_view_info(self, connection):
-        def keyfunc(info):
-            return (info.schema, info.relname)
+        if self._all_tables_and_views:
+            return self._all_tables_and_views
         result = connection.execute("""
         SELECT
           c.relkind,
@@ -418,27 +541,28 @@ class RedshiftDialect(PGDialect_psycopg2):
           AND n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
         ORDER BY 1, 2, 3;
         """)
-        RelationInfo = namedtuple('RelationInfo', result.keys())
-        relations = [RelationInfo(*args) for args in result]
         tables, views = {}, {}
-        for r in relations:
-            key = keyfunc(r)
+        for r in result:
+            schema = r.schema
+            if schema == inspect(connection).default_schema_name:
+                schema = None
+            key = _get_relation_key(r.relname, schema)
             if r.relkind == 'r':
                 tables[key] = r
             if r.relkind == 'v':
                 views[key] = r
-        return tables, views
+        self._all_tables_and_views = (tables, views)
+        return self._all_tables_and_views
 
-    @reflection.cache
     def _get_all_column_info(self, connection):
-        def keyfunc(info):
-            return (info.schema, info.table_name)
+        if self._all_columns:
+            return self._all_columns
         result = connection.execute("""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
           d.column as "name",
-          encoding as "encode"
+          encoding as "encode",
           type, distkey, sortkey, "notnull", adsrc, attnum,
           pg_catalog.format_type(att.atttypid, att.atttypmod),
           pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
@@ -456,38 +580,51 @@ class RedshiftDialect(PGDialect_psycopg2):
         WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
         ORDER BY n.nspname, c.relname
         """)
-        ColumnInfo = namedtuple('ColumnInfo', result.keys())
-        all_columns = [ColumnInfo(*args) for args in result]
-        columns_by_table = {}
-        for key, cols in itertools.groupby(all_columns, keyfunc):
-            columns_by_table[key] = list(cols)
-        return columns_by_table
+        all_columns = defaultdict(list)
+        for col in result:
+            schema = col.schema
+            if schema == inspect(connection).default_schema_name:
+                schema = None
+            key = _get_relation_key(col.table_name, schema)
+            all_columns[key].append(col)
+        self._all_columns = all_columns
+        return self._all_columns
 
     @reflection.cache
     def _get_all_constraint_info(self, connection):
-        def keyfunc(info):
-            return (info.schema, info.relname)
+        if self._all_constraints:
+            return self._all_constraints
         result = connection.execute("""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
           t.contype,
           t.conname,
+          t.conkey,
+          a.attnum,
+          a.attname,
           pg_catalog.pg_get_constraintdef(t.oid, true) as condef,
           n.oid as "schema_oid",
           c.oid as "rel_oid"
         FROM pg_catalog.pg_class c
-        LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-        JOIN pg_catalog.pg_constraint t ON t.conrelid = c.oid
+        LEFT JOIN pg_catalog.pg_namespace n
+          ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_constraint t
+          ON t.conrelid = c.oid
+        JOIN pg_catalog.pg_attribute a
+          ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
         WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
         ORDER BY n.nspname, c.relname
         """)
-        ConstraintInfo = namedtuple('ConstraintInfo', result.keys())
-        all_constraints = [ConstraintInfo(*args) for args in result]
-        constraints_by_table = {}
-        for key, constraints in itertools.groupby(all_constraints, keyfunc):
-            constraints_by_table[key] = list(constraints)
-        return constraints_by_table
+        all_constraints = defaultdict(list)
+        for con in result:
+            schema = con.schema
+            if schema == inspect(connection).default_schema_name:
+                schema = None
+            key = _get_relation_key(con.table_name, schema)
+            all_constraints[key].append(con)
+        self._all_constraints = all_constraints
+        return self._all_constraints
 
 
 class UnloadFromSelect(Executable, ClauseElement):
