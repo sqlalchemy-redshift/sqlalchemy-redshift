@@ -1,21 +1,35 @@
-from inspect import cleandoc
-
-from sqlalchemy import MetaData, Table
 from sqlalchemy.schema import CreateTable
+import sqlalchemy as sa
+
+from rs_sqla_test_utils import models
+
+
+unicode_ = type(u'')
+
+ddl = """CREATE TABLE test_introspecting_unique_constraint (
+\tcol1 INTEGER, 
+\tcol2 INTEGER, 
+UNIQUE (col1, col2)
+)
+"""  # noqa because trailing spaces
+
+
+def table_to_ddl(table, engine):
+    return unicode_(CreateTable(table)).compile(engine)
 
 
 def test_introspecting_unique_constraint(redshift_session):
-    text = """
-    CREATE TABLE test_introspecting_unique_constraint (
-        col1 INTEGER,
-        col2 INTEGER,
-        UNIQUE (col1, col2)
+    assert table_to_ddl(
+        table=models.IntrospectionUnique.__table__,
+        engine=redshift_session,
+    ) == ddl
+
+    metadata = sa.MetaData(bind=redshift_session)
+    introspected_table = sa.Table(
+        'test_introspecting_unique_constraint', metadata, autoload=True
     )
-    """
-    redshift_session.execute(text)
-    redshift_session.commit()
-    meta = MetaData()
-    meta.bind = redshift_session
-    t = Table('test_introspecting_unique_constraint',
-              meta, autoload=True)
-    assert cleandoc(CreateTable(t).compile(redshift_session)) == cleandoc(text)
+
+    assert table_to_ddl(
+        table=introspected_table,
+        engine=redshift_session
+    ) == ddl
