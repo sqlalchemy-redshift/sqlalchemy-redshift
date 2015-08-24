@@ -323,7 +323,8 @@ def visit_unload_from_select(element, compiler, **kw):
 class CopyCommand(Executable, ClauseElement):
     ''' Prepares a RedShift COPY statement
     '''
-    def __init__(self, schema_name, table_name, data_location, access_key, secret_key, session_token='', options={}):
+    def __init__(self, schema_name, table_name, data_location, access_key,
+                 secret_key, format='CSV', session_token='', options={}):
         ''' Initializes a CopyCommand instance
 
         Args:
@@ -343,6 +344,7 @@ class CopyCommand(Executable, ClauseElement):
                                 empty values as NULL instead of empty string; defaults to True
                 blanks_as_null - Boolean value denoting whether to load VARCHAR fields with
                                  whitespace only values as NULL instead of whitespace; defaults to True
+                compression - GZIP, LZOP or nothing, indicates the type of compression of the file to copy
         '''
         self.schema_name = schema_name
         self.table_name = table_name
@@ -350,7 +352,8 @@ class CopyCommand(Executable, ClauseElement):
         self.access_key = access_key
         self.secret_key = secret_key
         self.session_token = session_token
-        self.options = options
+        self.options = options or {}
+        self.format = format
 
 
 @compiles(CopyCommand)
@@ -360,12 +363,13 @@ def visit_copy_command(element, compiler, **kw):
     return """
            COPY %(schema_name)s.%(table_name)s FROM '%(data_location)s'
            CREDENTIALS 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s%(session_token)s'
-           CSV
+           %(format)s
            TRUNCATECOLUMNS
            DELIMITER '%(delimiter)s'
            IGNOREHEADER %(ignore_header)s
            %(null)s
            %(manifest)s
+           %(compression)s
            %(empty_as_null)s
            %(blanks_as_null)s;
            """ % \
@@ -380,7 +384,9 @@ def visit_copy_command(element, compiler, **kw):
             'ignore_header': element.options.get('ignore_header', 0),
             'manifest': 'MANIFEST' if bool(element.options.get('manifest', False)) else '',
             'empty_as_null': 'EMPTYASNULL' if bool(element.options.get('empty_as_null', True)) else '',
-            'blanks_as_null': 'BLANKSASNULL' if bool(element.options.get('blanks_as_null', True)) else ''}
+            'blanks_as_null': 'BLANKSASNULL' if bool(element.options.get('blanks_as_null', True)) else '',
+            'format': element.format,
+            'compression': element.options.get('compression', '')}
 
 
 @compiles(BindParameter)
