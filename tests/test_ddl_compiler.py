@@ -3,7 +3,7 @@ import difflib
 import pytest
 from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy.exc import CompileError
-from sqlalchemy.schema import CreateTable, CreateIndex, Index
+from sqlalchemy.schema import CreateTable
 
 from redshift_sqlalchemy.dialect import RedShiftDDLCompiler, RedshiftDialect
 
@@ -221,12 +221,3 @@ class TestDDLCompiler(object):
             u"\n\tPRIMARY KEY (id)\n)\n\n"
         )
         assert expected == actual, self._compare_strings(expected, actual)
-
-    def test_visit_create_index(self, compiler):
-        t = Table("t", MetaData())
-        c = Column("a", String)
-        t.append_column(c)
-        index = Index("cool_index", c)
-        ci = CreateIndex(index)
-        compiled = compiler.process(ci)
-        assert compiled is None

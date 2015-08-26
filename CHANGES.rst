@@ -2,9 +2,6 @@
 0.1.3 (unreleased)
 ------------------
 
-- Don't visit indexes as Redshift doesn't support them.
-  Thanks `bouk <https://github.com/bouk>`_.
-  (`Issue #23 <https://github.com/graingert/redshift_sqlalchemy/pull/23>`_)
 - Use SYSDATE instead of NOW().
   Thanks `bouk <https://github.com/bouk>`_.
   (`Issue #15 <https://github.com/graingert/redshift_sqlalchemy/pull/15>`_)
