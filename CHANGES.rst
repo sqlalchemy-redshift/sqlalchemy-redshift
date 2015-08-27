@@ -7,6 +7,8 @@
   (`Issue #15 <https://github.com/graingert/redshift_sqlalchemy/pull/15>`_)
 - Default to SSL with hardcoded AWS Redshift CA.
   (`Issue #20 <https://github.com/graingert/redshift_sqlalchemy/pull/20>`_)
+- Refactor of CopyCommand including support for specifying format and
+  compression type. (`Issue #20 <https://github.com/graingert/redshift_sqlalchemy/pull/21>`_)
 
 
 0.1.2 (2015-08-11)
