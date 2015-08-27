@@ -180,10 +180,6 @@ class RedShiftDDLCompiler(PGDDLCompiler):
             text += " SORTKEY"
         return text
 
-    def visit_create_index(self, element):
-        """Doesn't do anything as Redshift doesn't support indexes"""
-        return None
-
 
 class RedshiftDialect(PGDialect_psycopg2):
     name = 'redshift'
