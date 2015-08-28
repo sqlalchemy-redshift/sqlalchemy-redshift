@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import Executable, ClauseElement
+from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement, Delete
 from sqlalchemy.types import VARCHAR, NullType
 
 from .compat import string_types
@@ -1025,3 +1025,92 @@ def visit_copy_command(element, compiler, **kw):
         ),
         **kw
     )
+<<<<<<< HEAD
+=======
+
+
+@compiles(BindParameter)
+def visit_bindparam(bindparam, compiler, **kw):
+    res = compiler.visit_bindparam(bindparam, **kw)
+    if 'unload_select' in kw:
+        # process param and return
+        res = res.replace("'", "\\'")
+        res = res.replace('%', '%%')
+        return res
+    else:
+        return res
+    
+
+@compiles(Delete, 'redshift')
+def visit_delete_stmt(element, compiler, **kwargs):
+    """
+    Adds redshift-dialect specific compilation rule for the
+    delete statement.
+
+    Redshift DELETE syntax can be found here:
+    http://docs.aws.amazon.com/redshift/latest/dg/r_DELETE.html
+
+    .. :code-block: sql
+
+        DELETE [ FROM ] table_name
+        [ { USING } table_name, ...]
+        [ WHERE condition ]
+
+    By default, SqlAlchemy compiles DELETE statements with the
+    syntax:
+
+    .. :code-block: sql
+
+        DELETE [ FROM ] table_name
+        [ WHERE condition ]
+
+    problem illustration:
+
+    >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
+    >>> meta = MetaData()
+    >>> table1 = Table(
+    ... 'table_1',
+    ... meta,
+    ... Column('pk', Integer, primary_key=True)
+    ... )
+    ...
+    >>> table2 = Table(
+    ... 'table_2',
+    ... meta,
+    ... Column('pk', Integer, primary_key=True)
+    ... )
+    ...
+    >>> del_stmt = delete(table1).where(table1.c.pk==table2.c.pk)
+    >>> str(del_stmt)
+    'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
+    >>> del_stmt2 = table1.delete().where(table1.c.pk==table2.c.pk)
+    >>> str(del_stmt2)
+    'DELETE FROM table_1 WHERE table_1.pk = table_2.pk'
+    """
+    # determine if the delete query needs a ``USING`` injected
+    # by inspecting the whereclause's children & their children.
+    whereclause_tables = set()
+    boolclause_list = element.get_children()
+    def get_table_name(t):
+        if t.schema != '':
+            return t.schema + '.' + t.name
+        return t.name
+    table = get_table_name(element.table)
+    for clause in boolclause_list:
+        clause_element = clause.get_children()
+        for sub_element in clause_element:
+            try:
+                if sub_element.table != element.table:
+                    name = get_table_name(sub_element.table)
+                    whereclause_tables.add(name)
+            except AttributeError:
+                # attribute error will be raised by sub_elements that are select queries
+                # such as ``DELETE FROM table_1 WHERE table_1.pk > (SELECT max(table_2.pk) FROM table_2)``
+                pass
+    if not whereclause_tables:
+        return compiler.process(element)
+    return 'DELETE FROM {} \nUSING {}\n{}'.format(
+        table,
+        ', '.join(list(whereclause_tables)),
+        compiler.process(*element.get_children())
+        )
