@@ -9,9 +9,8 @@ from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement, Delete
+from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement, Delete, BinaryExpression, BooleanClauseList, ColumnElement
 from sqlalchemy.types import VARCHAR, NullType
-
 from .compat import string_types
 
 
@@ -1025,8 +1024,6 @@ def visit_copy_command(element, compiler, **kw):
         ),
         **kw
     )
-<<<<<<< HEAD
-=======
 
 
 @compiles(BindParameter)
@@ -1040,6 +1037,21 @@ def visit_bindparam(bindparam, compiler, **kw):
     else:
         return res
     
+
+def gen_columns_from_children(root):
+    """
+    Generates columns that are being used in child elements of the delete query
+    this will be used to determine tables for the using clause.
+    :param root: the delete query
+    :return: a generator of columns
+    """
+    if isinstance(root, (Delete, BinaryExpression, BooleanClauseList)):
+        for child in root.get_children():
+            yc = gen_columns_from_children(child)
+            for it in yc:
+                yield it
+    elif isinstance(root, Column):
+        yield root
 
 @compiles(Delete, 'redshift')
 def visit_delete_stmt(element, compiler, **kwargs):
@@ -1067,6 +1079,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     problem illustration:
 
     >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
+    >>> from redshift_sqlalchemy.dialect import RedshiftDialect
     >>> meta = MetaData()
     >>> table1 = Table(
     ... 'table_1',
@@ -1081,36 +1094,39 @@ def visit_delete_stmt(element, compiler, **kwargs):
     ... )
     ...
     >>> del_stmt = delete(table1).where(table1.c.pk==table2.c.pk)
-    >>> str(del_stmt)
+    >>> str(del_stmt.compile(dialect=RedshiftDialect()))
     'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
-    >>> del_stmt2 = table1.delete().where(table1.c.pk==table2.c.pk)
-    >>> str(del_stmt2)
+    >>> str(del_stmt)
     'DELETE FROM table_1 WHERE table_1.pk = table_2.pk'
+    >>> del_stmt2 = delete(table1)
+    >>> str(del_stmt2)
+    'DELETE FROM table_1'
+    >>> del_stmt3 = delete(table1).where(table1.c.pk > 1000)
+    >>> str(del_stmt3)
+    'DELETE FROM table_1 WHERE table_1.pk > :pk_1'
+    >>> str(del_stmt3.compile(dialect=RedshiftDialect()))
+    'DELETE FROM table_1 WHERE table_1.pk >  %(pk_1)s'
     """
     # determine if the delete query needs a ``USING`` injected
     # by inspecting the whereclause's children & their children.
-    whereclause_tables = set()
-    boolclause_list = element.get_children()
-    def get_table_name(t):
-        if t.schema != '':
-            return t.schema + '.' + t.name
-        return t.name
-    table = get_table_name(element.table)
-    for clause in boolclause_list:
-        clause_element = clause.get_children()
-        for sub_element in clause_element:
-            try:
-                if sub_element.table != element.table:
-                    name = get_table_name(sub_element.table)
-                    whereclause_tables.add(name)
-            except AttributeError:
-                # attribute error will be raised by sub_elements that are select queries
-                # such as ``DELETE FROM table_1 WHERE table_1.pk > (SELECT max(table_2.pk) FROM table_2)``
-                pass
-    if not whereclause_tables:
-        return compiler.process(element)
-    return 'DELETE FROM {} \nUSING {}\n{}'.format(
-        table,
-        ', '.join(list(whereclause_tables)),
-        compiler.process(*element.get_children())
-        )
+    whereclause_tuple = element.get_children()
+
+    usingclause_set = set()
+
+    if whereclause_tuple:
+        whereclause_columns = gen_columns_from_children(element)
+        for col in whereclause_columns:
+            usingclause_set.add(_tablename(col.table, compiler))
+        usingclause_set.remove(_tablename(element.table, compiler))
+
+    # the where clause text is buit, if applicable
+    # the using clause text is built, if applicable
+    #   the tables in the using clause are placed in alphabetical order
+    #   simply to guarantee that unit tests don't fail uncessarily
+    whereclause = '' if not whereclause_tuple else ' WHERE {}'.format(compiler.process(*element.get_children()))
+    usingclause = '' if not usingclause_set else ' USING {}'.format(','.join(sorted(usingclause_set)))
+
+    return 'DELETE FROM {table}{using}{where}'.format(
+        table=_tablename(element.table, compiler),
+        using=usingclause,
+        where=whereclause)

@@ -1,10 +1,10 @@
-import pytest
 from redshift_sqlalchemy.dialect import RedshiftDialect
 from sqlalchemy import Table, Column, Integer, DateTime, Numeric, String, MetaData, select, delete
 
 class TestDeleteStatement(object):
+
     meta = MetaData()
-    
+
     customers = Table(
         'customers', meta,
         Column('id', Integer, primary_key=True, autoincrement=False),
@@ -12,7 +12,7 @@ class TestDeleteStatement(object):
         Column('last_name', String(128)),
         Column('email', String(255))
     )
-    
+
     orders = Table(
         'orders', meta,
         Column('id', Integer, primary_key=True, autoincrement=False),
@@ -23,7 +23,7 @@ class TestDeleteStatement(object):
         Column('created_at', DateTime),
         Column('updated_at', DateTime)
     )
-    
+
     items = Table(
         'items', meta,
         Column('id', Integer, primary_key=True, autoincrement=False),
@@ -44,32 +44,41 @@ class TestDeleteStatement(object):
     
     def test_delete_stmt_nowhereclause(self):
         del_stmt = delete(self.customers)
-        
+
         assert self.get_str(del_stmt) == 'DELETE FROM customers'
 
     def test_delete_stmt_simplewhereclause1(self):
         del_stmt = delete(self.customers).where(self.customers.c.email == 'test@test.test')
         assert self.get_str(del_stmt) == "DELETE FROM customers WHERE customers.email = %(email_1)s"
-        
+
     def test_delete_stmt_simplewhereclause2(self):
         del_stmt = delete(self.customers).where(self.customers.c.email.endswith('test.com'))
         assert self.get_str(del_stmt) == "DELETE FROM customers WHERE customers.email LIKE '%%' || %(email_1)s"
-        
+
     def test_delete_stmt_joinedwhereclause1(self):
-        del_stmt = delete(self.orders).where(self.orders.c.customer_id==self.customers.c.id)
-        assert self.get_str(del_stmt) == "DELETE FROM orders USING customers WHERE orders.customer_id = customers.id"
-        
+        del_stmt = delete(self.orders).where(self.orders.c.customer_id == self.customers.c.id)
+        expected = "DELETE FROM orders USING customers WHERE orders.customer_id = customers.id"
+        assert self.get_str(del_stmt) == expected
+
     def test_delete_stmt_joinedwhereclause2(self):
         del_stmt = delete(
             self.orders
         ).where(
-            self.orders.c.customer_id==self.customers.c.id
+            self.orders.c.customer_id == self.customers.c.id
         ).where(
-            self.orders.c.id==self.items.c.order_id
+            self.orders.c.id == self.items.c.order_id
         ).where(
             self.customers.c.email.endswith('test.com')
         ).where(
-            self.items.c.name=='test product'
+            self.items.c.name == 'test product'
         )
-        expected = "DELETE FROM orders USING customers, items WHERE orders.customer_id = customers.id AND orders.id = items.order_id AND (customers.email LIKE '%%' || %(email_1)s) AND items.name = %(name_1)s"
+        expected =[
+            "DELETE FROM orders",
+            "USING customers,items",
+            "WHERE orders.customer_id = customers.id",
+            "AND orders.id = items.order_id",
+            "AND (customers.email LIKE '%%' || %(email_1)s)",
+            "AND items.name = %(name_1)s"
+        ]
+        expected = ' '.join(expected)
         assert self.get_str(del_stmt) == expected
