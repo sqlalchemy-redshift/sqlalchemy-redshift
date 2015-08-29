@@ -1,42 +1,42 @@
 from redshift_sqlalchemy.dialect import RedshiftDialect
-from sqlalchemy import Table, Column, Integer, DateTime, Numeric, String, MetaData, delete
+import sqlalchemy as sa
 
 
 class TestDeleteStatement(object):
 
-    meta = MetaData()
+    meta = sa.MetaData()
 
-    customers = Table(
+    customers = sa.Table(
         'customers', meta,
-        Column('id', Integer, primary_key=True, autoincrement=False),
-        Column('first_name', String(128)),
-        Column('last_name', String(128)),
-        Column('email', String(255))
+        sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
+        sa.Column('first_name', sa.String(128)),
+        sa.Column('last_name', sa.String(128)),
+        sa.Column('email', sa.String(255))
     )
 
-    orders = Table(
+    orders = sa.Table(
         'orders', meta,
-        Column('id', Integer, primary_key=True, autoincrement=False),
-        Column('customer_id', Integer),
-        Column('total_invoiced', Numeric(12, 4)),
-        Column('discount_invoiced', Numeric(12, 4)),
-        Column('grandtotal_invoiced', Numeric(12, 4)),
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime)
+        sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
+        sa.Column('customer_id', sa.Integer),
+        sa.Column('total_invoiced', sa.Numeric(12, 4)),
+        sa.Column('discount_invoiced', sa.Numeric(12, 4)),
+        sa.Column('grandtotal_invoiced', sa.Numeric(12, 4)),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime)
     )
 
-    items = Table(
+    items = sa.Table(
         'items', meta,
-        Column('id', Integer, primary_key=True, autoincrement=False),
-        Column('order_id', Integer),
-        Column('name', String(255)),
-        Column('qty', Numeric(12, 4)),
-        Column('price', Numeric(12, 4)),
-        Column('total_invoiced', Numeric(12, 4)),
-        Column('discount_invoiced', Numeric(12, 4)),
-        Column('grandtotal_invoiced', Numeric(12, 4)),
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime)
+        sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
+        sa.Column('order_id', sa.Integer),
+        sa.Column('name', sa.String(255)),
+        sa.Column('qty', sa.Numeric(12, 4)),
+        sa.Column('price', sa.Numeric(12, 4)),
+        sa.Column('total_invoiced', sa.Numeric(12, 4)),
+        sa.Column('discount_invoiced', sa.Numeric(12, 4)),
+        sa.Column('grandtotal_invoiced', sa.Numeric(12, 4)),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime)
     )
 
     @staticmethod
@@ -44,25 +44,25 @@ class TestDeleteStatement(object):
         return str(stmt.compile(dialect=RedshiftDialect()))
 
     def test_delete_stmt_nowhereclause(self):
-        del_stmt = delete(self.customers)
+        del_stmt = sa.delete(self.customers)
 
         assert self.get_str(del_stmt) == 'DELETE FROM customers'
 
     def test_delete_stmt_simplewhereclause1(self):
-        del_stmt = delete(self.customers).where(self.customers.c.email == 'test@test.test')
+        del_stmt = sa.delete(self.customers).where(self.customers.c.email == 'test@test.test')
         assert self.get_str(del_stmt) == "DELETE FROM customers WHERE customers.email = %(email_1)s"
 
     def test_delete_stmt_simplewhereclause2(self):
-        del_stmt = delete(self.customers).where(self.customers.c.email.endswith('test.com'))
+        del_stmt = sa.delete(self.customers).where(self.customers.c.email.endswith('test.com'))
         assert self.get_str(del_stmt) == "DELETE FROM customers WHERE customers.email LIKE '%%' || %(email_1)s"
 
     def test_delete_stmt_joinedwhereclause1(self):
-        del_stmt = delete(self.orders).where(self.orders.c.customer_id == self.customers.c.id)
+        del_stmt = sa.delete(self.orders).where(self.orders.c.customer_id == self.customers.c.id)
         expected = "DELETE FROM orders USING customers WHERE orders.customer_id = customers.id"
         assert self.get_str(del_stmt) == expected
 
     def test_delete_stmt_joinedwhereclause2(self):
-        del_stmt = delete(
+        del_stmt = sa.delete(
             self.orders
         ).where(
             self.orders.c.customer_id == self.customers.c.id

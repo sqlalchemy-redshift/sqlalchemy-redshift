@@ -1050,7 +1050,7 @@ def gen_columns_from_children(root):
             yc = gen_columns_from_children(child)
             for it in yc:
                 yield it
-    elif isinstance(root, Column):
+    elif isinstance(root, sa.Column):
         yield root
 
 
@@ -1124,7 +1124,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     whereclause_tuple = element.get_children()
     if whereclause_tuple:
         usingclause_set = set()
-        whereclause = ' WHERE {clause}'.format(clause=compiler.process(*element.get_children()))
+        whereclause = ' WHERE {clause}'.format(clause=compiler.process(*whereclause_tuple))
 
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
