@@ -1,47 +1,93 @@
-from unittest import TestCase
-from sqlalchemy import Table, Column, Integer, String, MetaData
-from sqlalchemy.sql import select, func
-from redshift_sqlalchemy.dialect import UnloadFromSelect
 import re
 
+import sqlalchemy as sa
 
-class TestUnloadFromSelect(TestCase):
+from redshift_sqlalchemy import dialect
 
-    def setUp(self):
-        '''
-            Sets up a table and associate meta data for the test queries to build against
-        '''
-        self.metadata = MetaData()
-        self.t1 = Table('t1', self.metadata, Column('id', Integer, primary_key=True), Column('name', String))
 
-    def test_basic_unload_case(self):
-        '''
-            Tests that the simplest type of UnloadFromSelect works
-        '''
-        expected_result = re.sub(r'\s+', ' ',
-                                 "UNLOAD ('SELECT count(t1.id) AS count_1 \nFROM t1') TO 's3://bucket/key' "
-                                 "CREDENTIALS 'aws_access_key_id=cookies;aws_secret_access_key=cookies;token=cookies' "
-                                 "DELIMITER ',' ADDQUOTES ALLOWOVERWRITE PARALLEL ON;").strip()
+def clean(query):
+    return re.sub(r'\s+', ' ', query).strip()
 
-        unload = UnloadFromSelect(select([func.count(self.t1.c.id)]), 's3://bucket/key', 'cookies', 'cookies',
-                                  'cookies')
 
-        unload_str = re.sub(r'\s+', ' ', str(unload)).strip()
+def compile_query(q):
+    return str(q.compile(
+        dialect=dialect.RedshiftDialect(),
+        compile_kwargs={'literal_binds': True})
+    )
 
-        self.assertEqual(expected_result, unload_str)
+access_key_id = 'IO1IWSZL5YRFM3BEW256'
+secret_access_key = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'
+creds = (
+    (
+        'aws_access_key_id={access_key_id}'
+        ';aws_secret_access_key={secret_access_key}'
+    ).format(
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key
+    )
+)
 
-    def test_unload_with_options(self):
-        '''
-            Tests that UnloadFromSelect handles options correctly
-        '''
-        expected_result = re.sub(r'\s+', ' ',
-                                 "UNLOAD ('SELECT count(t1.id) AS count_1 \nFROM t1') TO 's3://bucket/key' "
-                                 "CREDENTIALS 'aws_access_key_id=cookies;aws_secret_access_key=cookies;token=cookies' "
-                                 "DELIMITER ',' ADDQUOTES NULL '---' ALLOWOVERWRITE PARALLEL OFF;").strip()
 
-        unload = UnloadFromSelect(select([func.count(self.t1.c.id)]), 's3://bucket/key', 'cookies', 'cookies',
-                                  'cookies', {'parallel': 'OFF', 'null_as': '---'})
+table = sa.Table(
+    't1', sa.MetaData(),
+    sa.Column('id', sa.Integer, primary_key=True),
+    sa.Column('name', sa.Unicode),
+)
 
-        unload_str = re.sub(r'\s+', ' ', str(unload)).strip()
 
-        self.assertEqual(expected_result, unload_str)
+def test_basic_unload_case():
+    """Tests that the simplest type of UnloadFromSelect works."""
+
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
+
+
+def test_all_redshift_options():
+    """Tests that UnloadFromSelect handles all options correctly."""
+
+    unload = dialect.UnloadFromSelect(
+        sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        manifest=True,
+        delimiter=',',
+        fixed_width=[('count_1', 50), ],
+        encrypted=True,
+        gzip=True,
+        add_quotes=True,
+        null='---',
+        escape=True,
+        allow_overwrite=True,
+        parallel=False,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+        MANIFEST
+        DELIMITER AS ','
+        ENCRYPTED
+        FIXEDWIDTH AS 'count_1:50'
+        GZIP
+        ADDQUOTES
+        NULL AS '---'
+        ESCAPE
+        ALLOWOVERWRITE
+        PARALLEL OFF
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
