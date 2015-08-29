@@ -1,5 +1,6 @@
 from redshift_sqlalchemy.dialect import RedshiftDialect
-from sqlalchemy import Table, Column, Integer, DateTime, Numeric, String, MetaData, select, delete
+from sqlalchemy import Table, Column, Integer, DateTime, Numeric, String, MetaData, delete
+
 
 class TestDeleteStatement(object):
 
@@ -29,7 +30,7 @@ class TestDeleteStatement(object):
         Column('id', Integer, primary_key=True, autoincrement=False),
         Column('order_id', Integer),
         Column('name', String(255)),
-        Column('qty', Numeric(12,4)),
+        Column('qty', Numeric(12, 4)),
         Column('price', Numeric(12, 4)),
         Column('total_invoiced', Numeric(12, 4)),
         Column('discount_invoiced', Numeric(12, 4)),
@@ -37,11 +38,11 @@ class TestDeleteStatement(object):
         Column('created_at', DateTime),
         Column('updated_at', DateTime)
     )
-    
+
     @staticmethod
     def get_str(stmt):
         return str(stmt.compile(dialect=RedshiftDialect()))
-    
+
     def test_delete_stmt_nowhereclause(self):
         del_stmt = delete(self.customers)
 
@@ -72,7 +73,7 @@ class TestDeleteStatement(object):
         ).where(
             self.items.c.name == 'test product'
         )
-        expected =[
+        expected = [
             "DELETE FROM orders",
             "USING customers,items",
             "WHERE orders.customer_id = customers.id",

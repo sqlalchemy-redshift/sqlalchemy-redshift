@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement, Delete, BinaryExpression, BooleanClauseList, ColumnElement
+from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement, Delete, BinaryExpression, BooleanClauseList
 from sqlalchemy.types import VARCHAR, NullType
 from .compat import string_types
 
@@ -1036,7 +1036,7 @@ def visit_bindparam(bindparam, compiler, **kw):
         return res
     else:
         return res
-    
+
 
 def gen_columns_from_children(root):
     """
@@ -1052,6 +1052,7 @@ def gen_columns_from_children(root):
                 yield it
     elif isinstance(root, Column):
         yield root
+
 
 @compiles(Delete, 'redshift')
 def visit_delete_stmt(element, compiler, **kwargs):
@@ -1107,24 +1108,30 @@ def visit_delete_stmt(element, compiler, **kwargs):
     >>> str(del_stmt3.compile(dialect=RedshiftDialect()))
     'DELETE FROM table_1 WHERE table_1.pk >  %(pk_1)s'
     """
+
+    # Set empty strings for the default where clause and using clause
+    whereclause = ''
+    usingclause = ''
+
     # determine if the delete query needs a ``USING`` injected
-    # by inspecting the whereclause's children & their children.
+    # by inspecting the whereclause's children & their children...
+    # first, the where clause text is buit, if applicable
+    # then, the using clause text is built, if applicable
+    # note:
+    #   the tables in the using clause are sorted in alphabetical order
+    #   simply to guarantee that unit tests don't fail uncessarily
+
     whereclause_tuple = element.get_children()
-
-    usingclause_set = set()
-
     if whereclause_tuple:
+        usingclause_set = set()
+        whereclause = ' WHERE {clause}'.format(clause=compiler.process(*element.get_children()))
+
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
             usingclause_set.add(_tablename(col.table, compiler))
         usingclause_set.remove(_tablename(element.table, compiler))
-
-    # the where clause text is buit, if applicable
-    # the using clause text is built, if applicable
-    #   the tables in the using clause are placed in alphabetical order
-    #   simply to guarantee that unit tests don't fail uncessarily
-    whereclause = '' if not whereclause_tuple else ' WHERE {}'.format(compiler.process(*element.get_children()))
-    usingclause = '' if not usingclause_set else ' USING {}'.format(','.join(sorted(usingclause_set)))
+        if usingclause_set:
+            usingclause = ' USING {clause}'.format(clause=','.join(sorted(usingclause_set)))
 
     return 'DELETE FROM {table}{using}{where}'.format(
         table=_tablename(element.table, compiler),
