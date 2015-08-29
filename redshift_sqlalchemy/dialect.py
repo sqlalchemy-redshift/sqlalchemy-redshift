@@ -124,8 +124,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
 
     def post_create_table(self, table):
         text = ""
-        info = table.dialect_options['redshift']
-        diststyle = info.get('diststyle', None)
+        diststyle = table.kwargs.get('redshift_diststyle', None)
         if diststyle:
             diststyle = diststyle.upper()
             if diststyle not in ('EVEN', 'KEY', 'ALL'):
@@ -134,11 +133,11 @@ class RedShiftDDLCompiler(PGDDLCompiler):
                 )
             text += " DISTSTYLE " + diststyle
 
-        distkey = info.get('distkey', None)
+        distkey = table.kwargs.get('redshift_distkey', None)
         if distkey:
             text += " DISTKEY ({0})".format(distkey)
 
-        sortkey = info.get('sortkey', None)
+        sortkey = table.kwargs.get('redshift_sortkey', None)
         if sortkey:
             if isinstance(sortkey, str):
                 keys = (sortkey,)
