@@ -1118,22 +1118,24 @@ def visit_delete_stmt(element, compiler, **kwargs):
     # first, the where clause text is buit, if applicable
     # then, the using clause text is built, if applicable
     # note:
-    #   the tables in the using clause are sorted in alphabetical order
-    #   simply to guarantee that unit tests don't fail uncessarily
+    #   the tables in the using clause are sorted in the order in
+    #   which they first appear in the where clause.
 
+    delete_stmt_table = _tablename(element.table, compiler)
     whereclause_tuple = element.get_children()
     if whereclause_tuple:
-        usingclause_set = set()
-        whereclause = ' WHERE {clause}'.format(clause=compiler.process(*whereclause_tuple))
+        usingclause_tables = []
+        whereclause = ' WHERE {clause}'.format(clause=compiler.process(*whereclause_tuple, **kwargs))
 
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
-            usingclause_set.add(_tablename(col.table, compiler))
-        usingclause_set.remove(_tablename(element.table, compiler))
-        if usingclause_set:
-            usingclause = ' USING {clause}'.format(clause=','.join(sorted(usingclause_set)))
+            tablename = _tablename(col.table, compiler)
+            if tablename != delete_stmt_table and tablename not in usingclause_tables:
+                usingclause_tables.append(tablename)
+        if usingclause_tables:
+            usingclause = ' USING {clause}'.format(clause=','.join(usingclause_tables))
 
     return 'DELETE FROM {table}{using}{where}'.format(
-        table=_tablename(element.table, compiler),
+        table=delete_stmt_table,
         using=usingclause,
         where=whereclause)
