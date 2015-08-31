@@ -8,7 +8,7 @@ import functools
 import pytest
 import sqlalchemy as sa
 
-from rs_sqla_test_utils import db, models
+from rs_sqla_test_utils import db
 
 
 _unicode = type(u'')
@@ -75,6 +75,7 @@ class DatabaseTool(object):
 
 @pytest.fixture(scope='session')
 def _redshift_database_tool():
+    from rs_sqla_test_utils import models
     if 'PGPASSWORD' in os.environ:
         class RedshiftDatabaseTool(DatabaseTool):
             engine_definition = db.redshift_engine_definition()
