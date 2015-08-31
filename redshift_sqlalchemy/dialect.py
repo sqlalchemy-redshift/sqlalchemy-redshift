@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement
+from sqlalchemy.sql.expression import Executable, ClauseElement
 from sqlalchemy.types import VARCHAR, NullType
 
 
@@ -85,6 +85,18 @@ PRIMARY_KEY_RE = re.compile(r"""
     )
   \s* \) \s*                # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
+
+# At the time of this implementation, no specification for a session token was
+# found. After looking at a few session tokens they appear to be the same as
+# the aws_secret_access_key pattern, but much longer. An example token can be
+# found here:
+#   http://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html
+# The regexs for access keys can be found here:
+#     http://blogs.aws.amazon.com/security/blog/tag/key+rotation
+
+ACCESS_KEY_ID_RE = re.compile('[A-Z0-9]{20}')
+SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
+TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
 
 
 def _get_relation_key(name, schema):
@@ -700,70 +712,186 @@ class RedshiftDialect(PGDialect_psycopg2):
         return self._all_constraints
 
 
-class UnloadFromSelect(Executable, ClauseElement):
-    ''' Prepares a RedShift unload statement to drop a query to Amazon S3
-    http://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
-    '''
-    def __init__(self, select, unload_location, access_key, secret_key, session_token='', options={}):
-        ''' Initializes an UnloadFromSelect instance
+def process_aws_credentials(access_key_id, secret_access_key,
+                            session_token=None):
 
-        Args:
-            self: An instance of UnloadFromSelect
-            select: The select statement to be unloaded
-            unload_location: The Amazon S3 bucket where the result will be stored
-            access_key - AWS Access Key (required)
-            secret_key - AWS Secret Key (required)
-            session_token - AWS STS Session Token (optional)
-            options - Set of optional parameters to modify the UNLOAD sql
-                parallel: If 'ON' the result will be written to multiple files. If
-                    'OFF' the result will write to one (1) file up to 6.2GB before
-                    splitting
-                add_quotes: Boolean value for ADDQUOTES; defaults to True
-                null_as: optional string that represents a null value in unload output
-                delimiter - File delimiter. Defaults to ','
-        '''
+    if not ACCESS_KEY_ID_RE.match(access_key_id):
+        raise ValueError(
+            'invalid access_key_id; does not match {pattern}'.format(
+                pattern=ACCESS_KEY_ID_RE.pattern,
+            )
+        )
+    if not SECRET_ACCESS_KEY_RE.match(secret_access_key):
+        raise ValueError(
+            'invalid secret_access_key_id; does not match {pattern}'.format(
+                pattern=SECRET_ACCESS_KEY_RE.pattern,
+            )
+        )
+
+    credentials = 'aws_access_key_id={0};aws_secret_access_key={1}'.format(
+        access_key_id,
+        secret_access_key,
+    )
+
+    if session_token is not None:
+        if not TOKEN_RE.match(session_token):
+            raise ValueError(
+                'invalid session_token; does not match {pattern}'.format(
+                    pattern=TOKEN_RE.pattern,
+                )
+            )
+        credentials += ';token={0}'.format(session_token)
+
+    return credentials
+
+
+class UnloadFromSelect(Executable, ClauseElement):
+    """
+    Prepares a RedShift unload statement to drop a query to Amazon S3
+    https://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
+
+    Parameters
+    ----------
+    select: sqlalchemy.sql.selectable.Selectable
+        The selectable Core Table Expression query to unload from.
+    data_location : str
+        The Amazon S3 location where the file will be created, or a manifest
+        file if the `manifest` option is used
+    access_key_id : str
+    secret_access_key : str
+    session_token : str, optional
+    manifest : bool, optional
+        Boolean value denoting whether data_location is a manifest file.
+    delimiter : File delimiter, optional
+        defaults to '|'
+    fixed_width: [(str, int), ...], optional
+        List of column name, length pairs to control fixed-width output.
+    encrypted: bool, optional
+        Write to encrypted S3 key.
+    gzip: bool, optional
+        Create file using GZIP compression.
+    add_quotes: bool, optional
+        Quote fields so that fields containing the delimeter can be
+        distinguished.
+    null: str, optional
+        Write null values as the given string. Defaults to ''.
+    escape: bool, optional
+        For CHAR and VARCHAR columns in delimited unload files, an escape
+        character '\\' is placed before every occurrence of the following
+        characters: '\\r', '\\n', '\\', (if add_quotes '\\"', "\\'"), the
+        specified delimiter string.
+    allow_overwrite: bool, optional
+        Overwrite the key at unload_location in the S3 bucket.
+    parallel: bool, optional
+        If disabled unload sequentially as one file.
+    """
+
+    def __init__(self, select, unload_location, access_key_id,
+                 secret_access_key, session_token=None,
+                 manifest=False, delimiter=None, fixed_width=None,
+                 encrypted=False, gzip=False, add_quotes=False, null=None,
+                 escape=False, allow_overwrite=False, parallel=True):
+
+        if delimiter is not None and len(delimiter) != 1:
+            raise ValueError(
+                '"delimiter" parameter must be a single character'
+            )
+
+        credentials = process_aws_credentials(
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            session_token=session_token,
+        )
+
         self.select = select
         self.unload_location = unload_location
-        self.access_key = access_key
-        self.secret_key = secret_key
-        self.session_token = session_token
-        self.options = options
+        self.credentials = credentials
+        self.manifest = manifest
+        self.delimiter = delimiter
+        self.fixed_width = fixed_width
+        self.encrypted = encrypted
+        self.gzip = gzip
+        self.add_quotes = add_quotes
+        self.null = null
+        self.escape = escape
+        self.allow_overwrite = allow_overwrite
+        self.parallel = parallel
 
 
 @compiles(UnloadFromSelect)
 def visit_unload_from_select(element, compiler, **kw):
-    ''' Returns the actual sql query for the UnloadFromSelect class
-    '''
-    return """
-           UNLOAD ('%(query)s') TO '%(unload_location)s'
-           CREDENTIALS 'aws_access_key_id=%(access_key)s;aws_secret_access_key=%(secret_key)s%(session_token)s'
-           DELIMITER '%(delimiter)s'
-           %(add_quotes)s
-           %(null_as)s
-           ALLOWOVERWRITE
-           PARALLEL %(parallel)s;
-           """ % \
-           {'query': compiler.process(element.select, unload_select=True, literal_binds=True),
-            'unload_location': element.unload_location,
-            'access_key': element.access_key,
-            'secret_key': element.secret_key,
-            'session_token': ';token=%s' % element.session_token if element.session_token else '',
-            'add_quotes': 'ADDQUOTES' if bool(element.options.get('add_quotes', True)) else '',
-            'null_as': ("NULL '%s'" % element.options.get('null_as')) if element.options.get('null_as') else '',
-            'delimiter': element.options.get('delimiter', ','),
-            'parallel': element.options.get('parallel', 'ON')}
+    """Returns the actual sql query for the UnloadFromSelect class."""
 
+    template = """
+       UNLOAD (:select) TO :unload_location
+       CREDENTIALS :credentials
+       {manifest}
+       {delimiter}
+       {encrypted}
+       {fixed_width}
+       {gzip}
+       {add_quotes}
+       {null}
+       {escape}
+       {allow_overwrite}
+       {parallel}
+    """
+    el = element
 
-# At the time of this implementation, no specification for a session token was
-# found. After looking at a few session tokens they appear to be the same as
-# the aws_secret_access_key pattern, but much longer. An example token can be
-# found here: http://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html
-# The regexs for access keys can be found here: http://blogs.aws.amazon.com/security/blog/tag/key+rotation
-creds_rx = re.compile(r"""
-    ^aws_access_key_id=[A-Z0-9]{20};
-    aws_secret_access_key=[A-Za-z0-9/+=]{40}
-    (?:;token=[A-Za-z0-9/+=]+)?$
-""", re.VERBOSE)
+    qs = template.format(
+        manifest='MANIFEST' if el.manifest else '',
+        delimiter=(
+            'DELIMITER AS :delimiter' if el.delimiter is not None else ''
+        ),
+        encrypted='ENCRYPTED' if el.encrypted else '',
+        fixed_width='FIXEDWIDTH AS :fixed_width' if el.fixed_width else '',
+        gzip='GZIP' if el.gzip else '',
+        add_quotes='ADDQUOTES' if el.add_quotes else '',
+        escape='ESCAPE' if el.escape else '',
+        null='NULL AS :null_as' if el.null is not None else '',
+        allow_overwrite='ALLOWOVERWRITE' if el.allow_overwrite else '',
+        parallel='PARALLEL OFF' if not el.parallel else '',
+    )
+
+    query = sa.text(qs)
+
+    if el.delimiter is not None:
+        query = query.bindparams(sa.bindparam(
+            'delimiter', value=element.delimiter, type_=sa.String,
+        ))
+
+    if el.fixed_width:
+        fixed_cols = (
+            '{0}:{1:d}'.format(col, width) for col, width in el.fixed_width
+        )
+        query = query.bindparams(sa.bindparam(
+            'fixed_width',
+            value=','.join(fixed_cols),
+            type_=sa.String,
+        ))
+
+    if el.null is not None:
+        query = query.bindparams(sa.bindparam(
+            'null_as', value=el.null, type_=sa.String
+        ))
+
+    return compiler.process(
+        query.bindparams(
+            sa.bindparam('credentials', value=el.credentials, type_=sa.String),
+            sa.bindparam(
+                'unload_location', value=el.unload_location, type_=sa.String,
+            ),
+            sa.bindparam(
+                'select',
+                value=compiler.process(
+                    el.select,
+                    literal_binds=True,
+                ),
+                type_=sa.String,
+            ),
+        ),
+        **kw
+    )
 
 
 class CopyCommand(Executable, ClauseElement):
@@ -777,8 +905,8 @@ class CopyCommand(Executable, ClauseElement):
     data_location : str
         The Amazon S3 location from where to copy, or a manifest file if
         the `manifest` option is used
-    access_key : str
-    secret_key : str
+    access_key_id : str
+    secret_access_key : str
     session_token : str, optional
     delimiter : File delimiter, optional
         defaults to ','
@@ -813,21 +941,11 @@ class CopyCommand(Executable, ClauseElement):
                  empty_as_null=True,
                  blanks_as_null=True, format='CSV', compression=None):
 
-        credentials = 'aws_access_key_id={0};aws_secret_access_key={1}'.format(
-            access_key_id,
-            secret_access_key
+        credentials = process_aws_credentials(
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            session_token=session_token,
         )
-
-        if session_token is not None:
-            credentials += ';token={0}'.format(session_token)
-
-        if not creds_rx.match(credentials):
-            raise ValueError('credentials must match the following'
-                             ' format:\n'
-                             'aws_access_key_id=<access-key-id>;'
-                             'aws_secret_access_key=<secret-access-key>'
-                             '[;token=<temporary-session-token>]\ngot %r' %
-                             credentials)
 
         if len(delimiter) != 1:
             raise ValueError('"delimiter" parameter must be a single '
@@ -898,15 +1016,3 @@ def visit_copy_command(element, compiler, **kw):
         ),
         **kw
     )
-
-
-@compiles(BindParameter)
-def visit_bindparam(bindparam, compiler, **kw):
-    res = compiler.visit_bindparam(bindparam, **kw)
-    if 'unload_select' in kw:
-        # process param and return
-        res = res.replace("'", "\\'")
-        res = res.replace('%', '%%')
-        return res
-    else:
-        return res
