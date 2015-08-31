@@ -857,14 +857,6 @@ class CopyCommand(Executable, ClauseElement):
         self.compression = compression or ''
 
 
-def _tablename(t, compiler):
-    name = compiler.preparer.quote(t.name)
-    if t.schema is not None:
-        return '%s.%s' % (compiler.preparer.quote_schema(t.schema), name)
-    else:
-        return name
-
-
 @compiles(CopyCommand)
 def visit_copy_command(element, compiler, **kw):
     ''' Returns the actual sql query for the CopyCommand class
@@ -880,7 +872,7 @@ def visit_copy_command(element, compiler, **kw):
     {compression}
     {empty_as_null}
     {blanks_as_null}
-    """.format(table=_tablename(element.table, compiler),
+    """.format(table=compiler.preparer.format_table(element.table),
                format=element.format,
                manifest='MANIFEST' if element.manifest else '',
                compression=element.compression,
