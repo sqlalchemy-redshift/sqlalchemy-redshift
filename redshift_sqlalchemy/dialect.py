@@ -1121,7 +1121,8 @@ def visit_delete_stmt(element, compiler, **kwargs):
     #   the tables in the using clause are sorted in the order in
     #   which they first appear in the where clause.
 
-    delete_stmt_table = _tablename(element.table, compiler)
+
+    delete_stmt_table = compiler.preparer.format_table(element.table)
     whereclause_tuple = element.get_children()
     if whereclause_tuple:
         usingclause_tables = []
@@ -1129,7 +1130,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
 
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
-            tablename = compiler.preparer.format_table(col.table, compiler)
+            tablename = compiler.preparer.format_table(col.table)
             if tablename != delete_stmt_table and tablename not in usingclause_tables:
                 usingclause_tables.append(tablename)
         if usingclause_tables:
