@@ -5,12 +5,6 @@ Amazon Redshift dialect for SQLAlchemy.
 
 .. image:: https://travis-ci.org/graingert/redshift_sqlalchemy.png?branch=master
 
-Requirements
--------------
-* psycopg2 >= 2.5
-* SQLAlchemy >= 0.8
-
-
 Usage
 -----
 The DSN format is similar to that of regular Postgres::
