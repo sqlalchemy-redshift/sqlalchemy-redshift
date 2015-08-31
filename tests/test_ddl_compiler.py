@@ -42,10 +42,12 @@ class TestDDLCompiler(object):
 
     def test_create_table_with_identity(self, compiler):
 
-        table = Table('t1',
-                      MetaData(),
-                      Column('id', Integer, primary_key=True, info={'identity': [1, 2]}),
-                      Column('name', String))
+        table = Table(
+            't1',
+            MetaData(),
+            Column('id', Integer, primary_key=True, info={'identity': [1, 2]}),
+            Column('name', String),
+        )
 
         create_table = CreateTable(table)
         actual = compiler.process(create_table)
