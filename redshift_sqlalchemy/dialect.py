@@ -1,9 +1,10 @@
+from collections import defaultdict
+import numbers
 import pkg_resources
 import re
-import numbers
 
 import sqlalchemy as sa
-from sqlalchemy import schema, util, exc
+from sqlalchemy import schema, exc, inspect, Column
 from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
@@ -24,6 +25,99 @@ else:
         __dialect__ = 'redshift'
 
 
+# Regex for parsing and identity constraint out of adsrc, e.g.:
+#   "identity"(445178, 0, '1,1'::text)
+IDENTITY_RE = re.compile(r"""
+    "identity" \(
+      (?P<current>-?\d+)
+      ,\s
+      (?P<base>-?\d+)
+      ,\s
+      '(?P<seed>-?\d+),(?P<step>-?\d+)'
+      .*
+    \)
+""", re.VERBOSE)
+
+# Regex for SQL identifiers (valid table and column names)
+SQL_IDENTIFIER_RE = re.compile(r"""
+   [_a-zA-Z][\w$]*  # SQL standard identifier
+   |                # or
+   (?:"[^"]+")+     # SQL delimited (quoted) identifier
+""", re.VERBOSE)
+
+# Regex for foreign key constraints, e.g.:
+#   FOREIGN KEY(col1) REFERENCES othertable (col2)
+# See https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
+# for a definition of valid SQL identifiers.
+FOREIGN_KEY_RE = re.compile(r"""
+  ^FOREIGN\ KEY \s* \(   # FOREIGN KEY, arbitrary whitespace, literal '('
+    (?P<columns>         # Start a group to capture the referring columns
+      (?:                # Start a non-capturing group
+        \s*              # Arbitrary whitespace
+        ([_a-zA-Z][\w$]* | ("[^"]+")+)  # SQL identifier
+        \s*              # Arbitrary whitespace
+        ,?               # There will be a colon if this isn't the last one
+      )+                 # Close the non-capturing group; require at least one
+    )                    # Close the 'columns' group
+  \s* \)                 # Arbitrary whitespace and literal ')'
+  \s* REFERENCES \s*
+  (?P<referred_table>    # Start a group to capture the referred table name
+    ([_a-zA-Z][\w$]* | ("[^"]*")+)      # SQL identifier
+  )
+  \s* \( \s*             # Literal '(' surrounded by arbitrary whitespace
+    (?P<referred_column> # Start a group to capture the referred column name
+      ([_a-zA-Z][\w$]* | ("[^"]*")+)    # SQL identifier
+    )
+  \s* \)                 # Arbitrary whitespace and literal ')'
+""", re.VERBOSE)
+
+# Regex for primary key constraints, e.g.:
+#   PRIMARY KEY (col1, col2)
+PRIMARY_KEY_RE = re.compile(r"""
+  ^PRIMARY \s* KEY \s* \(  # FOREIGN KEY, arbitrary whitespace, literal '('
+    (?P<columns>         # Start a group to capture column names
+      (?:
+        \s*                # Arbitrary whitespace
+        ( [_a-zA-Z][\w$]* | ("[^"]*")+ )  # SQL identifier or delimited identifier
+        \s*                # Arbitrary whitespace
+        ,?                 # There will be a colon if this isn't the last one
+      )+                  # Close the non-capturing group; require at least one
+    )
+  \s* \) \s*                # Arbitrary whitespace and literal ')'
+""", re.VERBOSE)
+
+
+def _get_relation_key(name, schema):
+    if schema is None:
+        return name
+    else:
+        return schema + "." + name
+
+
+def _get_schema_and_relation(key):
+    if '.' not in key:
+        return (None, key)
+    identifiers = SQL_IDENTIFIER_RE.findall(key)
+    if len(identifiers) == 1:
+        return (None, key)
+    elif len(identifiers) == 2:
+        return identifiers
+    raise ValueError("%s does not look like a valid relation identifier")
+
+
+def unquoted(key):
+    """
+    Return *key* with one level of double quotes removed.
+
+    Redshift stores some identifiers without quotes in internal tables,
+    even though the name must be quoted elsewhere.
+    In particular, this happens for tables named as a keyword.
+    """
+    if key.startswith('"') and key.endswith('"'):
+        return key[1:-1]
+    return key
+
+
 class RedshiftCompiler(PGCompiler):
 
     def visit_now_func(self, fn, **kw):
@@ -32,13 +126,13 @@ class RedshiftCompiler(PGCompiler):
 
 class RedShiftDDLCompiler(PGDDLCompiler):
     """
-    Handles Redshift specific create table syntax.
+    Handles Redshift-specific CREATE TABLE syntax.
 
     Users can specify the DISTSTYLE, DISTKEY, SORTKEY and ENCODE properties per
     table and per column.
 
     Table level properties can be set using the dialect specific syntax. For
-    example, to specify a distkey and style you apply the following ::
+    example, to specify a distribution key and style you apply the following ::
 
     >>> import sqlalchemy as sa
     >>> from sqlalchemy.schema import CreateTable
@@ -51,7 +145,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     ...     sa.Column('name', sa.String),
     ...     redshift_diststyle='KEY',
     ...     redshift_distkey='id',
-    ...     redshift_sortkey=['id', 'name'],
+    ...     redshift_interleaved_sortkey=['id', 'name'],
     ... )
     >>> print(CreateTable(user).compile(engine))
     <BLANKLINE>
@@ -59,11 +153,11 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         id INTEGER NOT NULL,
         name VARCHAR,
         PRIMARY KEY (id)
-    ) DISTSTYLE KEY DISTKEY (id) SORTKEY (id, name)
+    ) DISTSTYLE KEY DISTKEY (id) INTERLEAVED SORTKEY (id, name)
     <BLANKLINE>
     <BLANKLINE>
 
-    A single sortkey can be applied without a wrapping list ::
+    A single sort key can be applied without a wrapping list ::
 
     >>> customer = sa.Table(
     ...     'customer',
@@ -82,8 +176,8 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
-    Column level special syntax can also be applied using the column info
-    dictionary. For example, we can specify the encode for a column ::
+    Column-level special syntax can also be applied using the column info
+    dictionary. For example, we can specify the ENCODE for a column ::
 
     >>> product = sa.Table(
     ...     'product',
@@ -125,7 +219,8 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     def post_create_table(self, table):
         text = ""
         info = table.dialect_options['redshift']
-        diststyle = info.get('diststyle', None)
+
+        diststyle = info.get('diststyle')
         if diststyle:
             diststyle = diststyle.upper()
             if diststyle not in ('EVEN', 'KEY', 'ALL'):
@@ -134,16 +229,26 @@ class RedShiftDDLCompiler(PGDDLCompiler):
                 )
             text += " DISTSTYLE " + diststyle
 
-        distkey = info.get('distkey', None)
+        distkey = info.get('distkey')
         if distkey:
             text += " DISTKEY ({0})".format(distkey)
 
-        sortkey = info.get('sortkey', None)
-        if sortkey:
+        sortkey = info.get('sortkey')
+        interleaved_sortkey = info.get('interleaved_sortkey')
+        if sortkey and interleaved_sortkey:
+            raise exc.ArgumentError(
+                "Parameters sortkey and interleaved_sortkey are "
+                "mutually exclusive; you may not specify both."
+            )
+        if sortkey or interleaved_sortkey:
             if isinstance(sortkey, str):
-                keys = (sortkey,)
+                keys = [sortkey]
             else:
-                keys = sortkey
+                keys = sortkey or interleaved_sortkey
+            keys = [key.name if isinstance(key, Column) else key
+                    for key in keys]
+            if interleaved_sortkey:
+                text += " INTERLEAVED"
             text += " SORTKEY ({0})".format(", ".join(keys))
         return text
 
@@ -154,7 +259,12 @@ class RedShiftDDLCompiler(PGDDLCompiler):
 
         default = self.get_column_default_string(column)
         if default is not None:
-            colspec += " DEFAULT " + default
+            # Identity constraints show up as *default* when reflected.
+            m = IDENTITY_RE.match(default)
+            if m:
+                colspec += " IDENTITY({seed},{step})".format(**m.groupdict())
+            else:
+                colspec += " DEFAULT " + default
 
         colspec += self._fetch_redshift_column_attributes(column)
 
@@ -167,25 +277,33 @@ class RedShiftDDLCompiler(PGDDLCompiler):
         if not hasattr(column, 'info'):
             return text
         info = column.info
-        identity = info.get('identity', None)
+        identity = info.get('identity')
         if identity:
             text += " IDENTITY({0},{1})".format(identity[0], identity[1])
 
-        encode = info.get('encode', None)
+        encode = info.get('encode')
         if encode:
             text += " ENCODE " + encode
 
-        distkey = info.get('distkey', None)
+        distkey = info.get('distkey')
         if distkey:
             text += " DISTKEY"
 
-        sortkey = info.get('sortkey', None)
+        sortkey = info.get('sortkey')
         if sortkey:
             text += " SORTKEY"
         return text
 
 
 class RedshiftDialect(PGDialect_psycopg2):
+    """
+    Define Redshift-specific behavior.
+
+    Most public methods are overrides of the underlying interfaces defined in
+    :class:`~sqlalchemy.engine.interfaces.Dialect` and
+    :class:`~sqlalchemy.engine.Inspector`.
+    """
+
     name = 'redshift'
 
     statement_compiler = RedshiftCompiler
@@ -199,62 +317,217 @@ class RedshiftDialect(PGDialect_psycopg2):
         }),
         (schema.Table, {
             "ignore_search_path": False,
-            'diststyle': None,
-            'distkey': None,
-            'sortkey': None
+            "diststyle": None,
+            "distkey": None,
+            "sortkey": None,
+            "interleaved_sortkey": None,
         }),
     ]
+
+    def __init__(self, *args, **kw):
+        super(RedshiftDialect, self).__init__(*args, **kw)
+        # Cache domains, as these will be static;
+        # Redshift does not support user-created domains.
+        self._domains = None
+
+    @reflection.cache
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        """
+        Return information about columns in `table_name`.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
+        """
+        cols = self._get_redshift_columns(connection, table_name, schema, **kw)
+        if not self._domains:
+            self._domains = self._load_domains(connection)
+        domains = self._domains
+        columns = []
+        for col in cols:
+            column_info = self._get_column_info(
+                name=col.name, format_type=col.format_type,
+                default=col.default, notnull=col.notnull, domains=domains,
+                enums=[], schema=col.schema, encode=col.encode)
+            columns.append(column_info)
+        return columns
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """
-        Constraints in redshift are informational only. This allows reflection
-        to work.
+        Return information about the primary key constraint on `table_name`.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
-        return {'constrained_columns': [], 'name': ''}
+        constraints = self._get_redshift_constraints(connection, table_name,
+                                                     schema)
+        pk_constraints = [c for c in constraints if c.contype == 'p']
+        if not pk_constraints:
+            return {'constrained_columns': [], 'name': ''}
+        pk_constraint = pk_constraints[0]
+        m = PRIMARY_KEY_RE.match(pk_constraint.condef)
+        colstring = m.group('columns')
+        constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
+        return {
+            'constrained_columns': constrained_columns,
+            'name': None,
+        }
 
     @reflection.cache
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        """
+        Return information about foreign keys in `table_name`.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
+        """
+        constraints = self._get_redshift_constraints(connection, table_name,
+                                                     schema)
+        fk_constraints = [c for c in constraints if c.contype == 'f']
+        fkeys = []
+        for constraint in fk_constraints:
+            m = FOREIGN_KEY_RE.match(constraint.condef)
+            referred_column = m.group('referred_column')
+            referred_columns = [referred_column]
+            referred_table = m.group('referred_table')
+            referred_table, _, referred_schema = referred_table.partition('.')
+            colstring = m.group('columns')
+            constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
+            fkey_d = {
+                'name': None,
+                'constrained_columns': constrained_columns,
+                'referred_schema': referred_schema or None,
+                'referred_table': referred_table,
+                'referred_columns': referred_columns,
+            }
+            fkeys.append(fkey_d)
+        return fkeys
+
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
+        """
+        Return a list of table names for `schema`.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_table_names`.
+        """
+        default_schema = inspect(connection).default_schema_name
+        if not schema:
+            schema = default_schema
+        info_cache = kw.get('info_cache')
+        all_tables, _ = self._get_all_table_and_view_info(connection,
+                                                          info_cache=info_cache)
+        table_names = []
+        for key in all_tables.keys():
+            this_schema, this_table = _get_schema_and_relation(key)
+            if this_schema is None:
+                this_schema = default_schema
+            if this_schema == schema:
+                table_names.append(this_table)
+        return table_names
+
+    @reflection.cache
+    def get_view_names(self, connection, schema=None, **kw):
+        """
+        Return a list of all view names available in the database.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
+        """
+        default_schema = inspect(connection).default_schema_name
+        if not schema:
+            schema = self.dialect.default_schema_name
+        info_cache = kw.get('info_cache')
+        _, all_views = self._get_all_table_and_view_info(connection,
+                                                         info_cache=info_cache)
+        view_names = []
+        for key in all_views.keys():
+            this_schema, this_view = _get_schema_and_relation(key)
+            if this_schema is None:
+                this_schema = default_schema
+            if this_schema == schema:
+                view_names.append(this_view)
+        return view_names
+
+    @reflection.cache
+    def get_view_definition(self, connection, view_name, schema=None, **kw):
+        """Return view definition.
+        Given a :class:`.Connection`, a string `view_name`,
+        and an optional string `schema`, return the view definition.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
+        """
+        view = self._get_redshift_view(connection, view_name, schema, **kw)
+        return view.view_definition
+
     def get_indexes(self, connection, table_name, schema, **kw):
         """
-        Redshift does not use traditional indexes.
+        Return information about indexes in `table_name`.
+
+        Because Redshift does not support traditional indexes,
+        this always returns an empty list.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
         """
         return []
 
-    @util.memoized_property
-    def _isolation_lookup(self):
-        extensions = __import__('psycopg2.extensions').extensions
+    @reflection.cache
+    def get_unique_constraints(self, connection, table_name,
+                               schema=None, **kw):
+        """
+        Return information about unique constraints in `table_name`.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_unique_constraints`.
+        """
+        constraints = self._get_redshift_constraints(connection,
+                                                     table_name, schema)
+        constraints = [c for c in constraints if c.contype == 'u']
+        uniques = defaultdict(lambda: defaultdict(dict))
+        for con in constraints:
+            uniques[con.conname]["key"] = con.conkey
+            uniques[con.conname]["cols"][con.attnum] = con.attname
+
+        return [
+            {'name': None,
+             'column_names': [uc["cols"][i] for i in uc["key"]]}
+            for name, uc in uniques.items()
+        ]
+
+    @reflection.cache
+    def get_table_options(self, connection, table_name, schema, **kw):
+        """
+        Return a dictionary of options specified when the table of the
+        given name was created.
+
+        See :meth:`~sqlalchemy.engine.Inspector.get_table_options`.
+        """
+        def keyfunc(column):
+            num = int(column.sortkey)
+            # If sortkey is interleaved, column numbers alternate
+            # negative values, so take abs.
+            return abs(num)
+        table = self._get_redshift_table(connection, table_name,
+                                         schema, **kw)
+        columns = self._get_redshift_columns(connection, table_name,
+                                             schema, **kw)
+        sortkey_cols = sorted([col for col in columns if col.sortkey],
+                              key=keyfunc)
+        interleaved = any([int(col.sortkey) < 0 for col in sortkey_cols])
+        sortkey = [col.name for col in sortkey_cols]
+        interleaved_sortkey = None
+        if interleaved:
+            interleaved_sortkey = sortkey
+            sortkey = None
+        distkeys = [col.name for col in columns if col.distkey]
+        distkey = distkeys[0] if distkeys else None
         return {
-            'READ COMMITTED': extensions.ISOLATION_LEVEL_READ_COMMITTED,
-            'READ UNCOMMITTED': extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
-            'REPEATABLE READ': extensions.ISOLATION_LEVEL_REPEATABLE_READ,
-            'SERIALIZABLE': extensions.ISOLATION_LEVEL_SERIALIZABLE,
-            'AUTOCOMMIT': extensions.ISOLATION_LEVEL_AUTOCOMMIT
+            'redshift_diststyle': table.diststyle,
+            'redshift_distkey': distkey,
+            'redshift_sortkey': sortkey,
+            'redshift_interleaved_sortkey': interleaved_sortkey,
         }
 
-    def set_isolation_level(self, connection, level):
-        try:
-            level = self._isolation_lookup[level.replace('_', ' ')]
-        except KeyError:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s" %
-                (level, self.name, ", ".join(self._isolation_lookup))
-            )
-
-        connection.set_isolation_level(level)
-
-    def _get_column_info(self, *args, **kwargs):
-        column_info = super(RedshiftDialect, self)._get_column_info(
-            *args,
-            **kwargs
-        )
-        if isinstance(column_info['type'], VARCHAR):
-            if column_info['type'].length is None:
-                column_info['type'] = NullType()
-
-        return column_info
-
     def create_connect_args(self, *args, **kwargs):
+        """
+        Build DB-API compatible connection arguments.
+
+        See :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
+        """
         default_args = {
             'sslmode': 'verify-full',
             'sslrootcert': pkg_resources.resource_filename(
@@ -267,6 +540,164 @@ class RedshiftDialect(PGDialect_psycopg2):
         )
         default_args.update(cparams)
         return cargs, default_args
+
+    def _get_column_info(self, *args, **kwargs):
+        kw = kwargs.copy()
+        encode = kw.pop('encode', None)
+        column_info = super(RedshiftDialect, self)._get_column_info(
+            *args,
+            **kw
+        )
+        if isinstance(column_info['type'], VARCHAR):
+            if column_info['type'].length is None:
+                column_info['type'] = NullType()
+        if 'info' not in column_info:
+            column_info['info'] = {}
+        if encode and encode != 'none':
+            column_info['info']['encode'] = encode
+        return column_info
+
+    def _get_redshift_table(self, connection, table_name, schema=None, **kw):
+        info_cache = kw.get('info_cache')
+        all_tables, _ = self._get_all_table_and_view_info(
+            connection, info_cache=info_cache)
+        key = _get_relation_key(table_name, schema)
+        if key not in all_tables.keys():
+            key = unquoted(key)
+        return all_tables[key]
+
+    def _get_redshift_view(self, connection, view_name, schema=None, **kw):
+        info_cache = kw.get('info_cache')
+        _, all_views = self._get_all_table_and_view_info(connection,
+                                                         info_cache=info_cache)
+        key = _get_relation_key(view_name, schema)
+        if key not in all_views.keys():
+            key = unquoted(key)
+        return all_views[key]
+
+    def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
+        info_cache = kw.get('info_cache')
+        all_columns = self._get_all_column_info(connection,
+                                                info_cache=info_cache)
+        key = _get_relation_key(table_name, schema)
+        if key not in all_columns.keys():
+            key = unquoted(key)
+        return all_columns[key]
+
+    def _get_redshift_constraints(self, connection, table_name,
+                                  schema=None, **kw):
+        info_cache = kw.get('info_cache')
+        all_constraints = self._get_all_constraint_info(connection,
+                                                        info_cache=info_cache)
+        key = _get_relation_key(table_name, schema)
+        if key not in all_constraints.keys():
+            key = unquoted(key)
+        return all_constraints[key]
+
+    @reflection.cache
+    def _get_all_table_and_view_info(self, connection, **kw):
+        result = connection.execute("""
+        SELECT
+          c.relkind,
+          n.oid as "schema_oid",
+          n.nspname as "schema",
+          c.oid as "rel_oid",
+          c.relname,
+          CASE c.reldiststyle
+            WHEN 0 THEN 'EVEN' WHEN 1 THEN 'KEY' WHEN 8 THEN 'ALL' END
+            AS "diststyle",
+          c.relowner AS "owner_id",
+          u.usename AS "owner_name",
+          pg_get_viewdef(c.oid) AS "view_definition",
+          pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
+        FROM pg_catalog.pg_class c
+             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
+        WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
+          AND n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+        ORDER BY c.relkind, n.oid, n.nspname;
+        """)
+        tables, views = {}, {}
+        for rel in result:
+            schema = rel.schema
+            if schema == inspect(connection).default_schema_name:
+                schema = None
+            key = _get_relation_key(rel.relname, schema)
+            if rel.relkind == 'r':
+                tables[key] = rel
+            if rel.relkind == 'v':
+                views[key] = rel
+        self._all_tables_and_views = (tables, views)
+        return self._all_tables_and_views
+
+    @reflection.cache
+    def _get_all_column_info(self, connection, **kw):
+        result = connection.execute("""
+        SELECT
+          n.nspname as "schema",
+          c.relname as "table_name",
+          d.column as "name",
+          encoding as "encode",
+          type, distkey, sortkey, "notnull", adsrc, attnum,
+          pg_catalog.format_type(att.atttypid, att.atttypmod),
+          pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
+          n.oid as "schema_oid",
+          c.oid as "table_oid"
+        FROM pg_catalog.pg_class c
+        LEFT JOIN pg_catalog.pg_namespace n
+          ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_table_def d
+          ON (d.schemaname, d.tablename) = (n.nspname, c.relname)
+        JOIN pg_catalog.pg_attribute att
+          ON (att.attrelid, att.attname) = (c.oid, d.column)
+        LEFT JOIN pg_catalog.pg_attrdef ad
+          ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
+        WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+        ORDER BY n.nspname, c.relname
+        """)
+        all_columns = defaultdict(list)
+        for col in result:
+            schema = col.schema
+            if schema == inspect(connection).default_schema_name:
+                schema = None
+            key = _get_relation_key(col.table_name, schema)
+            all_columns[key].append(col)
+        self._all_columns = all_columns
+        return self._all_columns
+
+    @reflection.cache
+    def _get_all_constraint_info(self, connection, **kw):
+        result = connection.execute("""
+        SELECT
+          n.nspname as "schema",
+          c.relname as "table_name",
+          t.contype,
+          t.conname,
+          t.conkey,
+          a.attnum,
+          a.attname,
+          pg_catalog.pg_get_constraintdef(t.oid, true) as condef,
+          n.oid as "schema_oid",
+          c.oid as "rel_oid"
+        FROM pg_catalog.pg_class c
+        LEFT JOIN pg_catalog.pg_namespace n
+          ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_constraint t
+          ON t.conrelid = c.oid
+        JOIN pg_catalog.pg_attribute a
+          ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
+        WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+        ORDER BY n.nspname, c.relname
+        """)
+        all_constraints = defaultdict(list)
+        for con in result:
+            schema = con.schema
+            if schema == inspect(connection).default_schema_name:
+                schema = None
+            key = _get_relation_key(con.table_name, schema)
+            all_constraints[key].append(con)
+        self._all_constraints = all_constraints
+        return self._all_constraints
 
 
 class UnloadFromSelect(Executable, ClauseElement):
