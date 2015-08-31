@@ -1129,11 +1129,11 @@ def visit_delete_stmt(element, compiler, **kwargs):
 
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
-            tablename = _tablename(col.table, compiler)
+            tablename = compiler.preparer.format_table(col.table, compiler)
             if tablename != delete_stmt_table and tablename not in usingclause_tables:
                 usingclause_tables.append(tablename)
         if usingclause_tables:
-            usingclause = ' USING {clause}'.format(clause=','.join(usingclause_tables))
+            usingclause = ' USING {clause}'.format(clause=', '.join(usingclause_tables))
 
     return 'DELETE FROM {table}{using}{where}'.format(
         table=delete_stmt_table,
