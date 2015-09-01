@@ -78,7 +78,8 @@ PRIMARY_KEY_RE = re.compile(r"""
     (?P<columns>         # Start a group to capture column names
       (?:
         \s*                # Arbitrary whitespace
-        ( [_a-zA-Z][\w$]* | ("[^"]*")+ )  # SQL identifier or delimited identifier
+        # SQL identifier or delimited identifier
+        ( [_a-zA-Z][\w$]* | ("[^"]*")+ )
         \s*                # Arbitrary whitespace
         ,?                 # There will be a colon if this isn't the last one
       )+                  # Close the non-capturing group; require at least one
@@ -423,8 +424,10 @@ class RedshiftDialect(PGDialect_psycopg2):
         if not schema:
             schema = default_schema
         info_cache = kw.get('info_cache')
-        all_tables, _ = self._get_all_table_and_view_info(connection,
-                                                          info_cache=info_cache)
+        all_tables, _ = self._get_all_table_and_view_info(
+            connection,
+            info_cache=info_cache,
+        )
         table_names = []
         for key in all_tables.keys():
             this_schema, this_table = _get_schema_and_relation(key)
@@ -484,7 +487,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Return information about unique constraints in `table_name`.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_unique_constraints`.
+        See
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_unique_constraints`.
         """
         constraints = self._get_redshift_constraints(connection,
                                                      table_name, schema)
@@ -958,9 +962,12 @@ class CopyCommand(Executable, ClauseElement):
             raise ValueError('"format" parameter must be one of %s' %
                              self.formats)
 
-        if compression is not None and compression not in self.compression_types:
-            raise ValueError('"compression" parameter must be one of %s' %
-                             self.compression_types)
+        if compression is not None:
+            if compression not in self.compression_types:
+                raise ValueError(
+                    '"compression" parameter must be one of %s' %
+                    self.compression_types
+                )
 
         self.table = table
         self.data_location = data_location
