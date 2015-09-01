@@ -1,4 +1,6 @@
-__version__ = '0.5.1a'
+from pkg_resources import get_distribution
+
+__version__ = get_distribution('sqlalchemy-redshift').version
 
 from sqlalchemy.dialects import registry
 
