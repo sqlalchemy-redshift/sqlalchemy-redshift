@@ -48,18 +48,31 @@ def test_delete_stmt_nowhereclause():
 
 
 def test_delete_stmt_simplewhereclause1():
-    del_stmt = sa.delete(customers).where(customers.c.email == 'test@test.test')
-    assert get_str(del_stmt) == "DELETE FROM customers WHERE customers.email = %(email_1)s"
+    del_stmt = sa.delete(customers).where(
+        customers.c.email == 'test@test.test'
+    )
+    expeted = "DELETE FROM customers " \
+              "WHERE customers.email = %(email_1)s"
+    assert get_str(del_stmt) == expeted
 
 
 def test_delete_stmt_simplewhereclause2():
-    del_stmt = sa.delete(customers).where(customers.c.email.endswith('test.com'))
-    assert get_str(del_stmt) == "DELETE FROM customers WHERE customers.email LIKE '%%' || %(email_1)s"
+    del_stmt = sa.delete(customers).where(
+        customers.c.email.endswith('test.com')
+    )
+    expected = "DELETE FROM customers " \
+               "WHERE customers.email " \
+               "LIKE '%%' || %(email_1)s"
+    assert get_str(del_stmt) == expected
 
 
 def test_delete_stmt_joinedwhereclause1():
-    del_stmt = sa.delete(orders).where(orders.c.customer_id == customers.c.id)
-    expected = "DELETE FROM orders USING customers WHERE orders.customer_id = customers.id"
+    del_stmt = sa.delete(orders).where(
+        orders.c.customer_id == customers.c.id
+    )
+    expected = "DELETE FROM orders " \
+               "USING customers " \
+               "WHERE orders.customer_id = customers.id"
     assert get_str(del_stmt) == expected
 
 
@@ -75,13 +88,11 @@ def test_delete_stmt_joinedwhereclause2():
     ).where(
         items.c.name == 'test product'
     )
-    expected = [
-        "DELETE FROM orders",
-        "USING customers, items",
-        "WHERE orders.customer_id = customers.id",
-        "AND orders.id = items.order_id",
-        "AND (customers.email LIKE '%%' || %(email_1)s)",
-        "AND items.name = %(name_1)s"
-    ]
-    expected = ' '.join(expected)
+    expected = "DELETE FROM orders " \
+               "USING customers, items " \
+               "WHERE orders.customer_id = customers.id " \
+               "AND orders.id = items.order_id " \
+               "AND (customers.email LIKE '%%' || %(email_1)s) " \
+               "AND items.name = %(name_1)s"
+
     assert get_str(del_stmt) == expected

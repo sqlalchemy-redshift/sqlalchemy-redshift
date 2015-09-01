@@ -9,7 +9,13 @@ from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import BindParameter, Executable, ClauseElement, Delete, BinaryExpression, BooleanClauseList
+from sqlalchemy.sql.expression import (
+    BindParameter,
+    Executable,
+    ClauseElement,
+    Delete,
+    BinaryExpression,
+    BooleanClauseList)
 from sqlalchemy.types import VARCHAR, NullType
 from .compat import string_types
 
@@ -1120,21 +1126,23 @@ def visit_delete_stmt(element, compiler, **kwargs):
     # note:
     #   the tables in the using clause are sorted in the order in
     #   which they first appear in the where clause.
-
-
     delete_stmt_table = compiler.preparer.format_table(element.table)
     whereclause_tuple = element.get_children()
     if whereclause_tuple:
         usingclause_tables = []
-        whereclause = ' WHERE {clause}'.format(clause=compiler.process(*whereclause_tuple, **kwargs))
+        whereclause = ' WHERE {clause}'.format(
+            clause=compiler.process(*whereclause_tuple, **kwargs)
+        )
 
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
-            tablename = compiler.preparer.format_table(col.table)
-            if tablename != delete_stmt_table and tablename not in usingclause_tables:
-                usingclause_tables.append(tablename)
+            table = compiler.preparer.format_table(col.table)
+            if table != delete_stmt_table and table not in usingclause_tables:
+                usingclause_tables.append(table)
         if usingclause_tables:
-            usingclause = ' USING {clause}'.format(clause=', '.join(usingclause_tables))
+            usingclause = ' USING {clause}'.format(
+                clause=', '.join(usingclause_tables)
+            )
 
     return 'DELETE FROM {table}{using}{where}'.format(
         table=delete_stmt_table,
