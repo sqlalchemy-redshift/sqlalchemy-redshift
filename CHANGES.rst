@@ -14,6 +14,8 @@
 - Refactor of UnloadFromSelect including support for specifying all documented
   redshift options.
   (`Issue #27 <https://github.com/graingert/redshift_sqlalchemy/pull/27>`_)
+- Fix unicode issue with SORTKEY on python 2.
+  (`Issue #34 <https://github.com/graingert/redshift_sqlalchemy/pull/34>`_)
 
 
 0.1.2 (2015-08-11)

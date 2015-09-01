@@ -12,6 +12,8 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Executable, ClauseElement
 from sqlalchemy.types import VARCHAR, NullType
 
+from .compat import string_types
+
 
 try:
     from alembic.ddl import postgresql
@@ -254,7 +256,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
                 "mutually exclusive; you may not specify both."
             )
         if sortkey or interleaved_sortkey:
-            if isinstance(sortkey, str):
+            if isinstance(sortkey, string_types):
                 keys = [sortkey]
             else:
                 keys = sortkey or interleaved_sortkey
