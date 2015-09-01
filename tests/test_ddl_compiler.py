@@ -131,6 +131,24 @@ class TestDDLCompiler(object):
         )
         assert expected == actual, self._compare_strings(expected, actual)
 
+    def test_create_table_with_unicode_sortkey(self, compiler):
+        table = Table('t1',
+                      MetaData(),
+                      Column('id', Integer, primary_key=True),
+                      Column('name', String),
+                      redshift_sortkey=u"id")
+
+        create_table = CreateTable(table)
+        actual = compiler.process(create_table)
+        expected = (
+            u"\nCREATE TABLE t1 ("
+            u"\n\tid INTEGER NOT NULL, "
+            u"\n\tname VARCHAR, "
+            u"\n\tPRIMARY KEY (id)\n) "
+            u"SORTKEY (id)\n\n"
+        )
+        assert expected == actual, self._compare_strings(expected, actual)
+
     def test_create_table_with_multiple_sortkeys(self, compiler):
 
         table = Table('t1',
