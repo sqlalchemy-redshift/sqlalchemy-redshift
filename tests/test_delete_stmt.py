@@ -31,8 +31,9 @@ This same query needs to be written like this in Redshift:
 
 """
 
-from redshift_sqlalchemy.dialect import RedshiftDialect
 import sqlalchemy as sa
+
+from rs_sqla_test_utils.utils import clean, compile_query
 
 
 meta = sa.MetaData()
@@ -96,42 +97,41 @@ hammy_spam = sa.Table(
 )
 
 
-def get_str(stmt):
-    return str(stmt.compile(dialect=RedshiftDialect()))
-
-
 def test_delete_stmt_nowhereclause():
     del_stmt = sa.delete(customers)
-    assert get_str(del_stmt) == 'DELETE FROM customers'
+    assert clean(compile_query(del_stmt)) == 'DELETE FROM customers'
 
 
 def test_delete_stmt_simplewhereclause1():
     del_stmt = sa.delete(customers).where(
         customers.c.email == 'test@test.test'
     )
-    expeted = "DELETE FROM customers " \
-              "WHERE customers.email = %(email_1)s"
-    assert get_str(del_stmt) == expeted
+    expected = """
+        DELETE FROM customers
+        WHERE customers.email = 'test@test.test'"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_simplewhereclause2():
     del_stmt = sa.delete(customers).where(
         customers.c.email.endswith('test.com')
     )
-    expected = "DELETE FROM customers " \
-               "WHERE customers.email " \
-               "LIKE '%%' || %(email_1)s"
-    assert get_str(del_stmt) == expected
+    expected = """
+        DELETE FROM customers
+        WHERE customers.email
+        LIKE '%%' || 'test.com'"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_joinedwhereclause1():
     del_stmt = sa.delete(orders).where(
         orders.c.customer_id == customers.c.id
     )
-    expected = "DELETE FROM orders " \
-               "USING customers " \
-               "WHERE orders.customer_id = customers.id"
-    assert get_str(del_stmt) == expected
+    expected = """
+        DELETE FROM orders
+        USING customers
+        WHERE orders.customer_id = customers.id"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_joinedwhereclause2():
@@ -146,14 +146,15 @@ def test_delete_stmt_joinedwhereclause2():
     ).where(
         items.c.name == 'test product'
     )
-    expected = "DELETE FROM orders " \
-               "USING customers, items " \
-               "WHERE orders.customer_id = customers.id " \
-               "AND orders.id = items.order_id " \
-               "AND (customers.email LIKE '%%' || %(email_1)s) " \
-               "AND items.name = %(name_1)s"
+    expected = """
+      DELETE FROM orders
+      USING customers, items
+      WHERE orders.customer_id = customers.id
+      AND orders.id = items.order_id
+      AND (customers.email LIKE '%%' || 'test.com')
+      AND items.name = 'test product'"""
 
-    assert get_str(del_stmt) == expected
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_subqueryplusjoin():
@@ -170,15 +171,16 @@ def test_delete_stmt_subqueryplusjoin():
     ).where(
         items.c.name == 'test product'
     )
-    expected = "DELETE FROM orders " \
-               "USING items " \
-               "WHERE orders.customer_id IN " \
-               "(SELECT customers.id " \
-               "\nFROM customers " \
-               "\nWHERE (customers.email LIKE '%%' || %(email_1)s)) " \
-               "AND orders.id = items.order_id " \
-               "AND items.name = %(name_1)s"
-    assert get_str(del_stmt) == expected
+    expected = """
+      DELETE FROM orders
+      USING items
+      WHERE orders.customer_id IN
+      (SELECT customers.id
+      FROM customers
+      WHERE (customers.email LIKE '%%' || 'test.com'))
+      AND orders.id = items.order_id
+      AND items.name = 'test product'"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_subquery():
@@ -191,12 +193,13 @@ def test_delete_stmt_subquery():
             ).where(customers.c.email.endswith('test.com'))
         )
     )
-    expected = "DELETE FROM orders " \
-               "WHERE orders.customer_id IN " \
-               "(SELECT customers.id " \
-               "\nFROM customers " \
-               "\nWHERE (customers.email LIKE '%%' || %(email_1)s))"
-    assert get_str(del_stmt) == expected
+    expected = """
+        DELETE FROM orders
+        WHERE orders.customer_id IN
+        (SELECT customers.id
+        FROM customers
+        WHERE (customers.email LIKE '%%' || 'test.com'))"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_on_subquerycomma():
@@ -209,17 +212,20 @@ def test_delete_stmt_on_subquerycomma():
             )
         )
     )
-    expected = 'DELETE FROM ham ' \
-               'WHERE ham.id IN (SELECT "ham, spam".ham_id ' \
-               '\nFROM "ham, spam")'
-    assert get_str(del_stmt) == expected
+    expected = """
+        DELETE FROM ham
+        WHERE ham.id IN
+        (SELECT "ham, spam".ham_id
+        FROM "ham, spam")"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_on_comma():
     del_stmt = sa.delete(ham).where(ham.c.id == hammy_spam.c.ham_id)
-    expected = 'DELETE FROM ham USING "ham, spam" ' \
-               'WHERE ham.id = "ham, spam".ham_id'
-    assert get_str(del_stmt) == expected
+    expected = """
+        DELETE FROM ham USING "ham, spam"
+        WHERE ham.id = "ham, spam".ham_id"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_on_alias():
@@ -227,10 +233,11 @@ def test_delete_stmt_on_alias():
     del_stmt = sa.delete(
         product
     ).where(product.c.parent_id == parent_.c.id)
-    expected = 'DELETE FROM products ' \
-               'USING products AS products_1 ' \
-               'WHERE products.parent_id = products_1.id'
-    assert get_str(del_stmt) == expected
+    expected = """
+        DELETE FROM products
+        USING products AS products_1
+        WHERE products.parent_id = products_1.id"""
+    assert clean(compile_query(del_stmt)) == clean(expected)
 
 
 def test_delete_stmt_with_comma_subquery_alias_join():
@@ -254,15 +261,16 @@ def test_delete_stmt_with_comma_subquery_alias_join():
         parent_.c.id != hammy_spam.c.ham_id
     )
 
-    expected = "DELETE FROM items " \
-               "USING orders, products, products AS products_1, \"ham, spam\" " \
-               "WHERE items.order_id = orders.id " \
-               "AND orders.customer_id IN " \
-               "(SELECT customers.id " \
-               "\nFROM customers " \
-               "\nWHERE (customers.email LIKE '%%' || %(email_1)s)) " \
-               "AND items.product_id = products.id " \
-               "AND products.parent_id = products_1.id " \
-               "AND products_1.id != \"ham, spam\".ham_id"
+    expected = """
+        DELETE FROM items
+        USING orders, products, products AS products_1, "ham, spam"
+        WHERE items.order_id = orders.id
+        AND orders.customer_id IN
+        (SELECT customers.id
+        FROM customers
+        WHERE (customers.email LIKE '%%' || 'test.com'))
+        AND items.product_id = products.id
+        AND products.parent_id = products_1.id
+        AND products_1.id != "ham, spam".ham_id"""
 
-    assert get_str(del_stmt) == expected
+    assert clean(compile_query(del_stmt)) == clean(expected)
