@@ -9,7 +9,12 @@ from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import Executable, ClauseElement
+from sqlalchemy.sql.expression import (
+    Executable,
+    ClauseElement,
+    Delete,
+    BinaryExpression,
+    BooleanClauseList)
 from sqlalchemy.types import VARCHAR, NullType
 
 from .compat import string_types
@@ -1025,3 +1030,109 @@ def visit_copy_command(element, compiler, **kw):
         ),
         **kw
     )
+
+
+def gen_columns_from_children(root):
+    """
+    Generates columns that are being used in child elements of the delete query
+    this will be used to determine tables for the using clause.
+    :param root: the delete query
+    :return: a generator of columns
+    """
+    if isinstance(root, (Delete, BinaryExpression, BooleanClauseList)):
+        for child in root.get_children():
+            yc = gen_columns_from_children(child)
+            for it in yc:
+                yield it
+    elif isinstance(root, sa.Column):
+        yield root
+
+
+@compiles(Delete, 'redshift')
+def visit_delete_stmt(element, compiler, **kwargs):
+    """
+    Adds redshift-dialect specific compilation rule for the
+    delete statement.
+
+    Redshift DELETE syntax can be found here:
+    http://docs.aws.amazon.com/redshift/latest/dg/r_DELETE.html
+
+    .. :code-block: sql
+
+        DELETE [ FROM ] table_name
+        [ { USING } table_name, ...]
+        [ WHERE condition ]
+
+    By default, SqlAlchemy compiles DELETE statements with the
+    syntax:
+
+    .. :code-block: sql
+
+        DELETE [ FROM ] table_name
+        [ WHERE condition ]
+
+    problem illustration:
+
+    >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
+    >>> from redshift_sqlalchemy.dialect import RedshiftDialect
+    >>> meta = MetaData()
+    >>> table1 = Table(
+    ... 'table_1',
+    ... meta,
+    ... Column('pk', Integer, primary_key=True)
+    ... )
+    ...
+    >>> table2 = Table(
+    ... 'table_2',
+    ... meta,
+    ... Column('pk', Integer, primary_key=True)
+    ... )
+    ...
+    >>> del_stmt = delete(table1).where(table1.c.pk==table2.c.pk)
+    >>> str(del_stmt.compile(dialect=RedshiftDialect()))
+    'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
+    >>> str(del_stmt)
+    'DELETE FROM table_1 WHERE table_1.pk = table_2.pk'
+    >>> del_stmt2 = delete(table1)
+    >>> str(del_stmt2)
+    'DELETE FROM table_1'
+    >>> del_stmt3 = delete(table1).where(table1.c.pk > 1000)
+    >>> str(del_stmt3)
+    'DELETE FROM table_1 WHERE table_1.pk > :pk_1'
+    >>> str(del_stmt3.compile(dialect=RedshiftDialect()))
+    'DELETE FROM table_1 WHERE table_1.pk >  %(pk_1)s'
+    """
+
+    # Set empty strings for the default where clause and using clause
+    whereclause = ''
+    usingclause = ''
+
+    # determine if the delete query needs a ``USING`` injected
+    # by inspecting the whereclause's children & their children...
+    # first, the where clause text is buit, if applicable
+    # then, the using clause text is built, if applicable
+    # note:
+    #   the tables in the using clause are sorted in the order in
+    #   which they first appear in the where clause.
+    delete_stmt_table = compiler.process(element.table, asfrom=True, **kwargs)
+    whereclause_tuple = element.get_children()
+    if whereclause_tuple:
+        usingclause_tables = []
+        whereclause = ' WHERE {clause}'.format(
+            clause=compiler.process(*whereclause_tuple, **kwargs)
+        )
+
+        whereclause_columns = gen_columns_from_children(element)
+        for col in whereclause_columns:
+            table = compiler.process(col.table, asfrom=True, **kwargs)
+            if table != delete_stmt_table and table not in usingclause_tables:
+                usingclause_tables.append(table)
+        if usingclause_tables:
+            usingclause = ' USING {clause}'.format(
+                clause=', '.join(usingclause_tables)
+            )
+
+    return 'DELETE FROM {table}{using}{where}'.format(
+        table=delete_stmt_table,
+        using=usingclause,
+        where=whereclause)
