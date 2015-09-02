@@ -1,21 +1,10 @@
 import pytest
 
-import re
-
 import sqlalchemy as sa
 
 from redshift_sqlalchemy import dialect
+from rs_sqla_test_utils.utils import clean, compile_query
 
-
-def clean(query):
-    return re.sub(r'\s+', ' ', query).strip()
-
-
-def compile_query(q):
-    return str(q.compile(
-        dialect=dialect.RedshiftDialect(),
-        compile_kwargs={'literal_binds': True})
-    )
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
 secret_access_key = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'
