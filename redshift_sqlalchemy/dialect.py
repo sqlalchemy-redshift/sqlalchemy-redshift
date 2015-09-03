@@ -114,6 +114,8 @@ class RedShiftDDLCompiler(PGDDLCompiler):
 
 class RedshiftDialect(PGDialect_psycopg2):
     name = 'redshift'
+    supports_sequences = False
+    preexecute_autoincrement_sequences = False
     ddl_compiler = RedShiftDDLCompiler
 
     construct_arguments = [
