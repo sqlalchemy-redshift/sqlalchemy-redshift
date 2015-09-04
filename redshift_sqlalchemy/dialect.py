@@ -146,13 +146,13 @@ class RedshiftCompiler(PGCompiler):
 
 class RedShiftDDLCompiler(PGDDLCompiler):
     """
-    Handles Redshift-specific CREATE TABLE syntax.
+    Handles Redshift-specific ``CREATE TABLE`` syntax.
 
-    Users can specify the DISTSTYLE, DISTKEY, SORTKEY and ENCODE properties per
-    table and per column.
+    Users can specify the `diststyle`, `distkey`, `sortkey` and `encode`
+    properties per table and per column.
 
     Table level properties can be set using the dialect specific syntax. For
-    example, to specify a distribution key and style you apply the following ::
+    example, to specify a distribution key and style you apply the following:
 
     >>> import sqlalchemy as sa
     >>> from sqlalchemy.schema import CreateTable
@@ -177,7 +177,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
-    A single sort key can be applied without a wrapping list ::
+    A single sort key can be applied without a wrapping list:
 
     >>> customer = sa.Table(
     ...     'customer',
@@ -197,7 +197,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
 
     Column-level special syntax can also be applied using the column info
-    dictionary. For example, we can specify the ENCODE for a column ::
+    dictionary. For example, we can specify the ENCODE for a column:
 
     >>> product = sa.Table(
     ...     'product',
@@ -215,7 +215,7 @@ class RedShiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
-    We can also specify the distkey and sortkey options ::
+    We can also specify the distkey and sortkey options:
 
     >>> sku = sa.Table(
     ...     'sku',
@@ -355,7 +355,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Return information about columns in `table_name`.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
         """
         cols = self._get_redshift_columns(connection, table_name, schema, **kw)
         if not self._domains:
@@ -375,7 +376,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Return information about the primary key constraint on `table_name`.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
         constraints = self._get_redshift_constraints(connection, table_name,
                                                      schema)
@@ -396,7 +398,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Return information about foreign keys in `table_name`.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
         constraints = self._get_redshift_constraints(connection, table_name,
                                                      schema)
@@ -425,7 +428,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Return a list of table names for `schema`.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_table_names`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_table_names`.
         """
         default_schema = inspect(connection).default_schema_name
         if not schema:
@@ -449,7 +453,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Return a list of all view names available in the database.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
         """
         default_schema = inspect(connection).default_schema_name
         if not schema:
@@ -472,7 +477,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         Given a :class:`.Connection`, a string `view_name`,
         and an optional string `schema`, return the view definition.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
         """
         view = self._get_redshift_view(connection, view_name, schema, **kw)
         return view.view_definition
@@ -484,7 +490,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         Because Redshift does not support traditional indexes,
         this always returns an empty list.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
         """
         return []
 
@@ -494,7 +501,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Return information about unique constraints in `table_name`.
 
-        See
+        Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_unique_constraints`.
         """
         constraints = self._get_redshift_constraints(connection,
@@ -517,7 +524,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         Return a dictionary of options specified when the table of the
         given name was created.
 
-        See :meth:`~sqlalchemy.engine.Inspector.get_table_options`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.Inspector.get_table_options`.
         """
         def keyfunc(column):
             num = int(column.sortkey)
@@ -549,7 +557,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         """
         Build DB-API compatible connection arguments.
 
-        See :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
         """
         default_args = {
             'sslmode': 'verify-full',
@@ -765,18 +774,18 @@ class UnloadFromSelect(Executable, ClauseElement):
     ----------
     select: sqlalchemy.sql.selectable.Selectable
         The selectable Core Table Expression query to unload from.
-    data_location : str
+    data_location: str
         The Amazon S3 location where the file will be created, or a manifest
         file if the `manifest` option is used
-    access_key_id : str
-    secret_access_key : str
-    session_token : str, optional
-    manifest : bool, optional
+    access_key_id: str
+    secret_access_key: str
+    session_token: str, optional
+    manifest: bool, optional
         Boolean value denoting whether data_location is a manifest file.
-    delimiter : File delimiter, optional
+    delimiter: File delimiter, optional
         defaults to '|'
-    fixed_width: [(str, int), ...], optional
-        List of column name, length pairs to control fixed-width output.
+    fixed_width: iterable of (str, int), optional
+        List of (column name, length) pairs to control fixed-width output.
     encrypted: bool, optional
         Write to encrypted S3 key.
     gzip: bool, optional
@@ -788,9 +797,9 @@ class UnloadFromSelect(Executable, ClauseElement):
         Write null values as the given string. Defaults to ''.
     escape: bool, optional
         For CHAR and VARCHAR columns in delimited unload files, an escape
-        character '\\' is placed before every occurrence of the following
-        characters: '\\r', '\\n', '\\', (if add_quotes '\\"', "\\'"), the
-        specified delimiter string.
+        character (``\\``) is placed before every occurrence of the following
+        characters: ``\\r``, ``\\n``, ``\\``, the specified delimiter string.
+        If `add_quotes` is specified, ``"`` and ``'`` are also escaped.
     allow_overwrite: bool, optional
         Overwrite the key at unload_location in the S3 bucket.
     parallel: bool, optional
