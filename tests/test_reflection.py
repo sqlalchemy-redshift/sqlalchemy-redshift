@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy import MetaData, Table
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.exc import NoSuchTableError
 
 from rs_sqla_test_utils import models
 
@@ -104,3 +105,9 @@ def test_reflection(redshift_session, model, ddl):
     table = Table(model.__tablename__, metadata, autoload=True)
     introspected_ddl = table_to_ddl(redshift_session, table)
     assert cleaned(introspected_ddl) == cleaned(ddl)
+
+
+def test_no_table_reflection(redshift_session):
+    metadata = MetaData(bind=redshift_session.bind)
+    with pytest.raises(NoSuchTableError):
+        Table('foobar', metadata, autoload=True)

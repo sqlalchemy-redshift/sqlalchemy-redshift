@@ -587,7 +587,10 @@ class RedshiftDialect(PGDialect_psycopg2):
         key = _get_relation_key(table_name, schema)
         if key not in all_tables.keys():
             key = unquoted(key)
-        return all_tables[key]
+        try:
+            return all_tables[key]
+        except KeyError:
+            raise sa.exc.NoSuchTableError(key)
 
     def _get_redshift_view(self, connection, view_name, schema=None, **kw):
         info_cache = kw.get('info_cache')
@@ -650,8 +653,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                 tables[key] = rel
             if rel.relkind == 'v':
                 views[key] = rel
-        self._all_tables_and_views = (tables, views)
-        return self._all_tables_and_views
+        return tables, views
 
     @reflection.cache
     def _get_all_column_info(self, connection, **kw):
@@ -685,8 +687,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                 schema = None
             key = _get_relation_key(col.table_name, schema)
             all_columns[key].append(col)
-        self._all_columns = all_columns
-        return self._all_columns
+        return all_columns
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
@@ -719,8 +720,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                 schema = None
             key = _get_relation_key(con.table_name, schema)
             all_constraints[key].append(con)
-        self._all_constraints = all_constraints
-        return self._all_constraints
+        return all_constraints
 
 
 def process_aws_credentials(access_key_id, secret_access_key,
