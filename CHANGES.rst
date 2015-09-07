@@ -22,11 +22,12 @@
   (`Issue #27 <https://github.com/graingert/redshift_sqlalchemy/pull/27>`_)
 - Fix unicode issue with SORTKEY on python 2.
   (`Issue #34 <https://github.com/graingert/redshift_sqlalchemy/pull/34>`_)
-- Add support for Redshift ``DELETE`` statements that refer other tables in the ``WHERE``
-  clause. (`Issue #35 <https://github.com/graingert/redshift_sqlalchemy/issues/35>`_).
-  Thanks `haleemur <https://github.com/haleemur> _`.
+- Add support for Redshift ``DELETE`` statements that refer other tables in
+  the ``WHERE`` clause.
+  Thanks `haleemur <https://github.com/haleemur>`_.
+  (`Issue #35 <https://github.com/graingert/redshift_sqlalchemy/issues/35>`_)
 - Raise ``NoSuchTableError`` when trying to reflect a table that doesn't exist.
-  (`Issue #38 <https://github.com/graingert/redshift_sqlalchemy/issues/38>`_).
+  (`Issue #38 <https://github.com/graingert/redshift_sqlalchemy/issues/38>`_)
 
 0.1.2 (2015-08-11)
 ------------------
