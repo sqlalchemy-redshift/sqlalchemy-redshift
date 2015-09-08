@@ -22,17 +22,14 @@ class EngineDefinition(object):
         )
 
 
-def redshift_engine_definition():
+def redshift_engine_definition(cluster):
     return EngineDefinition(
         db_connect_url=sa_url.URL(
             drivername='redshift+psycopg2',
             username='travis',
             password=os.environ['PGPASSWORD'],
-            host=(
-                'redshift-sqlalchemy-test.cforsfjmjsja.us-west-2.redshift'
-                '.amazonaws.com'
-            ),
-            port=5439,
+            host=cluster['Address'],
+            port=cluster['Port'],
             database='dev',
             query={'client_encoding': 'utf8'},
         ),

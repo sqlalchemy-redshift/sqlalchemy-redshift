@@ -5,8 +5,15 @@ import itertools
 import uuid
 import functools
 
+try:
+    from urllib import parse as urlparse
+except:
+    import urlparse
+
+import requests
 import pytest
 import sqlalchemy as sa
+
 
 from rs_sqla_test_utils import db
 
@@ -73,19 +80,32 @@ class DatabaseTool(object):
                 engine.dispose()
 
 
-@pytest.fixture(scope='session')
+@pytest.yield_fixture(scope='session')
 def _redshift_database_tool():
     from rs_sqla_test_utils import models
-    if 'PGPASSWORD' in os.environ:
+    if 'PGPASSWORD' not in os.environ:
+        pytest.skip('This test will only work on Travis.')
+
+    session = requests.Session()
+    resp = session.post('https://bigcrunch.herokuapp.com/session/')
+    resp.raise_for_status()
+    config = resp.json()
+    try:
         class RedshiftDatabaseTool(DatabaseTool):
-            engine_definition = db.redshift_engine_definition()
+            engine_definition = db.redshift_engine_definition(
+                config['cluster']
+            )
 
             def migrate(self, engine):
                 models.Base.metadata.create_all(bind=engine)
 
-        return RedshiftDatabaseTool()
-    else:
-        pytest.skip('This test will only work on Travis.')
+        yield RedshiftDatabaseTool()
+    finally:
+        base_url = resp.request.url
+        resp = session.delete(
+            urlparse.urljoin(base_url, config['resource_url'])
+        )
+        resp.raise_for_status()
 
 
 @pytest.yield_fixture(scope='function')
