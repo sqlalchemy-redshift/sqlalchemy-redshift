@@ -1,10 +1,13 @@
 0.2.1 (unreleased)
 ------------------
 
-- Fixes to view support to be more in line with SQLAlchemy standards.
+- Fix view support to be more in line with SQLAlchemy standards.
   `get_view_definition` output no longer includes a trailing semicolon and
   views no longer raise an exception when reflected as `Table` objects.
   (`Issue #46 <https://github.com/graingert/redshift_sqlalchemy/pull/46>`_)
+- Rename RedShiftDDLCompiler to RedshiftDDLCompiler.
+  (`Issue #43 <https://github.com/graingert/redshift_sqlalchemy/pull/43>`_)
+
 
 0.2.0 (2015-09-04)
 ------------------
