@@ -144,7 +144,7 @@ class RedshiftCompiler(PGCompiler):
         return "SYSDATE"
 
 
-class RedShiftDDLCompiler(PGDDLCompiler):
+class RedshiftDDLCompiler(PGDDLCompiler):
     """
     Handles Redshift-specific ``CREATE TABLE`` syntax.
 
@@ -327,7 +327,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     name = 'redshift'
 
     statement_compiler = RedshiftCompiler
-    ddl_compiler = RedShiftDDLCompiler
+    ddl_compiler = RedshiftDDLCompiler
 
     construct_arguments = [
         (schema.Index, {
@@ -745,7 +745,7 @@ def process_aws_credentials(access_key_id, secret_access_key,
 
 class UnloadFromSelect(Executable, ClauseElement):
     """
-    Prepares a RedShift unload statement to drop a query to Amazon S3
+    Prepares a Redshift unload statement to drop a query to Amazon S3
     https://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
 
     Parameters
