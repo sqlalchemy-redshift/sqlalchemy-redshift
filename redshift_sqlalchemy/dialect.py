@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.ddl import _CreateDropBase
 from sqlalchemy.sql.expression import (
     Executable,
     ClauseElement,
@@ -481,7 +482,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
         """
         view = self._get_redshift_view(connection, view_name, schema, **kw)
-        return view.view_definition
+        return sa.text(view.view_definition)
 
     def get_indexes(self, connection, table_name, schema, **kw):
         """
@@ -532,8 +533,14 @@ class RedshiftDialect(PGDialect_psycopg2):
             # If sortkey is interleaved, column numbers alternate
             # negative values, so take abs.
             return abs(num)
-        table = self._get_redshift_table(connection, table_name,
-                                         schema, **kw)
+        try:
+            table = self._get_redshift_table(connection, table_name,
+                                             schema, **kw)
+        except sa.exc.NoSuchTableError:
+            self._get_redshift_view(connection, table_name,
+                                    schema, **kw)
+            # This is a view, so no distkey or sortkey
+            return {}
         columns = self._get_redshift_columns(connection, table_name,
                                              schema, **kw)
         sortkey_cols = sorted([col for col in columns if col.sortkey],
@@ -608,7 +615,10 @@ class RedshiftDialect(PGDialect_psycopg2):
         key = _get_relation_key(view_name, schema)
         if key not in all_views.keys():
             key = unquoted(key)
-        return all_views[key]
+        try:
+            return all_views[key]
+        except KeyError:
+            raise sa.exc.NoSuchTableError(key)
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get('info_cache')
@@ -1145,3 +1155,48 @@ def visit_delete_stmt(element, compiler, **kwargs):
         table=delete_stmt_table,
         using=usingclause,
         where=whereclause)
+
+
+class CreateView(_CreateDropBase):
+    """
+    Prepares a Redshift CREATE VIEW statement.
+
+    See parameters in :class:`~sqlalchemy.sql.ddl.DDL`.
+
+    Parameters
+    ----------
+    element: sqlalchemy.Table
+        The view to create (sqlalchemy has no View construct)
+    selectable: sqalalchemy.Selectable
+        A query that evaluates to a table.
+        This table defines the columns and rows in the view.
+    replace: boolean
+        If the view already exists and `replace` is `True`,
+        the existing view will be replaced. Otherwise, Redshift
+        will raise an exception.
+    """
+
+    __visit_name__ = "create_view"
+
+    def __init__(self, element, selectable, on=None, bind=None,
+                 replace=False):
+        super(CreateView, self).__init__(element, on=on, bind=bind)
+        self.columns = [sa.schema.CreateColumn(column)
+                        for column in element.columns]
+        self.column_names = [column.key for column in element.columns]
+        self.selectable = selectable
+
+
+@compiles(CreateView)
+def visit_create_view(create, compiler, **kw):
+    view = create.element
+    preparer = compiler.dialect.identifier_preparer
+    text = "\nCREATE VIEW %s " % preparer.format_table(view)
+    if create.columns:
+        column_names = [preparer.format_column(col.element)
+                        for col in create.columns]
+        text += "("
+        text += ', '.join(column_names)
+        text += ") "
+    text += "AS %s\n\n" % compiler.sql_compiler.process(create.selectable)
+    return text
