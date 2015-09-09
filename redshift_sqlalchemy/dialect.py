@@ -1183,7 +1183,6 @@ class CreateView(_CreateDropBase):
         super(CreateView, self).__init__(element, on=on, bind=bind)
         self.columns = [sa.schema.CreateColumn(column)
                         for column in element.columns]
-        self.column_names = [column.key for column in element.columns]
         self.selectable = selectable
 
 
