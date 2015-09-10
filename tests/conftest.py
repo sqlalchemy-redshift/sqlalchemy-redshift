@@ -4,6 +4,7 @@ import contextlib
 import itertools
 import uuid
 import functools
+import time
 
 try:
     from urllib import parse as urlparse
@@ -87,7 +88,14 @@ def _redshift_database_tool():
         pytest.skip('This test will only work on Travis.')
 
     session = requests.Session()
-    resp = session.post('https://bigcrunch.herokuapp.com/session/')
+
+    while True:
+        resp = session.post('https://bigcrunch.herokuapp.com/session/')
+        if resp.status_code != 503:
+            break
+        print('waiting for Redshift to boot up')
+        time.sleep(15)
+
     resp.raise_for_status()
     config = resp.json()
     try:
