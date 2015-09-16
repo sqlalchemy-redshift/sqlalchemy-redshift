@@ -1,9 +1,10 @@
-
 0.2.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
-
+- Fixes to view support to be more in line with SQLAlchemy standards.
+  `get_view_definition` output no longer includes a trailing semicolon and
+  views no longer raise an exception when reflected as `Table` objects.
+  (`Issue #46 <https://github.com/graingert/redshift_sqlalchemy/pull/46>`_)
 
 0.2.0 (2015-09-04)
 ------------------

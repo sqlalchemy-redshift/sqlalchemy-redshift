@@ -431,45 +431,17 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_table_names`.
         """
-        default_schema = inspect(connection).default_schema_name
-        if not schema:
-            schema = default_schema
-        info_cache = kw.get('info_cache')
-        all_tables, _ = self._get_all_table_and_view_info(
-            connection,
-            info_cache=info_cache,
-        )
-        table_names = []
-        for key in all_tables.keys():
-            this_schema, this_table = _get_schema_and_relation(key)
-            if this_schema is None:
-                this_schema = default_schema
-            if this_schema == schema:
-                table_names.append(this_table)
-        return table_names
+        return self._get_table_or_view_names('r', connection, schema, **kw)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
         """
-        Return a list of all view names available in the database.
+        Return a list of view names for `schema`.
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
         """
-        default_schema = inspect(connection).default_schema_name
-        if not schema:
-            schema = self.dialect.default_schema_name
-        info_cache = kw.get('info_cache')
-        _, all_views = self._get_all_table_and_view_info(connection,
-                                                         info_cache=info_cache)
-        view_names = []
-        for key in all_views.keys():
-            this_schema, this_view = _get_schema_and_relation(key)
-            if this_schema is None:
-                this_schema = default_schema
-            if this_schema == schema:
-                view_names.append(this_view)
-        return view_names
+        return self._get_table_or_view_names('v', connection, schema, **kw)
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
@@ -480,8 +452,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
         """
-        view = self._get_redshift_view(connection, view_name, schema, **kw)
-        return view.view_definition
+        view = self._get_redshift_relation(connection, view_name, schema, **kw)
+        return sa.text(view.view_definition)
 
     def get_indexes(self, connection, table_name, schema, **kw):
         """
@@ -532,8 +504,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             # If sortkey is interleaved, column numbers alternate
             # negative values, so take abs.
             return abs(num)
-        table = self._get_redshift_table(connection, table_name,
-                                         schema, **kw)
+        table = self._get_redshift_relation(connection, table_name,
+                                            schema, **kw)
         columns = self._get_redshift_columns(connection, table_name,
                                              schema, **kw)
         sortkey_cols = sorted([col for col in columns if col.sortkey],
@@ -573,6 +545,22 @@ class RedshiftDialect(PGDialect_psycopg2):
         default_args.update(cparams)
         return cargs, default_args
 
+    def _get_table_or_view_names(self, relkind, connection, schema=None, **kw):
+        default_schema = inspect(connection).default_schema_name
+        if not schema:
+            schema = default_schema
+        info_cache = kw.get('info_cache')
+        all_relations = self._get_all_relation_info(connection,
+                                                    info_cache=info_cache)
+        relation_names = []
+        for key, relation in all_relations.items():
+            this_schema, this_relation = _get_schema_and_relation(key)
+            if this_schema is None:
+                this_schema = default_schema
+            if this_schema == schema and relation.relkind == relkind:
+                relation_names.append(this_relation)
+        return relation_names
+
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
@@ -589,26 +577,18 @@ class RedshiftDialect(PGDialect_psycopg2):
             column_info['info']['encode'] = encode
         return column_info
 
-    def _get_redshift_table(self, connection, table_name, schema=None, **kw):
+    def _get_redshift_relation(self, connection, table_name,
+                               schema=None, **kw):
         info_cache = kw.get('info_cache')
-        all_tables, _ = self._get_all_table_and_view_info(
-            connection, info_cache=info_cache)
+        all_relations = self._get_all_relation_info(connection,
+                                                    info_cache=info_cache)
         key = _get_relation_key(table_name, schema)
-        if key not in all_tables.keys():
+        if key not in all_relations.keys():
             key = unquoted(key)
         try:
-            return all_tables[key]
+            return all_relations[key]
         except KeyError:
             raise sa.exc.NoSuchTableError(key)
-
-    def _get_redshift_view(self, connection, view_name, schema=None, **kw):
-        info_cache = kw.get('info_cache')
-        _, all_views = self._get_all_table_and_view_info(connection,
-                                                         info_cache=info_cache)
-        key = _get_relation_key(view_name, schema)
-        if key not in all_views.keys():
-            key = unquoted(key)
-        return all_views[key]
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get('info_cache')
@@ -630,7 +610,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         return all_constraints[key]
 
     @reflection.cache
-    def _get_all_table_and_view_info(self, connection, **kw):
+    def _get_all_relation_info(self, connection, **kw):
         result = connection.execute("""
         SELECT
           c.relkind,
@@ -643,7 +623,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             AS "diststyle",
           c.relowner AS "owner_id",
           u.usename AS "owner_name",
-          pg_get_viewdef(c.oid) AS "view_definition",
+          TRIM(TRAILING ';' FROM pg_catalog.pg_get_viewdef(c.oid, true))
+            AS "view_definition",
           pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
         FROM pg_catalog.pg_class c
              LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -652,17 +633,14 @@ class RedshiftDialect(PGDialect_psycopg2):
           AND n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
         ORDER BY c.relkind, n.oid, n.nspname;
         """)
-        tables, views = {}, {}
+        relations = {}
         for rel in result:
             schema = rel.schema
             if schema == inspect(connection).default_schema_name:
                 schema = None
             key = _get_relation_key(rel.relname, schema)
-            if rel.relkind == 'r':
-                tables[key] = rel
-            if rel.relkind == 'v':
-                views[key] = rel
-        return tables, views
+            relations[key] = rel
+        return relations
 
     @reflection.cache
     def _get_all_column_info(self, connection, **kw):
