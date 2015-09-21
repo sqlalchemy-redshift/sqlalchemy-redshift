@@ -1,6 +1,10 @@
 redshift_sqlalchemy
 ===================
 
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+   :alt: Join the chat at https://gitter.im/graingert/redshift_sqlalchemy
+   :target: https://gitter.im/graingert/redshift_sqlalchemy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+
 Amazon Redshift dialect for SQLAlchemy.
 
 .. image:: https://travis-ci.org/graingert/redshift_sqlalchemy.png?branch=master
