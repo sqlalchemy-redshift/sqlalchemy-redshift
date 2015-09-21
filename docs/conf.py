@@ -2,6 +2,9 @@
 
 import sys
 import os
+from docutils import utils as docutils_utils
+
+import sphinx.environment
 
 import redshift_sqlalchemy
 
@@ -9,6 +12,15 @@ import redshift_sqlalchemy
 def _short_version(release):
     parts = release.split('.')
     return '.'.join(parts[:2])
+
+
+# Hide nonlocal image warnings.
+_old_warn_node = sphinx.environment.BuildEnvironment.warn_node
+def _warn_node(self, msg, node):
+    if not msg.startswith('nonlocal image URI found:'):
+        _old_warn_node(self, msg, node)
+
+sphinx.environment.BuildEnvironment.warn_node = _warn_node
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
