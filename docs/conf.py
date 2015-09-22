@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import sys
-import os
-from docutils import utils as docutils_utils
-
 import sphinx.environment
 
 import redshift_sqlalchemy
