@@ -11,9 +11,9 @@ from sqlalchemy.sql import expression as sa_expression
 # found. After looking at a few session tokens they appear to be the same as
 # the aws_secret_access_key pattern, but much longer. An example token can be
 # found here:
-#   http://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html
+#   https://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html
 # The regexs for access keys can be found here:
-#     http://blogs.aws.amazon.com/security/blog/tag/key+rotation
+#     https://blogs.aws.amazon.com/security/blog/tag/key+rotation
 
 ACCESS_KEY_ID_RE = re.compile('[A-Z0-9]{20}')
 SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')

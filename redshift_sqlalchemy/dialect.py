@@ -719,7 +719,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     delete statement.
 
     Redshift DELETE syntax can be found here:
-    http://docs.aws.amazon.com/redshift/latest/dg/r_DELETE.html
+    https://docs.aws.amazon.com/redshift/latest/dg/r_DELETE.html
 
     .. :code-block: sql
 
