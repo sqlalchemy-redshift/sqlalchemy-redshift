@@ -1,3 +1,4 @@
+import collections
 import numbers
 import re
 
@@ -213,8 +214,8 @@ class CopyCommand(_ExecutableClause):
 
     Parameters
     ----------
-    table : sqlalchemy.Table
-        The table to copy data into
+    to : sqlalchemy.Table or iterable of sqlalchemy.ColumnElement
+        The table or columns to copy data into
     data_location : str
         The Amazon S3 location from where to copy, or a manifest file if
         the `manifest` option is used
@@ -326,7 +327,7 @@ class CopyCommand(_ExecutableClause):
     formats = ['CSV', 'JSON', 'AVRO']
     compression_types = ['GZIP', 'LZOP']
 
-    def __init__(self, table, data_location, access_key_id, secret_access_key,
+    def __init__(self, to, data_location, access_key_id, secret_access_key,
                  session_token=None, format='CSV', quote=None,
                  path_file='auto', delimiter=None, fixed_width=None,
                  compression=None, accept_any_date=False,
@@ -367,7 +368,24 @@ class CopyCommand(_ExecutableClause):
                     self.compression_types
                 )
 
+        table = None
+        columns = []
+        if isinstance(to, collections.Iterable):
+            for column in to:
+                if table is not None and table != column.table:
+                    raise ValueError(
+                        'All columns must come from the same table: '
+                        '%s comes from %s not %s' % (
+                            column, column.table, table
+                        ),
+                    )
+                columns.append(column)
+                table = column.table
+        else:
+            table = to
+
         self.table = table
+        self.columns = columns
         self.data_location = data_location
         self.credentials = credentials
         self.format = format
@@ -406,7 +424,7 @@ def visit_copy_command(element, compiler, **kw):
     """
     Returns the actual sql query for the CopyCommand class.
     """
-    qs = """COPY {table} FROM :data_location
+    qs = """COPY {table}{columns} FROM :data_location
         WITH CREDENTIALS AS :credentials
         FORMAT AS {format}
         {parameters}"""
@@ -570,8 +588,13 @@ def visit_copy_command(element, compiler, **kw):
     elif element.stat_update is not None:
         element.append('STATUPDATE OFF')
 
+    columns = ' (%s)' % ', '.join(
+        compiler.preparer.format_column(column) for column in element.columns
+    ) if element.columns else ''
+
     qs = qs.format(
         table=compiler.preparer.format_table(element.table),
+        columns=columns,
         format=format_,
         parameters='\n'.join(parameters)
     )

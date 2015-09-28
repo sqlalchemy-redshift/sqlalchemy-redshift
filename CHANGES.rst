@@ -13,6 +13,7 @@
   - Expose optional TRUNCATECOLUMNS in CopyCommand.
   - Add all other COPY parameters to CopyCommand.
   - Move commands to their own module.
+  - Support inserts into ordered columns in CopyCommand.
 
 
 0.2.0 (2015-09-04)
