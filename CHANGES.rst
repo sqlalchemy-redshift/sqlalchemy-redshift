@@ -1,4 +1,4 @@
-0.2.1 (unreleased)
+0.3.0 (2015-09-29)
 ------------------
 
 - Fix view support to be more in line with SQLAlchemy standards.
