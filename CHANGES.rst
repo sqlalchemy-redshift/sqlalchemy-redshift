@@ -7,6 +7,13 @@
   (`Issue #46 <https://github.com/graingert/redshift_sqlalchemy/pull/46>`_)
 - Rename RedShiftDDLCompiler to RedshiftDDLCompiler.
   (`Issue #43 <https://github.com/graingert/redshift_sqlalchemy/pull/43>`_)
+- Update commands
+  (`Issue #52 <https://github.com/graingert/redshift_sqlalchemy/pull/52>`_)
+
+  - Expose optional TRUNCATECOLUMNS in CopyCommand.
+  - Add all other COPY parameters to CopyCommand.
+  - Move commands to their own module.
+  - Support inserts into ordered columns in CopyCommand.
 
 
 0.2.0 (2015-09-04)

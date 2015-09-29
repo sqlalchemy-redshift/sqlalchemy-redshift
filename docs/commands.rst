@@ -1,8 +1,5 @@
 Commands
 ========
 
-.. autoclass:: redshift_sqlalchemy.dialect.CopyCommand
-   :members:
-
-.. autoclass:: redshift_sqlalchemy.dialect.UnloadFromSelect
+.. automodule:: redshift_sqlalchemy.commands
    :members:

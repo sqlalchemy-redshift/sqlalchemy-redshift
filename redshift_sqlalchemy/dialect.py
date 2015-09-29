@@ -1,24 +1,20 @@
-from collections import defaultdict
-import numbers
-import pkg_resources
 import re
+from collections import defaultdict
 
+import pkg_resources
 import sqlalchemy as sa
-from sqlalchemy import schema, exc, inspect, Column
-from sqlalchemy.dialects.postgresql.base import PGDDLCompiler, PGCompiler
+from sqlalchemy import Column, exc, inspect, schema
+from sqlalchemy.dialects.postgresql.base import PGCompiler, PGDDLCompiler
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
-    Executable,
-    ClauseElement,
-    Delete,
-    BinaryExpression,
-    BooleanClauseList)
+    BinaryExpression, BooleanClauseList, Delete
+)
 from sqlalchemy.types import VARCHAR, NullType
 
+from .commands import CopyCommand, UnloadFromSelect
 from .compat import string_types
-
 
 try:
     from alembic.ddl import postgresql
@@ -30,6 +26,8 @@ else:
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
+
+__all__ = ['CopyCommand', 'UnloadFromSelect', 'RedshiftDialect']
 
 
 # Regex for parsing and identity constraint out of adsrc, e.g.:
@@ -93,18 +91,6 @@ PRIMARY_KEY_RE = re.compile(r"""
     )
   \s* \) \s*                # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
-
-# At the time of this implementation, no specification for a session token was
-# found. After looking at a few session tokens they appear to be the same as
-# the aws_secret_access_key pattern, but much longer. An example token can be
-# found here:
-#   http://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html
-# The regexs for access keys can be found here:
-#     http://blogs.aws.amazon.com/security/blog/tag/key+rotation
-
-ACCESS_KEY_ID_RE = re.compile('[A-Z0-9]{20}')
-SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
-TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
 
 
 def _get_relation_key(name, schema):
@@ -710,315 +696,6 @@ class RedshiftDialect(PGDialect_psycopg2):
         return all_constraints
 
 
-def process_aws_credentials(access_key_id, secret_access_key,
-                            session_token=None):
-
-    if not ACCESS_KEY_ID_RE.match(access_key_id):
-        raise ValueError(
-            'invalid access_key_id; does not match {pattern}'.format(
-                pattern=ACCESS_KEY_ID_RE.pattern,
-            )
-        )
-    if not SECRET_ACCESS_KEY_RE.match(secret_access_key):
-        raise ValueError(
-            'invalid secret_access_key_id; does not match {pattern}'.format(
-                pattern=SECRET_ACCESS_KEY_RE.pattern,
-            )
-        )
-
-    credentials = 'aws_access_key_id={0};aws_secret_access_key={1}'.format(
-        access_key_id,
-        secret_access_key,
-    )
-
-    if session_token is not None:
-        if not TOKEN_RE.match(session_token):
-            raise ValueError(
-                'invalid session_token; does not match {pattern}'.format(
-                    pattern=TOKEN_RE.pattern,
-                )
-            )
-        credentials += ';token={0}'.format(session_token)
-
-    return credentials
-
-
-class UnloadFromSelect(Executable, ClauseElement):
-    """
-    Prepares a Redshift unload statement to drop a query to Amazon S3
-    https://docs.aws.amazon.com/redshift/latest/dg/r_UNLOAD_command_examples.html
-
-    Parameters
-    ----------
-    select: sqlalchemy.sql.selectable.Selectable
-        The selectable Core Table Expression query to unload from.
-    data_location: str
-        The Amazon S3 location where the file will be created, or a manifest
-        file if the `manifest` option is used
-    access_key_id: str
-    secret_access_key: str
-    session_token: str, optional
-    manifest: bool, optional
-        Boolean value denoting whether data_location is a manifest file.
-    delimiter: File delimiter, optional
-        defaults to '|'
-    fixed_width: iterable of (str, int), optional
-        List of (column name, length) pairs to control fixed-width output.
-    encrypted: bool, optional
-        Write to encrypted S3 key.
-    gzip: bool, optional
-        Create file using GZIP compression.
-    add_quotes: bool, optional
-        Quote fields so that fields containing the delimeter can be
-        distinguished.
-    null: str, optional
-        Write null values as the given string. Defaults to ''.
-    escape: bool, optional
-        For CHAR and VARCHAR columns in delimited unload files, an escape
-        character (``\\``) is placed before every occurrence of the following
-        characters: ``\\r``, ``\\n``, ``\\``, the specified delimiter string.
-        If `add_quotes` is specified, ``"`` and ``'`` are also escaped.
-    allow_overwrite: bool, optional
-        Overwrite the key at unload_location in the S3 bucket.
-    parallel: bool, optional
-        If disabled unload sequentially as one file.
-    """
-
-    def __init__(self, select, unload_location, access_key_id,
-                 secret_access_key, session_token=None,
-                 manifest=False, delimiter=None, fixed_width=None,
-                 encrypted=False, gzip=False, add_quotes=False, null=None,
-                 escape=False, allow_overwrite=False, parallel=True):
-
-        if delimiter is not None and len(delimiter) != 1:
-            raise ValueError(
-                '"delimiter" parameter must be a single character'
-            )
-
-        credentials = process_aws_credentials(
-            access_key_id=access_key_id,
-            secret_access_key=secret_access_key,
-            session_token=session_token,
-        )
-
-        self.select = select
-        self.unload_location = unload_location
-        self.credentials = credentials
-        self.manifest = manifest
-        self.delimiter = delimiter
-        self.fixed_width = fixed_width
-        self.encrypted = encrypted
-        self.gzip = gzip
-        self.add_quotes = add_quotes
-        self.null = null
-        self.escape = escape
-        self.allow_overwrite = allow_overwrite
-        self.parallel = parallel
-
-
-@compiles(UnloadFromSelect)
-def visit_unload_from_select(element, compiler, **kw):
-    """Returns the actual sql query for the UnloadFromSelect class."""
-
-    template = """
-       UNLOAD (:select) TO :unload_location
-       CREDENTIALS :credentials
-       {manifest}
-       {delimiter}
-       {encrypted}
-       {fixed_width}
-       {gzip}
-       {add_quotes}
-       {null}
-       {escape}
-       {allow_overwrite}
-       {parallel}
-    """
-    el = element
-
-    qs = template.format(
-        manifest='MANIFEST' if el.manifest else '',
-        delimiter=(
-            'DELIMITER AS :delimiter' if el.delimiter is not None else ''
-        ),
-        encrypted='ENCRYPTED' if el.encrypted else '',
-        fixed_width='FIXEDWIDTH AS :fixed_width' if el.fixed_width else '',
-        gzip='GZIP' if el.gzip else '',
-        add_quotes='ADDQUOTES' if el.add_quotes else '',
-        escape='ESCAPE' if el.escape else '',
-        null='NULL AS :null_as' if el.null is not None else '',
-        allow_overwrite='ALLOWOVERWRITE' if el.allow_overwrite else '',
-        parallel='PARALLEL OFF' if not el.parallel else '',
-    )
-
-    query = sa.text(qs)
-
-    if el.delimiter is not None:
-        query = query.bindparams(sa.bindparam(
-            'delimiter', value=element.delimiter, type_=sa.String,
-        ))
-
-    if el.fixed_width:
-        fixed_cols = (
-            '{0}:{1:d}'.format(col, width) for col, width in el.fixed_width
-        )
-        query = query.bindparams(sa.bindparam(
-            'fixed_width',
-            value=','.join(fixed_cols),
-            type_=sa.String,
-        ))
-
-    if el.null is not None:
-        query = query.bindparams(sa.bindparam(
-            'null_as', value=el.null, type_=sa.String
-        ))
-
-    return compiler.process(
-        query.bindparams(
-            sa.bindparam('credentials', value=el.credentials, type_=sa.String),
-            sa.bindparam(
-                'unload_location', value=el.unload_location, type_=sa.String,
-            ),
-            sa.bindparam(
-                'select',
-                value=compiler.process(
-                    el.select,
-                    literal_binds=True,
-                ),
-                type_=sa.String,
-            ),
-        ),
-        **kw
-    )
-
-
-class CopyCommand(Executable, ClauseElement):
-    """
-    Prepares a Redshift COPY statement.
-
-    Parameters
-    ----------
-    table : sqlalchemy.Table
-        The table to copy data into
-    data_location : str
-        The Amazon S3 location from where to copy, or a manifest file if
-        the `manifest` option is used
-    access_key_id : str
-    secret_access_key : str
-    session_token : str, optional
-    delimiter : File delimiter, optional
-        defaults to ','
-    ignore_header : int, optional
-        Integer value of number of lines to skip at the start of each file
-    dangerous_null_delimiter : str, optional
-        Optional string value denoting what to interpret as a NULL value from
-        the file. Note that this parameter *is not properly quoted* due to a
-        difference between redshift's and postgres's COPY commands
-        interpretation of strings. For example, null bytes must be passed to
-        redshift's ``NULL`` verbatim as ``'\\0'`` whereas postgres's ``NULL``
-        accepts ``'\\x00'``.
-    manifest : bool, optional
-        Boolean value denoting whether data_location is a manifest file.
-    empty_as_null : bool, optional
-        Boolean value denoting whether to load VARCHAR fields with empty
-        values as NULL instead of empty string
-    blanks_as_null : bool, optional
-        Boolean value denoting whether to load VARCHAR fields with whitespace
-        only values as NULL instead of whitespace
-    format : str, optional
-        CSV, JSON, or AVRO. Indicates the type of file to copy from.
-    compression : str, optional
-        GZIP, LZOP, indicates the type of compression of the file to copy
-    """
-    formats = ['CSV', 'JSON', 'AVRO']
-    compression_types = ['GZIP', 'LZOP']
-
-    def __init__(self, table, data_location, access_key_id, secret_access_key,
-                 session_token=None, delimiter=',', ignore_header=0,
-                 dangerous_null_delimiter=None, manifest=False,
-                 empty_as_null=True,
-                 blanks_as_null=True, format='CSV', compression=None):
-
-        credentials = process_aws_credentials(
-            access_key_id=access_key_id,
-            secret_access_key=secret_access_key,
-            session_token=session_token,
-        )
-
-        if len(delimiter) != 1:
-            raise ValueError('"delimiter" parameter must be a single '
-                             'character')
-
-        if not isinstance(ignore_header, numbers.Integral):
-            raise TypeError('"ignore_header" parameter should be an integer')
-
-        if format not in self.formats:
-            raise ValueError('"format" parameter must be one of %s' %
-                             self.formats)
-
-        if compression is not None:
-            if compression not in self.compression_types:
-                raise ValueError(
-                    '"compression" parameter must be one of %s' %
-                    self.compression_types
-                )
-
-        self.table = table
-        self.data_location = data_location
-        self.credentials = credentials
-        self.delimiter = delimiter
-        self.ignore_header = ignore_header
-        self.dangerous_null_delimiter = dangerous_null_delimiter
-        self.manifest = manifest
-        self.empty_as_null = empty_as_null
-        self.blanks_as_null = blanks_as_null
-        self.format = format
-        self.compression = compression or ''
-
-
-@compiles(CopyCommand)
-def visit_copy_command(element, compiler, **kw):
-    ''' Returns the actual sql query for the CopyCommand class
-    '''
-    qs = """COPY {table} FROM :data_location
-    CREDENTIALS :credentials
-    {format}
-    TRUNCATECOLUMNS
-    DELIMITER :delimiter
-    IGNOREHEADER :ignore_header
-    {null}
-    {manifest}
-    {compression}
-    {empty_as_null}
-    {blanks_as_null}
-    """.format(table=compiler.preparer.format_table(element.table),
-               format=element.format,
-               manifest='MANIFEST' if element.manifest else '',
-               compression=element.compression,
-               empty_as_null='EMPTYASNULL' if element.empty_as_null else '',
-               blanks_as_null='BLANKSASNULL' if element.blanks_as_null else '',
-               ignore_header=element.ignore_header,
-               null=(("NULL '%s'" % element.dangerous_null_delimiter)
-                     if element.dangerous_null_delimiter is not None else ''))
-
-    return compiler.process(
-        sa.text(qs).bindparams(
-            sa.bindparam('data_location',
-                         value=element.data_location,
-                         type_=sa.String),
-            sa.bindparam('credentials', value=element.credentials,
-                         type_=sa.String),
-            sa.bindparam('delimiter',
-                         value=element.delimiter,
-                         type_=sa.String),
-            sa.bindparam('ignore_header',
-                         value=element.ignore_header,
-                         type_=sa.Integer)
-        ),
-        **kw
-    )
-
-
 def gen_columns_from_children(root):
     """
     Generates columns that are being used in child elements of the delete query
@@ -1042,7 +719,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     delete statement.
 
     Redshift DELETE syntax can be found here:
-    http://docs.aws.amazon.com/redshift/latest/dg/r_DELETE.html
+    https://docs.aws.amazon.com/redshift/latest/dg/r_DELETE.html
 
     .. :code-block: sql
 

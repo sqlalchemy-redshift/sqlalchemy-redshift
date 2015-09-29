@@ -1,10 +1,8 @@
 import pytest
-
 import sqlalchemy as sa
 
 from redshift_sqlalchemy import dialect
 from rs_sqla_test_utils.utils import clean, compile_query
-
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
 secret_access_key = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'
@@ -19,22 +17,37 @@ creds = (
 )
 
 
-tbl = sa.Table('t1', sa.MetaData(), schema='schema1')
+tbl = sa.Table(
+    't1', sa.MetaData(),
+    sa.Column('col1', sa.Unicode()),
+    sa.Column('col2', sa.Unicode()),
+    schema='schema1'
+)
 tbl2 = sa.Table('t1', sa.MetaData())
 
 
 def test_basic_copy_case():
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
-    CREDENTIALS '%s'
-    CSV TRUNCATECOLUMNS DELIMITER ',' IGNOREHEADER 0 EMPTYASNULL BLANKSASNULL
+    WITH CREDENTIALS AS '%s'
+    FORMAT AS CSV
+    DELIMITER AS ','
+    BLANKSASNULL
+    EMPTYASNULL
+    IGNOREHEADER AS 0
+    TRUNCATECOLUMNS
     """ % creds
 
     copy = dialect.CopyCommand(
-        table=tbl,
+        tbl,
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
+        truncate_columns=True,
+        delimiter=',',
+        ignore_header=0,
+        empty_as_null=True,
+        blanks_as_null=True,
     )
     assert clean(expected_result) == clean(compile_query(copy))
 
@@ -42,15 +55,25 @@ def test_basic_copy_case():
 def test_format():
     expected_result = """
     COPY t1 FROM 's3://mybucket/data/listing/'
-    CREDENTIALS '%s'
-    JSON TRUNCATECOLUMNS DELIMITER ',' IGNOREHEADER 0 EMPTYASNULL BLANKSASNULL
+    WITH CREDENTIALS AS '%s'
+    FORMAT AS JSON AS 'auto'
+    DELIMITER AS ','
+    BLANKSASNULL
+    EMPTYASNULL
+    IGNOREHEADER AS 0
+    TRUNCATECOLUMNS
     """ % creds
     copy = dialect.CopyCommand(
-        table=tbl2,
+        tbl2,
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         format='JSON',
+        truncate_columns=True,
+        delimiter=',',
+        ignore_header=0,
+        empty_as_null=True,
+        blanks_as_null=True,
     )
     assert clean(expected_result) == clean(compile_query(copy))
 
@@ -59,7 +82,7 @@ def test_invalid_format():
     t = sa.Table('t1', sa.MetaData(), schema='schema1')
     with pytest.raises(ValueError):
         dialect.CopyCommand(
-            table=t,
+            t,
             data_location='s3://bucket',
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
@@ -70,16 +93,24 @@ def test_invalid_format():
 def test_compression():
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
-    CREDENTIALS '%s'
-    CSV TRUNCATECOLUMNS DELIMITER ',' IGNOREHEADER 0 LZOP
-    EMPTYASNULL BLANKSASNULL
+    WITH CREDENTIALS AS '%s'
+    FORMAT AS CSV DELIMITER AS ',' LZOP
+    BLANKSASNULL
+    EMPTYASNULL
+    IGNOREHEADER AS 0
+    TRUNCATECOLUMNS
     """ % creds
     copy = dialect.CopyCommand(
-        table=tbl,
+        tbl,
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         compression='LZOP',
+        truncate_columns=True,
+        delimiter=',',
+        ignore_header=0,
+        empty_as_null=True,
+        blanks_as_null=True,
     )
     assert clean(expected_result) == clean(compile_query(copy))
 
@@ -87,7 +118,7 @@ def test_compression():
 def test_invalid_compression():
     with pytest.raises(ValueError):
         dialect.CopyCommand(
-            table=tbl,
+            tbl,
             data_location='s3://bucket/of/joy',
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
@@ -98,16 +129,66 @@ def test_invalid_compression():
 def test_ascii_nul_as_redshift_null():
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
-    CREDENTIALS '%s'
-    CSV TRUNCATECOLUMNS DELIMITER ',' IGNOREHEADER 0 NULL '\0' LZOP
-    EMPTYASNULL BLANKSASNULL
+    WITH CREDENTIALS AS '%s'
+    FORMAT AS CSV
+    DELIMITER AS ','
+    LZOP
+    BLANKSASNULL
+    EMPTYASNULL
+    IGNOREHEADER AS 0
+    NULL AS'\0'
+    TRUNCATECOLUMNS
     """ % creds
     copy = dialect.CopyCommand(
-        table=tbl,
+        tbl,
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         compression='LZOP',
         dangerous_null_delimiter=u'\000',
+        truncate_columns=True,
+        delimiter=',',
+        ignore_header=0,
+        empty_as_null=True,
+        blanks_as_null=True,
     )
     assert clean(expected_result) == clean(compile_query(copy))
+
+
+def test_json_upload_with_manifest_ordered_columns():
+    expected_result = """
+    COPY schema1.t1 (col1, col2) FROM 's3://mybucket/data/listing.manifest'
+    WITH CREDENTIALS AS '%s'
+    FORMAT AS JSON AS 's3://mybucket/data/jsonpath.json'
+    GZIP
+    MANIFEST
+    ACCEPTANYDATE
+    TIMEFORMAT AS 'auto'
+    """ % creds
+    copy = dialect.CopyCommand(
+        [tbl.c.col1, tbl.c.col2],
+        data_location='s3://mybucket/data/listing.manifest',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        manifest=True,
+        format='JSON',
+        path_file='s3://mybucket/data/jsonpath.json',
+        compression='GZIP',
+        time_format='auto',
+        accept_any_date=True,
+    )
+    assert clean(expected_result) == clean(compile_query(copy))
+
+
+def test_different_tables():
+    metdata = sa.MetaData()
+    t1 = sa.Table('t1', metdata, sa.Column('col1', sa.Unicode()))
+    t2 = sa.Table('t2', metdata, sa.Column('col1', sa.Unicode()))
+    with pytest.raises(ValueError):
+        dialect.CopyCommand(
+            [t1.c.col1, t2.c.col1],
+            data_location='s3://bucket',
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            format='CSV'
+        )
