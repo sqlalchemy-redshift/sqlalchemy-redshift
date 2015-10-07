@@ -324,11 +324,11 @@ class CopyCommand(_ExecutableClause):
     manifest : bool, optional
         Boolean value denoting whether data_location is a manifest file.
     """
-    formats = ['CSV', 'JSON', 'AVRO']
+    formats = ['CSV', 'JSON', 'AVRO', None]
     compression_types = ['GZIP', 'LZOP']
 
     def __init__(self, to, data_location, access_key_id, secret_access_key,
-                 session_token=None, format='CSV', quote=None,
+                 session_token=None, format=None, quote=None,
                  path_file='auto', delimiter=None, fixed_width=None,
                  compression=None, accept_any_date=False,
                  accept_inv_chars=None, blanks_as_null=False, date_format=None,
@@ -426,7 +426,7 @@ def visit_copy_command(element, compiler, **kw):
     """
     qs = """COPY {table}{columns} FROM :data_location
         WITH CREDENTIALS AS :credentials
-        FORMAT AS {format}
+        {format}
         {parameters}"""
     parameters = []
     bindparams = [
@@ -443,7 +443,7 @@ def visit_copy_command(element, compiler, **kw):
     ]
 
     if element.format == 'CSV':
-        format_ = 'CSV'
+        format_ = 'FORMAT AS CSV'
         if element.quote is not None:
             format_ += ' QUOTE AS :quote_character'
             bindparams.append(sa.bindparam(
@@ -452,19 +452,21 @@ def visit_copy_command(element, compiler, **kw):
                 type_=sa.String,
             ))
     elif element.format == 'JSON':
-        format_ = 'JSON AS :json_option'
+        format_ = 'FORMAT AS JSON AS :json_option'
         bindparams.append(sa.bindparam(
             'json_option',
             value=element.path_file,
             type_=sa.String,
         ))
     elif element.format == 'AVRO':
-        format_ = 'AVRO AS :avro_option'
+        format_ = 'FORMAT AS AVRO AS :avro_option'
         bindparams.append(sa.bindparam(
             'avro_option',
             value=element.path_file,
             type_=sa.String,
         ))
+    else:
+        format_ = ''
 
     if element.delimiter is not None:
         parameters.append('DELIMITER AS :delimiter_char')
@@ -537,7 +539,7 @@ def visit_copy_command(element, compiler, **kw):
         ))
 
     if element.dangerous_null_delimiter is not None:
-        parameters.append("NULL AS'%s'" % element.dangerous_null_delimiter)
+        parameters.append("NULL AS '%s'" % element.dangerous_null_delimiter)
 
     if element.remove_quotes:
         parameters.append('REMOVEQUOTES')
@@ -584,9 +586,9 @@ def visit_copy_command(element, compiler, **kw):
         parameters.append('NOLOAD')
 
     if element.stat_update:
-        element.append('STATUPDATE ON')
+        parameters.append('STATUPDATE ON')
     elif element.stat_update is not None:
-        element.append('STATUPDATE OFF')
+        parameters.append('STATUPDATE OFF')
 
     columns = ' (%s)' % ', '.join(
         compiler.preparer.format_column(column) for column in element.columns

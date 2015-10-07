@@ -1,7 +1,13 @@
 0.3.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Fix breakages to CopyCommand introduced in 0.3.0:
+  Thanks `solackerman <https://github.com/solackerman>`_.
+  (`Issue #53 <https://github.com/graingert/redshift_sqlalchemy/pull/53>`_)
+
+  - When `format` is omitted, no `FORMAT AS ...` is appended to the query. This
+    makes the default the same as a normal redshift query.
+  - fix STATUPDATE as a COPY parameter
 
 
 0.3.0 (2015-09-29)
