@@ -30,7 +30,6 @@ def test_basic_copy_case():
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
-    FORMAT AS CSV
     DELIMITER AS ','
     BLANKSASNULL
     EMPTYASNULL
@@ -94,7 +93,7 @@ def test_compression():
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
-    FORMAT AS CSV DELIMITER AS ',' LZOP
+    DELIMITER AS ',' LZOP
     BLANKSASNULL
     EMPTYASNULL
     IGNOREHEADER AS 0
@@ -130,13 +129,12 @@ def test_ascii_nul_as_redshift_null():
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
-    FORMAT AS CSV
     DELIMITER AS ','
     LZOP
     BLANKSASNULL
     EMPTYASNULL
     IGNOREHEADER AS 0
-    NULL AS'\0'
+    NULL AS '\0'
     TRUNCATECOLUMNS
     """ % creds
     copy = dialect.CopyCommand(
@@ -176,6 +174,28 @@ def test_json_upload_with_manifest_ordered_columns():
         compression='GZIP',
         time_format='auto',
         accept_any_date=True,
+    )
+    assert clean(expected_result) == clean(compile_query(copy))
+
+
+def test_stat_update_maxerror_and_escape():
+    expected_result = """
+    COPY schema1.t1 FROM 's3://mybucket/data/listing/'
+    WITH CREDENTIALS AS '%s'
+    ESCAPE
+    NULL AS '\x00'
+    MAXERROR AS 0
+    STATUPDATE ON
+    """ % creds
+    copy = dialect.CopyCommand(
+        tbl,
+        data_location='s3://mybucket/data/listing/',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        max_error=0,
+        dangerous_null_delimiter=u'\000',
+        stat_update=True,
+        escape=True,
     )
     assert clean(expected_result) == clean(compile_query(copy))
 
