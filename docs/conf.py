@@ -303,7 +303,7 @@ intersphinx_mapping = {
 
 # External links
 extlinks = {
-    'issue': ('https://github.com/graingert/redshift_sqlalchemy/issues/%s',
+    'issue': ('https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/%s',
               'Issue #')
 }
 
