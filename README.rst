@@ -3,7 +3,7 @@ redshift_sqlalchemy
 
 Amazon Redshift dialect for SQLAlchemy.
 
-.. image:: https://travis-ci.org/graingert/redshift_sqlalchemy.png?branch=master
+.. image:: https://travis-ci.org/sqlalchemy-redshift/sqlalchemy-redshift.png?branch=master
 
 Installation
 ------------
