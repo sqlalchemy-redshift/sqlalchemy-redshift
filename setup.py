@@ -13,7 +13,7 @@ setup(
     maintainer='Thomas Grainger',
     maintainer_email='sqlalchemy-redshift@graingert.co.uk',
     license="MIT",
-    url='https://github.com/graingert/redshift_sqlalchemy',
+    url='https://github.com/sqlalchemy-redshift/sqlalchemy-redshift',
     packages=['redshift_sqlalchemy'],
     package_data={'redshift_sqlalchemy': ['redshift-ssl-ca-cert.pem']},
     install_requires=[
