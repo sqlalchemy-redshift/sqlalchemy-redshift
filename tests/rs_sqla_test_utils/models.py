@@ -102,6 +102,7 @@ class ReflectionIdentity(Base):
     __tablename__ = 'reflection_identity'
     col1 = sa.Column(sa.Integer(), primary_key=True)
     col2 = sa.Column(sa.Integer(), info={'identity': (1, 3)})
+    col3 = sa.Column(sa.Integer())
     __table_args__ = (
         {'redshift_diststyle': 'EVEN'}
     )

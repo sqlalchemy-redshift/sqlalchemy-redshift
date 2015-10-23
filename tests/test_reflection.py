@@ -73,6 +73,7 @@ models_and_ddls = [
     CREATE TABLE reflection_identity (
         col1 INTEGER NOT NULL,
         col2 INTEGER IDENTITY(1,3),
+        col3 INTEGER,
         PRIMARY KEY (col1)
     ) DISTSTYLE EVEN
     """),

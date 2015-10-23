@@ -7,6 +7,10 @@
   The `redshift_sqlalchemy` compatibility package will be removed
   in a future release.
   (`Issue #58 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/58>`_)
+- Fix a bug where reflected tables could have incorrect column order for some
+  `CREATE TABLE` statements, particularly for columns with an `IDENTITY`
+  constraint.
+  (`Issue #60 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/60>`_)
 - Fix a bug where reflecting a table could raise a ``NoSuchTableError``
   in cases where its schema is not on the current ``search_path``
   (`Issue #64 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/64>`_)
