@@ -4,7 +4,7 @@ __version__ = get_distribution('sqlalchemy-redshift').version
 
 from sqlalchemy.dialects import registry
 
-registry.register("redshift", "redshift_sqlalchemy.dialect", "RedshiftDialect")
+registry.register("redshift", "sqlalchemy_redshift.dialect", "RedshiftDialect")
 registry.register(
-    "redshift+psycopg2", "redshift_sqlalchemy.dialect", "RedshiftDialect"
+    "redshift+psycopg2", "sqlalchemy_redshift.dialect", "RedshiftDialect"
 )

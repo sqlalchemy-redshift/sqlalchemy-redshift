@@ -1,5 +1,5 @@
 Dialect
 =======
 
-.. autoclass:: redshift_sqlalchemy.dialect.RedshiftDialect
+.. autoclass:: sqlalchemy_redshift.dialect.RedshiftDialect
    :members:

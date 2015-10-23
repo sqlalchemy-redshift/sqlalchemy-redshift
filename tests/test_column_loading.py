@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from sqlalchemy.types import NullType, VARCHAR
 
-from redshift_sqlalchemy.dialect import RedshiftDialect
+from sqlalchemy_redshift.dialect import RedshiftDialect
 
 
 class TestColumnReflection(TestCase):

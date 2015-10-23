@@ -1,7 +1,7 @@
 __author__ = 'haleemur'
 
 import re
-from redshift_sqlalchemy import dialect
+from sqlalchemy_redshift import dialect
 
 
 def clean(query):

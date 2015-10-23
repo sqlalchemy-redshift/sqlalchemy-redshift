@@ -1,5 +1,5 @@
 from sqlalchemy import func, select
-from redshift_sqlalchemy.dialect import RedshiftDialect
+from sqlalchemy_redshift.dialect import RedshiftDialect
 
 
 def test_func_now():
