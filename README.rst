@@ -1,9 +1,11 @@
-redshift_sqlalchemy
+sqlalchemy-redshift
 ===================
 
 Amazon Redshift dialect for SQLAlchemy.
 
 .. image:: https://travis-ci.org/sqlalchemy-redshift/sqlalchemy-redshift.png?branch=master
+   :target: https://travis-ci.org/sqlalchemy-redshift/sqlalchemy-redshift
+   :alt: Travis CI build status
 
 Installation
 ------------
@@ -20,5 +22,6 @@ The DSN format is similar to that of regular Postgres::
     >>> sa.create_engine('redshift+psycopg2://username@host.amazonaws.com:5439/database')
     Engine(redshift+psycopg2://username@host.amazonaws.com:5439/database)
 
-See the docstring for `RedshiftDDLCompiler` in
-`dialect.py <redshift_sqlalchemy/dialect.py>`_ for more detail.
+See the `RedshiftDDLCompiler documentation
+<https://sqlalchemy-redshift.readthedocs.org/en/latest/ddl-compiler.html>`_
+for details on Redshift-specific features the dialect supports.
