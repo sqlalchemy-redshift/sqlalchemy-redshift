@@ -14,7 +14,7 @@ setup(
     maintainer_email='sqlalchemy-redshift@graingert.co.uk',
     license="MIT",
     url='https://github.com/sqlalchemy-redshift/sqlalchemy-redshift',
-    packages=['sqlalchemy_redshift'],
+    packages=['sqlalchemy_redshift', 'redshift_sqlalchemy'],
     package_data={'sqlalchemy_redshift': ['redshift-ssl-ca-cert.pem']},
     install_requires=[
         'psycopg2>=2.5',
