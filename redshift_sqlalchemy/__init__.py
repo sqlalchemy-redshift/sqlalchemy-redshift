@@ -1,10 +1,22 @@
-from pkg_resources import get_distribution
+"""
+Compatibility module for projects referencing sqlalchemy_redshift
+by its old name "redshift_sqlalchemy".
+"""
 
-__version__ = get_distribution('sqlalchemy-redshift').version
+import sys
+import warnings
 
-from sqlalchemy.dialects import registry
+import sqlalchemy_redshift
 
-registry.register("redshift", "redshift_sqlalchemy.dialect", "RedshiftDialect")
-registry.register(
-    "redshift+psycopg2", "redshift_sqlalchemy.dialect", "RedshiftDialect"
-)
+
+DEPRECATION_MESSAGE = """\
+redshift_sqlalchemy has been renamed to sqlalchemy_redshift.
+
+The redshift_sqlalchemy compatibility package will be removed in
+a future release, so it is recommended to update all package references.
+"""
+
+warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+# All references to module redshift_sqlalchemy will map to sqlalchemy_redshift
+sys.modules['redshift_sqlalchemy'] = sqlalchemy_redshift

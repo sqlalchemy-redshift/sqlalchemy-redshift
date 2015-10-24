@@ -738,7 +738,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     problem illustration:
 
     >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
-    >>> from redshift_sqlalchemy.dialect import RedshiftDialect
+    >>> from sqlalchemy_redshift.dialect import RedshiftDialect
     >>> meta = MetaData()
     >>> table1 = Table(
     ... 'table_1',

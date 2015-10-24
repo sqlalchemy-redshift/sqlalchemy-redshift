@@ -1,5 +1,5 @@
 Commands
 ========
 
-.. automodule:: redshift_sqlalchemy.commands
+.. automodule:: sqlalchemy_redshift.commands
    :members:

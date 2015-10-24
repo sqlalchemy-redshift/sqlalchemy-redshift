@@ -5,7 +5,7 @@ from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy.exc import CompileError
 from sqlalchemy.schema import CreateTable
 
-from redshift_sqlalchemy.dialect import RedshiftDDLCompiler, RedshiftDialect
+from sqlalchemy_redshift.dialect import RedshiftDDLCompiler, RedshiftDialect
 
 
 class TestDDLCompiler(object):

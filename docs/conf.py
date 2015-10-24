@@ -2,7 +2,7 @@
 
 import sphinx.environment
 
-import redshift_sqlalchemy
+import sqlalchemy_redshift
 
 
 def _short_version(release):
@@ -55,7 +55,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'redshift_sqlalchemy'
+project = u'sqlalchemy-redshift'
 copyright = u'2015, Matt George'
 author = u'Matt George'
 
@@ -64,7 +64,7 @@ author = u'Matt George'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = redshift_sqlalchemy.__version__
+release = sqlalchemy_redshift.__version__
 # The short X.Y version.
 version = _short_version(release)
 
@@ -209,7 +209,7 @@ html_static_path = []
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'redshift_sqlalchemydoc'
+htmlhelp_basename = 'sqlalchemy_redshiftdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -231,8 +231,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'redshift_sqlalchemy.tex',
-     u'redshift\\_sqlalchemy Documentation',
+    (master_doc, 'sqlalchemy-redshift.tex',
+     u'sqlalchemy-redshift Documentation',
      u'Matt George', 'manual'),
 ]
 
@@ -262,7 +262,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'redshift_sqlalchemy', u'redshift_sqlalchemy Documentation',
+    (master_doc, 'sqlalchemy-redshift', u'sqlalchemy-redshift Documentation',
      [author], 1)
 ]
 
@@ -276,9 +276,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'redshift_sqlalchemy',
-   u'redshift_sqlalchemy Documentation',
-   author, 'redshift_sqlalchemy', 'One line description of project.',
+  (master_doc, 'sqlalchemy-redshift',
+   u'sqlalchemy-redshift Documentation',
+   author, 'sqlalchemy-redshift', 'Amazon Redshift Dialect for SQLAlchemy',
    'Miscellaneous'),
 ]
 
@@ -303,8 +303,9 @@ intersphinx_mapping = {
 
 # External links
 extlinks = {
-    'issue': ('https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/%s',
-              'Issue #')
+    'issue': (
+        'https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/%s',
+        'Issue #')
 }
 
 # Numpydoc configuration

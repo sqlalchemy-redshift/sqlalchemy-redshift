@@ -1,7 +1,12 @@
 0.3.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Change the name of the package to `sqlalchemy_redshift` to match the naming
+  convention for other dialects; the `redshift_sqlalchemy` package now emits
+  a `DeprecationWarning` and references `sqlalchemy_redshift`.
+  The `redshift_sqlalchemy` compatibility package will be removed
+  in a future release.
+  (`Issue #58 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/58>`_)
 
 
 0.3.1 (2015-10-08)

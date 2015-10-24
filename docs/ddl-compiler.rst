@@ -1,5 +1,5 @@
 DDL Compiler
 ============
 
-.. autoclass:: redshift_sqlalchemy.dialect.RedshiftDDLCompiler
+.. autoclass:: sqlalchemy_redshift.dialect.RedshiftDDLCompiler
    :members:

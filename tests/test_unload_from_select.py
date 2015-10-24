@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 
-from redshift_sqlalchemy import dialect
+from sqlalchemy_redshift import dialect
 
 from rs_sqla_test_utils.utils import clean, compile_query
 

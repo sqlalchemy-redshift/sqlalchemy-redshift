@@ -14,8 +14,8 @@ setup(
     maintainer_email='sqlalchemy-redshift@graingert.co.uk',
     license="MIT",
     url='https://github.com/sqlalchemy-redshift/sqlalchemy-redshift',
-    packages=['redshift_sqlalchemy'],
-    package_data={'redshift_sqlalchemy': ['redshift-ssl-ca-cert.pem']},
+    packages=['sqlalchemy_redshift', 'redshift_sqlalchemy'],
+    package_data={'sqlalchemy_redshift': ['redshift-ssl-ca-cert.pem']},
     install_requires=[
         'psycopg2>=2.5',
          # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in
@@ -32,8 +32,8 @@ setup(
     ],
     entry_points={
         'sqlalchemy.dialects': [
-            'redshift = redshift_sqlalchemy.dialect:RedshiftDialect',
-            'redshift.psycopg2 = redshift_sqlalchemy.dialect:RedshiftDialect',
+            'redshift = sqlalchemy_redshift.dialect:RedshiftDialect',
+            'redshift.psycopg2 = sqlalchemy_redshift.dialect:RedshiftDialect',
         ]
     },
 )

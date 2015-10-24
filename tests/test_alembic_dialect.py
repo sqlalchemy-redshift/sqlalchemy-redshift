@@ -1,7 +1,7 @@
 from alembic.ddl.base import RenameTable
 from alembic import migration
 
-from redshift_sqlalchemy import dialect
+from sqlalchemy_redshift import dialect
 
 
 def test_configure_migration_context():
