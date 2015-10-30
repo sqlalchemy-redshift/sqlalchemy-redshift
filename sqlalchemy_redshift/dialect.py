@@ -5,7 +5,8 @@ import pkg_resources
 import sqlalchemy as sa
 from sqlalchemy import Column, exc, inspect, schema
 from sqlalchemy.dialects.postgresql.base import PGCompiler, PGDDLCompiler
-from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql.psycopg2 import (PGDialect_psycopg2,
+                                                     PGExecutionContext_psycopg2)
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -91,6 +92,11 @@ PRIMARY_KEY_RE = re.compile(r"""
     )
   \s* \) \s*                # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
+
+
+AUTOCOMMIT_REGEXP = re.compile(
+    r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|COPY)',
+    re.I | re.UNICODE)
 
 
 def _get_relation_key(name, schema):
@@ -301,6 +307,11 @@ class RedshiftDDLCompiler(PGDDLCompiler):
         return text
 
 
+class RedshiftExecutionCntext(PGExecutionContext_psycopg2):
+    def should_autocommit_text(self, statement):
+        return AUTOCOMMIT_REGEXP.match(statement)
+
+
 class RedshiftDialect(PGDialect_psycopg2):
     """
     Define Redshift-specific behavior.
@@ -312,6 +323,7 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     name = 'redshift'
 
+    execution_ctx_cls = RedshiftExecutionCntext
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
 
