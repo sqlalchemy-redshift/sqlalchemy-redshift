@@ -7,6 +7,9 @@
   The `redshift_sqlalchemy` compatibility package will be removed
   in a future release.
   (`Issue #58 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/58>`_)
+- Fix a bug where reflecting a table could raise a ``NoSuchTableError``
+  in cases where its schema is not on the current ``search_path``
+  (`Issue #64 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/64>`_)
 
 
 0.3.1 (2015-10-08)

@@ -616,7 +616,7 @@ class RedshiftDialect(PGDialect_psycopg2):
              LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
              JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
         WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
-          AND n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+          AND n.nspname !~ '^pg_'
         ORDER BY c.relkind, n.oid, n.nspname;
         """)
         relations = {}
@@ -630,37 +630,59 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     @reflection.cache
     def _get_all_column_info(self, connection, **kw):
-        result = connection.execute("""
-        SELECT
-          n.nspname as "schema",
-          c.relname as "table_name",
-          d.column as "name",
-          encoding as "encode",
-          type, distkey, sortkey, "notnull", adsrc, attnum,
-          pg_catalog.format_type(att.atttypid, att.atttypmod),
-          pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
-          n.oid as "schema_oid",
-          c.oid as "table_oid"
-        FROM pg_catalog.pg_class c
-        LEFT JOIN pg_catalog.pg_namespace n
-          ON n.oid = c.relnamespace
-        JOIN pg_catalog.pg_table_def d
-          ON (d.schemaname, d.tablename) = (n.nspname, c.relname)
-        JOIN pg_catalog.pg_attribute att
-          ON (att.attrelid, att.attname) = (c.oid, d.column)
-        LEFT JOIN pg_catalog.pg_attrdef ad
-          ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
-        WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
-        ORDER BY n.nspname, c.relname
-        """)
         all_columns = defaultdict(list)
-        for col in result:
-            schema = col.schema
-            if schema == inspect(connection).default_schema_name:
-                schema = None
-            key = _get_relation_key(col.table_name, schema)
-            all_columns[key].append(col)
-        return all_columns
+        with connection.contextual_connect() as cc:
+            # We fetch the current search_path, which may or may not quote
+            # '$user' depending on whether other schemas need quoting.
+            search_path = cc.execute("SHOW search_path").scalar()
+            if '$user' in search_path and '"$user"' not in search_path:
+                search_path = search_path.replace('$user', '"$user"')
+
+            # Because pg_table_def only shows results for schemas on the
+            # search_path, we explicitly include all non-system schemas, then
+            # replace the original value for search_path.
+            schema_names = ['"%s"' % r.name for r in cc.execute("""
+            SELECT nspname AS "name"
+            FROM pg_catalog.pg_namespace
+            WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
+            ORDER BY 1
+            """)]
+            modified_search_path = ','.join(schema_names)
+            cc.execute("SET LOCAL search_path TO %s" % modified_search_path)
+
+            result = cc.execute("""
+            SELECT
+              n.nspname as "schema",
+              c.relname as "table_name",
+              d.column as "name",
+              encoding as "encode",
+              type, distkey, sortkey, "notnull", adsrc, attnum,
+              pg_catalog.format_type(att.atttypid, att.atttypmod),
+              pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
+              n.oid as "schema_oid",
+              c.oid as "table_oid"
+            FROM pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n
+              ON n.oid = c.relnamespace
+            JOIN pg_catalog.pg_table_def d
+              ON (d.schemaname, d.tablename) = (n.nspname, c.relname)
+            JOIN pg_catalog.pg_attribute att
+              ON (att.attrelid, att.attname) = (c.oid, d.column)
+            LEFT JOIN pg_catalog.pg_attrdef ad
+              ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
+            WHERE n.nspname !~ '^pg_'
+            ORDER BY n.nspname, c.relname;
+            """)
+            for col in result:
+                schema = col.schema
+                if schema == inspect(connection).default_schema_name:
+                    schema = None
+                key = _get_relation_key(col.table_name, schema)
+                all_columns[key].append(col)
+
+            cc.execute("SET LOCAL search_path TO %s" % search_path)
+
+        return dict(all_columns)
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
@@ -683,7 +705,7 @@ class RedshiftDialect(PGDialect_psycopg2):
           ON t.conrelid = c.oid
         JOIN pg_catalog.pg_attribute a
           ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
-        WHERE n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)
+        WHERE n.nspname !~ '^pg_'
         ORDER BY n.nspname, c.relname
         """)
         all_constraints = defaultdict(list)
