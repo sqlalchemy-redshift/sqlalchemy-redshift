@@ -14,6 +14,14 @@ class Basic(Base):
     )
 
 
+class BasicInSchema(Base):
+    __tablename__ = 'schema.basic'
+    col1 = sa.Column(
+        sa.Integer(), primary_key=True,
+        info={'distkey': True, 'sortkey': True}
+    )
+
+
 class ReflectionDistKey(Base):
     __tablename__ = 'reflection_distkey'
     col1 = sa.Column(sa.Integer(), primary_key=True)

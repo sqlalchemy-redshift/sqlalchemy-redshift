@@ -76,6 +76,12 @@ models_and_ddls = [
         PRIMARY KEY (col1)
     ) DISTSTYLE EVEN
     """),
+    (models.BasicInSchema, """
+    CREATE TABLE schema.basic (
+        col INTEGER NOT NULL,
+        PRIMARY KEY (col1)
+    ) DISTSTYLE KEY DISTKEY (col1)
+    """),
     pytest.mark.xfail((models.ReflectionDelimitedIdentifiers1, '''
     CREATE TABLE "group" (
         "this ""is it""" INTEGER NOT NULL,
