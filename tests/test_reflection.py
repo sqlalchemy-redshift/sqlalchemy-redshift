@@ -76,6 +76,12 @@ models_and_ddls = [
         PRIMARY KEY (col1)
     ) DISTSTYLE EVEN
     """),
+    (models.BasicInOtherSchema, """
+    CREATE TABLE other_schema.basic (
+        col1 INTEGER NOT NULL,
+        PRIMARY KEY (col1)
+    ) DISTSTYLE KEY DISTKEY (col1) SORTKEY (col1)
+    """),
     pytest.mark.xfail((models.ReflectionDelimitedIdentifiers1, '''
     CREATE TABLE "group" (
         "this ""is it""" INTEGER NOT NULL,
@@ -102,7 +108,9 @@ def test_definition(redshift_session, model, ddl):
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
 def test_reflection(redshift_session, model, ddl):
     metadata = MetaData(bind=redshift_session.bind)
-    table = Table(model.__tablename__, metadata, autoload=True)
+    schema = model.__table__.schema
+    table = Table(model.__tablename__, metadata,
+                  schema=schema, autoload=True)
     introspected_ddl = table_to_ddl(redshift_session, table)
     assert cleaned(introspected_ddl) == cleaned(ddl)
 
@@ -111,3 +119,11 @@ def test_no_table_reflection(redshift_session):
     metadata = MetaData(bind=redshift_session.bind)
     with pytest.raises(NoSuchTableError):
         Table('foobar', metadata, autoload=True)
+
+
+def test_no_search_path_leak(redshift_session):
+    metadata = MetaData(bind=redshift_session.bind)
+    Table('basic', metadata, autoload=True)
+    result = redshift_session.execute("SHOW search_path")
+    search_path = result.scalar()
+    assert 'other_schema' not in search_path

@@ -1,9 +1,12 @@
 import sqlalchemy as sa
 
+from sqlalchemy import event
 from sqlalchemy.ext import declarative
+from sqlalchemy.schema import CreateSchema
 
 
 Base = declarative.declarative_base()
+event.listen(Base.metadata, 'before_create', CreateSchema('other_schema'))
 
 
 class Basic(Base):
@@ -12,6 +15,17 @@ class Basic(Base):
         sa.Unicode(64), primary_key=True,
         info={'distkey': True, 'sortkey': True, 'encode': 'lzo'}
     )
+
+
+class BasicInOtherSchema(Base):
+    __tablename__ = 'basic'
+    __table_args__ = (
+        {'schema': 'other_schema',
+         'redshift_diststyle': 'KEY',
+         'redshift_distkey': 'col1',
+         'redshift_sortkey': 'col1'}
+    )
+    col1 = sa.Column(sa.Integer(), primary_key=True)
 
 
 class ReflectionDistKey(Base):
