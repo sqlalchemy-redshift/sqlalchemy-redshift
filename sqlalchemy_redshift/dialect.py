@@ -671,7 +671,7 @@ class RedshiftDialect(PGDialect_psycopg2):
             LEFT JOIN pg_catalog.pg_attrdef ad
               ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
             WHERE n.nspname !~ '^pg_'
-            ORDER BY n.nspname, c.relname;
+            ORDER BY n.nspname, c.relname, att.attnum
             """)
             for col in result:
                 schema = col.schema
