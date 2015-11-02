@@ -14,6 +14,8 @@
 - Fix a bug where reflecting a table could raise a ``NoSuchTableError``
   in cases where its schema is not on the current ``search_path``
   (`Issue #64 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/64>`_)
+- Add python 3.5 to the list of versions for integration tests.
+  (`Issue #61 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/61>`_)
 
 
 0.3.1 (2015-10-08)
