@@ -1,4 +1,4 @@
-0.3.2 (unreleased)
+0.4.0 (2015-11-17)
 ------------------
 
 - Change the name of the package to `sqlalchemy_redshift` to match the naming
