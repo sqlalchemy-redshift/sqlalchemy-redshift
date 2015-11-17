@@ -72,13 +72,18 @@ class UnloadFromSelect(_ExecutableClause):
     select: sqlalchemy.sql.selectable.Selectable
         The selectable Core Table Expression query to unload from.
     data_location: str
-        The Amazon S3 location where the file will be created, or a manifest
-        file if the `manifest` option is used
+        The full path, including bucket name, to the location on Amazon S3
+        where Amazon Redshift will write the output file objects, including
+        the manifest file if *manifest* is specified.
     access_key_id: str
     secret_access_key: str
     session_token: str, optional
     manifest: bool, optional
-        Boolean value denoting whether data_location is a manifest file.
+        Creates a manifest file that explicitly lists the data files that are
+        created by the UNLOAD process. The manifest is a text file in JSON
+        format that lists the URL of each file that was written to Amazon S3.
+        The manifest file is written to the same Amazon S3 path prefix as the
+        unload files in the format <data_location>manifest.
     delimiter: File delimiter, optional
         defaults to '|'
     fixed_width: iterable of (str, int), optional
