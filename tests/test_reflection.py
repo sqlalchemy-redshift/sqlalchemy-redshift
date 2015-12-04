@@ -3,6 +3,8 @@ from sqlalchemy import MetaData, Table
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.exc import NoSuchTableError
 
+from sqlalchemy_redshift import dialect
+
 from rs_sqla_test_utils import models
 
 
@@ -12,9 +14,10 @@ def cleaned(statement):
     return joined
 
 
-def table_to_ddl(session, table):
-    return str(CreateTable(table)
-               .compile(session.bind))
+def table_to_ddl(table):
+    return str(CreateTable(table).compile(
+        dialect=dialect.RedshiftDialect()
+    ))
 
 
 models_and_ddls = [
@@ -101,8 +104,8 @@ models_and_ddls = [
 
 
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
-def test_definition(redshift_session, model, ddl):
-    model_ddl = table_to_ddl(redshift_session, model.__table__)
+def test_definition(model, ddl):
+    model_ddl = table_to_ddl(model.__table__)
     assert cleaned(model_ddl) == cleaned(ddl)
 
 
@@ -112,7 +115,7 @@ def test_reflection(redshift_session, model, ddl):
     schema = model.__table__.schema
     table = Table(model.__tablename__, metadata,
                   schema=schema, autoload=True)
-    introspected_ddl = table_to_ddl(redshift_session, table)
+    introspected_ddl = table_to_ddl(table)
     assert cleaned(introspected_ddl) == cleaned(ddl)
 
 
