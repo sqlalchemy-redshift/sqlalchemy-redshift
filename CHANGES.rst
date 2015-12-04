@@ -1,7 +1,8 @@
 0.4.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Support reflecting tables with foriegn keys to tables in non-public schemas
+  (`Issue #70 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/70>`_)
 
 
 0.4.0 (2015-11-17)

@@ -94,6 +94,20 @@ models_and_ddls = [
             PRIMARY KEY ("excellent! & column"),
     ) DISTSTYLE EVEN
     ''')),
+    (models.Referencing, '''
+    CREATE TABLE other_schema.referencing (
+        referenced_table_id INTEGER NOT NULL,
+        PRIMARY KEY (referenced_table_id),
+        FOREIGN KEY(referenced_table_id) REFERENCES
+            other_schema.referenced (id)
+    ) DISTSTYLE EVEN
+    '''),
+    (models.Referenced, '''
+    CREATE TABLE other_schema.referenced (
+        id INTEGER IDENTITY(1,1) NOT NULL,
+        PRIMARY KEY (id)
+    ) DISTSTYLE EVEN
+    '''),
 ]
 
 
