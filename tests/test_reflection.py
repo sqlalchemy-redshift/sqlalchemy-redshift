@@ -5,13 +5,7 @@ from sqlalchemy.exc import NoSuchTableError
 
 from sqlalchemy_redshift import dialect
 
-from rs_sqla_test_utils import models
-
-
-def cleaned(statement):
-    stripped_lines = [line.strip() for line in statement.split('\n')]
-    joined = '\n'.join([line for line in stripped_lines if line])
-    return joined
+from rs_sqla_test_utils import models, utils
 
 
 def table_to_ddl(table):
@@ -106,7 +100,7 @@ models_and_ddls = [
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
 def test_definition(model, ddl):
     model_ddl = table_to_ddl(model.__table__)
-    assert cleaned(model_ddl) == cleaned(ddl)
+    assert utils.clean(model_ddl) == utils.clean(ddl)
 
 
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
@@ -116,7 +110,7 @@ def test_reflection(redshift_session, model, ddl):
     table = Table(model.__tablename__, metadata,
                   schema=schema, autoload=True)
     introspected_ddl = table_to_ddl(table)
-    assert cleaned(introspected_ddl) == cleaned(ddl)
+    assert utils.clean(introspected_ddl) == utils.clean(ddl)
 
 
 def test_no_table_reflection(redshift_session):
