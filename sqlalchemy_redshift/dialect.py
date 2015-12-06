@@ -59,19 +59,18 @@ FOREIGN_KEY_RE = re.compile(r"""
     (?P<columns>         # Start a group to capture the referring columns
       (?:                # Start a non-capturing group
         \s*              # Arbitrary whitespace
-        ([_a-zA-Z][\w$]* | ("[^"]+")+)  # SQL identifier
+        ([_a-zA-Z][\w$]* | ("[^"]+")+)   # SQL identifier
         \s*              # Arbitrary whitespace
         ,?               # There will be a colon if this isn't the last one
       )+                 # Close the non-capturing group; require at least one
     )                    # Close the 'columns' group
   \s* \)                 # Arbitrary whitespace and literal ')'
   \s* REFERENCES \s*
-  (?P<referred_table>    # Start a group to capture the referred table name
-    ([_a-zA-Z][\w$]* | ("[^"]*")+)      # SQL identifier
-  )
+    ((?P<referred_schema>([_a-zA-Z][\w$]* | ("[^"]*")+))\.)? # SQL identifier
+    (?P<referred_table>[_a-zA-Z][\w$]* | ("[^"]*")+)         # SQL identifier
   \s* \( \s*             # Literal '(' surrounded by arbitrary whitespace
     (?P<referred_column> # Start a group to capture the referred column name
-      ([_a-zA-Z][\w$]* | ("[^"]*")+)    # SQL identifier
+      ([_a-zA-Z][\w$]* | ("[^"]*")+)     # SQL identifier
     )
   \s* \)                 # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
@@ -396,13 +395,13 @@ class RedshiftDialect(PGDialect_psycopg2):
             referred_column = m.group('referred_column')
             referred_columns = [referred_column]
             referred_table = m.group('referred_table')
-            referred_table, _, referred_schema = referred_table.partition('.')
+            referred_schema = m.group('referred_schema')
             colstring = m.group('columns')
             constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
             fkey_d = {
                 'name': None,
                 'constrained_columns': constrained_columns,
-                'referred_schema': referred_schema or None,
+                'referred_schema': referred_schema,
                 'referred_table': referred_table,
                 'referred_columns': referred_columns,
             }

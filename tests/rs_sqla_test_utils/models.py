@@ -129,3 +129,29 @@ class ReflectionDelimitedIdentifiers2(Base):
     __table_args__ = (
         {'redshift_diststyle': 'EVEN'}
     )
+
+
+class Referenced(Base):
+    __tablename__ = 'referenced'
+    id = sa.Column(
+        sa.Integer(), primary_key=True, nullable=False,
+        info={
+            'identity': (1, 1),
+        }
+    )
+    __table_args__ = {
+        'redshift_diststyle': 'EVEN',
+        'schema': 'other_schema',
+    }
+
+
+class Referencing(Base):
+    __tablename__ = 'referencing'
+    referenced_table_id = sa.Column(
+        sa.Integer(), sa.ForeignKey(Referenced.id), primary_key=True,
+        nullable=False,
+    )
+    __table_args__ = {
+        'redshift_diststyle': 'EVEN',
+        'schema': 'other_schema',
+    }
