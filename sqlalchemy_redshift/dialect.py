@@ -241,7 +241,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
         distkey = info.get('distkey')
         if distkey:
-            text += " DISTKEY ({0})".format(distkey)
+            text += " DISTKEY ({0})".format(self.preparer.quote(distkey))
 
         sortkey = info.get('sortkey')
         interleaved_sortkey = info.get('interleaved_sortkey')
@@ -259,7 +259,9 @@ class RedshiftDDLCompiler(PGDDLCompiler):
                     for key in keys]
             if interleaved_sortkey:
                 text += " INTERLEAVED"
-            text += " SORTKEY ({0})".format(", ".join(keys))
+            sortkey_string = ", ".join(self.preparer.quote(key)
+                                       for key in keys)
+            text += " SORTKEY ({0})".format(sortkey_string)
         return text
 
     def get_column_specification(self, column, **kwargs):

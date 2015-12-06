@@ -3,6 +3,11 @@
 
 - Support reflecting tables with foriegn keys to tables in non-public schemas
   (`Issue #70 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/70>`_)
+- Fix a bug where DISTKEY and SORTKEY could not be used on column names containing
+  spaces or commas. This is a breaking behavioral change for a command like
+  `__table_args__ = {'redshift_sortkey': ('foo, bar')}`. Previously, this would sort
+  on the columns named `foo` and `bar`. Now, it sorts on the column named `foo, bar`.
+  (`Issue #74 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/74>`_)
 
 
 0.4.0 (2015-11-17)

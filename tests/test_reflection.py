@@ -36,6 +36,12 @@ models_and_ddls = [
         PRIMARY KEY (col1)
     ) DISTSTYLE EVEN INTERLEAVED SORTKEY (col1, col2)
     """),
+    (models.ReflectionSortKeyDistKeyWithSpaces, """
+    CREATE TABLE sort_key_with_spaces (
+        "col with spaces" INTEGER NOT NULL,
+        PRIMARY KEY ("col with spaces")
+    ) DISTSTYLE EVEN DISTKEY ("col with spaces") SORTKEY ("col with spaces")
+    """),
     (models.ReflectionUniqueConstraint, """
     CREATE TABLE reflection_unique_constraint (
         col1 INTEGER NOT NULL,

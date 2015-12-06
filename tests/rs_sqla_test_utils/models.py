@@ -44,7 +44,7 @@ class ReflectionSortKey(Base):
     col2 = sa.Column(sa.Integer())
     __table_args__ = (
         {'redshift_diststyle': 'EVEN',
-         'redshift_sortkey': ('col1, col2')}
+         'redshift_sortkey': ('col1', 'col2')}
     )
 
 
@@ -56,6 +56,16 @@ class ReflectionInterleavedSortKey(Base):
         {'redshift_diststyle': 'EVEN',
          'redshift_interleaved_sortkey': (col1, col2)}
     )
+
+
+class ReflectionSortKeyDistKeyWithSpaces(Base):
+    __tablename__ = 'sort_key_with_spaces'
+    col1 = sa.Column('col with spaces', sa.Integer(), primary_key=True)
+    __table_args__ = {
+        'redshift_diststyle': 'EVEN',
+        'redshift_sortkey': 'col with spaces',
+        'redshift_distkey': 'col with spaces',
+    }
 
 
 class ReflectionUniqueConstraint(Base):
