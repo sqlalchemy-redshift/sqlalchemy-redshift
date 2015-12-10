@@ -89,6 +89,21 @@ class ReflectionForeignKeyConstraint(Base):
     )
 
 
+class ReflectionCompositeForeignKeyConstraint(Base):
+    __tablename__ = 'reflection_composite_fk_constraint'
+    id = sa.Column(sa.Integer(),
+                   primary_key=True)
+    col1 = sa.Column(sa.Integer())
+    col2 = sa.Column(sa.Integer())
+    __table_args__ = (
+        sa.ForeignKeyConstraint(
+            ['col1', 'col2'],
+            ['reflection_pk_constraint.col1', 'reflection_pk_constraint.col2']
+        ),
+        {'redshift_diststyle': 'EVEN'}
+    )
+
+
 class ReflectionDefaultValue(Base):
     __tablename__ = 'reflection_default_value'
     col1 = sa.Column(sa.Integer(), primary_key=True)
