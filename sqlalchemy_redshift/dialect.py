@@ -107,11 +107,14 @@ def _get_relation_key(name, schema):
 def _get_schema_and_relation(key):
     if '.' not in key:
         return (None, key)
-    identifiers = SQL_IDENTIFIER_RE.findall(key)
+
+    # capture and split on anything that's not a period or double quote OR
+    # something that is anything in double quotes
+    identifiers = re.split(r'''((?:[^."]|"[^"]*")+)''', key)[1::2]
     if len(identifiers) == 1:
         return (None, key)
     elif len(identifiers) == 2:
-        return identifiers
+        return tuple(identifiers)
     raise ValueError("%s does not look like a valid relation identifier")
 
 
@@ -321,7 +324,6 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
-
     construct_arguments = [
         (schema.Index, {
             "using": False,
