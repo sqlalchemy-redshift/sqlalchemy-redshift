@@ -68,10 +68,15 @@ FOREIGN_KEY_RE = re.compile(r"""
   \s* REFERENCES \s*
     ((?P<referred_schema>([_a-zA-Z][\w$]* | ("[^"]*")+))\.)? # SQL identifier
     (?P<referred_table>[_a-zA-Z][\w$]* | ("[^"]*")+)         # SQL identifier
-  \s* \( \s*             # Literal '(' surrounded by arbitrary whitespace
-    (?P<referred_column> # Start a group to capture the referred column name
-      ([_a-zA-Z][\w$]* | ("[^"]*")+)     # SQL identifier
-    )
+  \s* \(   # FOREIGN KEY, arbitrary whitespace, literal '('
+    (?P<referred_columns> # Start a group to capture the referring columns
+      (?:                # Start a non-capturing group
+        \s*              # Arbitrary whitespace
+        ([_a-zA-Z][\w$]* | ("[^"]+")+)   # SQL identifier
+        \s*              # Arbitrary whitespace
+        ,?               # There will be a colon if this isn't the last one
+      )+                 # Close the non-capturing group; require at least one
+    )                    # Close the 'columns' group
   \s* \)                 # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
 
@@ -389,11 +394,15 @@ class RedshiftDialect(PGDialect_psycopg2):
         constraints = self._get_redshift_constraints(connection, table_name,
                                                      schema)
         fk_constraints = [c for c in constraints if c.contype == 'f']
+        uniques = defaultdict(lambda: defaultdict(dict))
+        for con in fk_constraints:
+            uniques[con.conname]["key"] = con.conkey
+            uniques[con.conname]["condef"] = con.condef
         fkeys = []
-        for constraint in fk_constraints:
-            m = FOREIGN_KEY_RE.match(constraint.condef)
-            referred_column = m.group('referred_column')
-            referred_columns = [referred_column]
+        for conname, attrs in uniques.items():
+            m = FOREIGN_KEY_RE.match(attrs['condef'])
+            colstring = m.group('referred_columns')
+            referred_columns = SQL_IDENTIFIER_RE.findall(colstring)
             referred_table = m.group('referred_table')
             referred_schema = m.group('referred_schema')
             colstring = m.group('columns')

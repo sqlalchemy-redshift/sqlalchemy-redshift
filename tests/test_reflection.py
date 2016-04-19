@@ -108,6 +108,16 @@ models_and_ddls = [
         PRIMARY KEY (id)
     ) DISTSTYLE EVEN
     '''),
+    (models.ReflectionCompositeForeignKeyConstraint, '''
+    CREATE TABLE reflection_composite_fk_constraint (
+        id INTEGER NOT NULL,
+        col1 INTEGER,
+        col2 INTEGER,
+        PRIMARY KEY (id),
+        FOREIGN KEY(col1, col2)
+        REFERENCES reflection_pk_constraint (col1, col2)
+    ) DISTSTYLE EVEN
+    '''),
 ]
 
 
