@@ -60,11 +60,14 @@ class ReflectionInterleavedSortKey(Base):
 
 class ReflectionSortKeyDistKeyWithSpaces(Base):
     __tablename__ = 'sort_key_with_spaces'
-    col1 = sa.Column('col with spaces', sa.Integer(), primary_key=True)
+    col1 = sa.Column('col with spaces', sa.Integer(), nullable=False)
     __table_args__ = {
         'redshift_diststyle': 'KEY',
         'redshift_sortkey': 'col with spaces',
         'redshift_distkey': 'col with spaces',
+    }
+    __mapper_args__ = {
+        'primary_key': [col1],
     }
 
 
