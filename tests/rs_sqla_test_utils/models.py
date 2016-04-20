@@ -62,7 +62,7 @@ class ReflectionSortKeyDistKeyWithSpaces(Base):
     __tablename__ = 'sort_key_with_spaces'
     col1 = sa.Column('col with spaces', sa.Integer(), primary_key=True)
     __table_args__ = {
-        'redshift_diststyle': 'EVEN',
+        'redshift_diststyle': 'KEY',
         'redshift_sortkey': 'col with spaces',
         'redshift_distkey': 'col with spaces',
     }

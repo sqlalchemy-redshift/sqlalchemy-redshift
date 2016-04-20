@@ -40,7 +40,7 @@ models_and_ddls = [
     CREATE TABLE sort_key_with_spaces (
         "col with spaces" INTEGER NOT NULL,
         PRIMARY KEY ("col with spaces")
-    ) DISTSTYLE EVEN DISTKEY ("col with spaces") SORTKEY ("col with spaces")
+    ) DISTSTYLE KEY DISTKEY ("col with spaces") SORTKEY ("col with spaces")
     """),
     (models.ReflectionUniqueConstraint, """
     CREATE TABLE reflection_unique_constraint (
