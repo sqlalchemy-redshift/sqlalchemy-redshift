@@ -1,4 +1,4 @@
-0.4.1 (unreleased)
+0.5.0 (2016-04-21)
 ------------------
 
 - Support reflecting tables with foriegn keys to tables in non-public schemas
