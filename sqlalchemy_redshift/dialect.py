@@ -112,7 +112,7 @@ def _get_schema_and_relation(key):
         return (None, key)
     elif len(identifiers) == 2:
         return identifiers
-    raise ValueError("%s does not look like a valid relation identifier")
+    raise ValueError("%s does not look like a valid relation identifier" % key)
 
 
 def unquoted(key):
