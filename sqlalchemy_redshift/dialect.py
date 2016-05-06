@@ -101,6 +101,7 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
     """
     Structured tuple of table/view name and schema name.
     """
+
     __slots__ = ()
 
     def __new__(cls, name, schema=None, connection=None):
