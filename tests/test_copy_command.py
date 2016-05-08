@@ -51,6 +51,30 @@ def test_basic_copy_case():
     assert clean(expected_result) == clean(compile_query(copy))
 
 
+def test_iam_role():
+    """Tests the use of iam role instead of access keys."""
+
+    aws_account_id = '000123456789'
+    iam_role_name = 'redshiftrole'
+    creds = 'aws_iam_role=arn:aws:iam::{0}:role/{1}'.format(
+        aws_account_id,
+        iam_role_name,
+    )
+
+    expected_result = """
+    COPY schema1.t1 FROM 's3://mybucket/data/listing/'
+    WITH CREDENTIALS AS '{creds}'
+    """.format(creds=creds)
+
+    copy = dialect.CopyCommand(
+        tbl,
+        data_location='s3://mybucket/data/listing/',
+        aws_account_id=aws_account_id,
+        iam_role_name=iam_role_name,
+    )
+    assert clean(expected_result) == clean(compile_query(copy))
+
+
 def test_format():
     expected_result = """
     COPY t1 FROM 's3://mybucket/data/listing/'
