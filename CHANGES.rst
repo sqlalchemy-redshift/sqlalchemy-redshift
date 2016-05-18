@@ -1,8 +1,8 @@
 0.5.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
-
+- Support role-based access control in COPY and UNLOAD commands
+  (`Issue #88 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/88>`_)
 
 0.5.0 (2016-04-21)
 ------------------

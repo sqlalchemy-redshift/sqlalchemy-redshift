@@ -44,6 +44,32 @@ def test_basic_unload_case():
     assert clean(compile_query(unload)) == clean(expected_result)
 
 
+def test_iam_role():
+    """Tests the use of iam role instead of access keys."""
+
+    aws_account_id = '000123456789'
+    iam_role_name = 'redshiftrole'
+    creds = 'aws_iam_role=arn:aws:iam::{0}:role/{1}'.format(
+        aws_account_id,
+        iam_role_name,
+    )
+
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        aws_account_id=aws_account_id,
+        iam_role_name=iam_role_name,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
+
+
 def test_all_redshift_options():
     """Tests that UnloadFromSelect handles all options correctly."""
 

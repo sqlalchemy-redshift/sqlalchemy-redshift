@@ -13,42 +13,82 @@ from sqlalchemy.sql import expression as sa_expression
 # found here:
 #   https://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html
 # The regexs for access keys can be found here:
-#     https://blogs.aws.amazon.com/security/blog/tag/key+rotation
+#   https://blogs.aws.amazon.com/security/blog/tag/key+rotation
+# The pattern of IAM role ARNs can be found here:
+#   http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-iam
 
 ACCESS_KEY_ID_RE = re.compile('[A-Z0-9]{20}')
 SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
 TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
+AWS_ACCOUNT_ID_RE = re.compile('[0-9]{12}')
+IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@-_]{1,64}')
 
 
-def _process_aws_credentials(access_key_id, secret_access_key,
-                             session_token=None):
+def _process_aws_credentials(access_key_id=None, secret_access_key=None,
+                             session_token=None, aws_account_id=None,
+                             iam_role_name=None):
 
-    if not ACCESS_KEY_ID_RE.match(access_key_id):
-        raise ValueError(
-            'invalid access_key_id; does not match {pattern}'.format(
-                pattern=ACCESS_KEY_ID_RE.pattern,
-            )
-        )
-    if not SECRET_ACCESS_KEY_RE.match(secret_access_key):
-        raise ValueError(
-            'invalid secret_access_key_id; does not match {pattern}'.format(
-                pattern=SECRET_ACCESS_KEY_RE.pattern,
-            )
+    if (access_key_id is not None and secret_access_key is not None and
+            aws_account_id is not None and iam_role_name is not None):
+        raise TypeError(
+            'Either access key based credentials or role based credentials '
+            'should be specified, but not both'
         )
 
-    credentials = 'aws_access_key_id={0};aws_secret_access_key={1}'.format(
-        access_key_id,
-        secret_access_key,
-    )
+    credentials = None
 
-    if session_token is not None:
-        if not TOKEN_RE.match(session_token):
+    if aws_account_id is not None and iam_role_name is not None:
+        if not AWS_ACCOUNT_ID_RE.match(aws_account_id):
             raise ValueError(
-                'invalid session_token; does not match {pattern}'.format(
-                    pattern=TOKEN_RE.pattern,
+                'invalid AWS account ID; does not match {pattern}'.format(
+                    pattern=AWS_ACCOUNT_ID_RE.pattern,
                 )
             )
-        credentials += ';token={0}'.format(session_token)
+        elif not IAM_ROLE_NAME_RE.match(iam_role_name):
+            raise ValueError(
+                'invalid IAM role name; does not match {pattern}'.format(
+                    pattern=IAM_ROLE_NAME_RE.pattern,
+                )
+            )
+
+        credentials = 'aws_iam_role=arn:aws:iam::{0}:role/{1}'.format(
+            aws_account_id,
+            iam_role_name,
+        )
+
+    if access_key_id is not None and secret_access_key is not None:
+        if not ACCESS_KEY_ID_RE.match(access_key_id):
+            raise ValueError(
+                'invalid access_key_id; does not match {pattern}'.format(
+                    pattern=ACCESS_KEY_ID_RE.pattern,
+                )
+            )
+        if not SECRET_ACCESS_KEY_RE.match(secret_access_key):
+            raise ValueError(
+                'invalid secret_access_key; does not match {pattern}'.format(
+                    pattern=SECRET_ACCESS_KEY_RE.pattern,
+                )
+            )
+
+        credentials = 'aws_access_key_id={0};aws_secret_access_key={1}'.format(
+            access_key_id,
+            secret_access_key,
+        )
+
+        if session_token is not None:
+            if not TOKEN_RE.match(session_token):
+                raise ValueError(
+                    'invalid session_token; does not match {pattern}'.format(
+                        pattern=TOKEN_RE.pattern,
+                    )
+                )
+            credentials += ';token={0}'.format(session_token)
+
+    if credentials is None:
+        raise TypeError(
+            'Either access key based credentials or role based credentials '
+            'should be specified'
+        )
 
     return credentials
 
@@ -74,9 +114,19 @@ class UnloadFromSelect(_ExecutableClause):
     data_location: str
         The Amazon S3 location where the file will be created, or a manifest
         file if the `manifest` option is used
-    access_key_id: str
-    secret_access_key: str
-    session_token: str, optional
+    access_key_id: str, optional
+        Access Key. Required unless you supply role-based credentials
+        (``aws_account_id`` and ``iam_role_name``)
+    secret_access_key: str, optional
+        Secret Access Key ID. Required unless you supply role-based credentials
+        (``aws_account_id`` and ``iam_role_name``)
+    session_token : str, optional
+    aws_account_id: str, optional
+        AWS account ID for role-based credentials. Required unless you supply
+        key based credentials (``access_key_id`` and ``secret_access_key``)
+    iam_role_name: str, optional
+        IAM role name for role-based credentials. Required unless you supply
+        key based credentials (``access_key_id`` and ``secret_access_key``)
     manifest: bool, optional
         Boolean value denoting whether data_location is a manifest file.
     delimiter: File delimiter, optional
@@ -103,8 +153,9 @@ class UnloadFromSelect(_ExecutableClause):
         If disabled unload sequentially as one file.
     """
 
-    def __init__(self, select, unload_location, access_key_id,
-                 secret_access_key, session_token=None,
+    def __init__(self, select, unload_location, access_key_id=None,
+                 secret_access_key=None, session_token=None,
+                 aws_account_id=None, iam_role_name=None,
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True):
@@ -118,6 +169,8 @@ class UnloadFromSelect(_ExecutableClause):
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             session_token=session_token,
+            aws_account_id=aws_account_id,
+            iam_role_name=iam_role_name,
         )
 
         self.select = select
@@ -219,9 +272,19 @@ class CopyCommand(_ExecutableClause):
     data_location : str
         The Amazon S3 location from where to copy, or a manifest file if
         the `manifest` option is used
-    access_key_id : str
-    secret_access_key : str
+    access_key_id: str, optional
+        Access Key. Required unless you supply role-based credentials
+        (``aws_account_id`` and ``iam_role_name``)
+    secret_access_key: str, optional
+        Secret Access Key ID. Required unless you supply role-based credentials
+        (``aws_account_id`` and ``iam_role_name``)
     session_token : str, optional
+    aws_account_id: str, optional
+        AWS account ID for role-based credentials. Required unless you supply
+        key based credentials (``access_key_id`` and ``secret_access_key``)
+    iam_role_name: str, optional
+        IAM role name for role-based credentials. Required unless you supply
+        key based credentials (``access_key_id`` and ``secret_access_key``)
     format : str, optional
         CSV, JSON, or AVRO. Indicates the type of file to copy from
     quote : str, optional
@@ -327,8 +390,10 @@ class CopyCommand(_ExecutableClause):
     formats = ['CSV', 'JSON', 'AVRO', None]
     compression_types = ['GZIP', 'LZOP']
 
-    def __init__(self, to, data_location, access_key_id, secret_access_key,
-                 session_token=None, format=None, quote=None,
+    def __init__(self, to, data_location, access_key_id=None,
+                 secret_access_key=None, session_token=None,
+                 aws_account_id=None, iam_role_name=None,
+                 format=None, quote=None,
                  path_file='auto', delimiter=None, fixed_width=None,
                  compression=None, accept_any_date=False,
                  accept_inv_chars=None, blanks_as_null=False, date_format=None,
@@ -345,6 +410,8 @@ class CopyCommand(_ExecutableClause):
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             session_token=session_token,
+            aws_account_id=aws_account_id,
+            iam_role_name=iam_role_name,
         )
 
         if delimiter is not None and len(delimiter) != 1:
