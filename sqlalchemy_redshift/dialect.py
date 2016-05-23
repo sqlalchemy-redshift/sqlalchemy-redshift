@@ -317,6 +317,9 @@ class RedshiftDialect(PGDialect_psycopg2):
     """
 
     name = 'redshift'
+    supports_sequences = False
+    preexecute_autoincrement_sequences = False
+    postfetch_lastrowid = True
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
