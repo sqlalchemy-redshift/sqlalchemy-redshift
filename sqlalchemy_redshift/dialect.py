@@ -139,7 +139,8 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     Handles Redshift-specific ``CREATE TABLE`` syntax.
 
     Users can specify the `diststyle`, `distkey`, `sortkey` and `encode`
-    properties per table and per column.
+    properties per table and per column. You can also use the `info`
+    keyword argument to specify an autoincrementing identity column.
 
     Table level properties can be set using the dialect specific syntax. For
     example, to specify a distribution key and style you apply the following:
@@ -151,7 +152,8 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     >>> user = sa.Table(
     ...     'user',
     ...     metadata,
-    ...     sa.Column('id', sa.Integer, primary_key=True),
+    ...     sa.Column('id', sa.Integer, primary_key=True,
+    ...               info={'identity': (0, 1)}),
     ...     sa.Column('name', sa.String),
     ...     redshift_diststyle='KEY',
     ...     redshift_distkey='id',
@@ -160,7 +162,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     >>> print(CreateTable(user).compile(engine))
     <BLANKLINE>
     CREATE TABLE "user" (
-        id INTEGER NOT NULL,
+        id INTEGER IDENTITY(0,1) NOT NULL,
         name VARCHAR,
         PRIMARY KEY (id)
     ) DISTSTYLE KEY DISTKEY (id) INTERLEAVED SORTKEY (id, name)
@@ -317,6 +319,10 @@ class RedshiftDialect(PGDialect_psycopg2):
     """
 
     name = 'redshift'
+
+    supports_sequences = False
+    preexecute_autoincrement_sequences = False
+    postfetch_lastrowid = True
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
