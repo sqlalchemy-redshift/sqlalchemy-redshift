@@ -3,8 +3,7 @@ from rs_sqla_test_utils import models
 
 def test_postfetch_lastrowid(redshift_session):
     session = redshift_session
-    for i in range(5):
-        postfetchExample = models.PostfetchExample(some_int=i)
-        session.add(postfetchExample)
+    examples = [models.PostfetchExample(some_int=i) for i in range(5)]
+    session.add_all(examples)
     session.flush()
-    assert postfetchExample.id == 4
+    assert sorted(pfe.id for pfe in examples) == [0, 1, 2, 3, 4]
