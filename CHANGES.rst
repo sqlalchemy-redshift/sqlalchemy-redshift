@@ -3,6 +3,8 @@
 
 - Support role-based access control in COPY and UNLOAD commands
   (`Issue #88 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/88>`_)
+- Increase max_identifier_length to 127 characters
+  (`Issue #96 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/96>`_)
 
 0.5.0 (2016-04-21)
 ------------------
