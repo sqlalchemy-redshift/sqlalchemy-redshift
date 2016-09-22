@@ -183,3 +183,9 @@ class Referencing(Base):
         'redshift_diststyle': 'EVEN',
         'schema': 'other_schema',
     }
+
+
+class LongTablename(Base):
+    __tablename__ = 'a' * 127
+
+    metric = sa.Column(sa.Integer, primary_key=True)
