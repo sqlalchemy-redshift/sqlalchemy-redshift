@@ -188,4 +188,4 @@ class Referencing(Base):
 class LongTablename(Base):
     __tablename__ = 'a' * 127
 
-    metric = sa.Column(sa.Integer, primary_key=True)
+    metric = sa.Column(name='b' * 127, type_=sa.Integer, primary_key=True)
