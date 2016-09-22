@@ -7,4 +7,4 @@ def test_long_tablename(redshift_session):
     session.add_all(examples)
 
     rows = session.query(models.LongTablename.metric)
-    assert {row.metric for row in rows} == {0, 1, 2, 3, 4}
+    assert set(row.metric for row in rows) == set([0, 1, 2, 3, 4])
