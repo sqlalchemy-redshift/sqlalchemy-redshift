@@ -183,10 +183,3 @@ class Referencing(Base):
         'redshift_diststyle': 'EVEN',
         'schema': 'other_schema',
     }
-
-
-class PostfetchExample(Base):
-    __tablename__ = 'postfetch'
-
-    id = sa.Column(sa.Integer, primary_key=True, info={'identity': (0, 1)})
-    some_int = sa.Column(sa.Integer)
