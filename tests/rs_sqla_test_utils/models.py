@@ -159,6 +159,24 @@ class ReflectionDelimitedIdentifiers2(Base):
     )
 
 
+class ReflectionDelimitedTableName(Base):
+    __tablename__ = 'this.table'
+    col1 = sa.Column('id', sa.Integer(), primary_key=True)
+    __table_args__ = (
+        {'redshift_diststyle': 'EVEN',
+         'schema': 'other_schema'}
+    )
+
+
+class ReflectionDelimitedTableNoSchema(Base):
+    __tablename__ = 'this.table'
+    col1 = sa.Column('id', sa.Integer(), primary_key=True)
+    __table_args__ = (
+        {'redshift_diststyle': 'EVEN',
+         'schema': None}
+    )
+
+
 class Referenced(Base):
     __tablename__ = 'referenced'
     id = sa.Column(
