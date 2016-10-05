@@ -317,6 +317,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     """
 
     name = 'redshift'
+    max_identifier_length = 127
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
