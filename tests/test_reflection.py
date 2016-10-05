@@ -166,20 +166,3 @@ def test_no_search_path_leak(redshift_session):
     result = redshift_session.execute("SHOW search_path")
     search_path = result.scalar()
     assert 'other_schema' not in search_path
-
-
-def test_splitting_schema_and_relation():
-    cases = [
-        ("other_schema.\"table.name\"", ("other_schema", "\"table.name\"")),
-        ("\"table.name\"", (None, "\"table.name\"")),
-        ("schema.\"this \"\"is it\"\"\"",
-         ("schema", "\"this \"\"is it\"\"\"")),
-        ("\"this \"\"is it\"\"\"", (None, "\"this \"\"is it\"\"\"")),
-        # the delimited identifier dox is silent on whether the following is
-        # possible
-        (("\"crazy schema\".\"crazy table\""),
-         ("\"crazy schema\"", "\"crazy table\"")),
-    ]
-
-    for case, expected in cases:
-        assert dialect._get_schema_and_relation(case) == expected
