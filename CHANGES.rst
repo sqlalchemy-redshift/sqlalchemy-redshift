@@ -3,6 +3,8 @@
 
 - Support role-based access control in COPY and UNLOAD commands
   (`Issue #88 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/88>`_)
+- Support 127 character column names instead of 63 characters (postgres default)
+  (`Pull #98 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/98>`_)
 
 0.5.0 (2016-04-21)
 ------------------
