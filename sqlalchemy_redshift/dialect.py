@@ -321,6 +321,7 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
+    max_identifier_length = 127
 
     construct_arguments = [
         (schema.Index, {
