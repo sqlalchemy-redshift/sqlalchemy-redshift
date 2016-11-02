@@ -79,6 +79,18 @@ models_and_ddls = [
         PRIMARY KEY (col1)
     ) DISTSTYLE EVEN
     """),
+    (models.ReflectionDelimitedTableName, """
+    CREATE TABLE other_schema."this.table" (
+        id INTEGER NOT NULL,
+        PRIMARY KEY (id)
+    ) DISTSTYLE EVEN
+    """),
+    (models.ReflectionDelimitedTableNoSchema, """
+    CREATE TABLE "this.table" (
+        id INTEGER NOT NULL,
+        PRIMARY KEY (id)
+    ) DISTSTYLE EVEN
+    """),
     (models.BasicInOtherSchema, """
     CREATE TABLE other_schema.basic (
         col1 INTEGER NOT NULL,
