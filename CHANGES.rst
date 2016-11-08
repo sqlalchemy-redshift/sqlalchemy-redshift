@@ -7,6 +7,8 @@
   (`Issue #96 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/96>`_)
 - Fix a bug where table names containing a period caused an error on reflection
   (`Issue #97 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/97>`_)
+- Performance improvement for reflection by caching table constraint info
+  (`Issue #101 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/101>`_)
 
 
 0.5.0 (2016-04-21)
