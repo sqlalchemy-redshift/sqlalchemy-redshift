@@ -546,8 +546,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         if not schema:
             schema = self.default_schema_name
         info_cache = kw.get('info_cache')
-        all_relations = self._get_all_relation_info(connection,
-                                                    info_cache=info_cache)
+        all_relations = self._get_schema_relation_info(connection, schema,
+                                                       info_cache=info_cache)
         relation_names = []
         for key, relation in all_relations.items():
             if key.schema == schema and relation.relkind == relkind:
@@ -575,8 +575,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         if not schema:
             schema = self.default_schema_name
         info_cache = kw.get('info_cache')
-        all_relations = self._get_all_relation_info(connection,
-                                                    info_cache=info_cache)
+        all_relations = self._get_schema_relation_info(connection, schema,
+                                                       info_cache=info_cache)
         key = RelationKey(table_name, schema)
         if key not in all_relations.keys():
             key = key.unquoted()
@@ -589,8 +589,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         if not schema:
             schema = self.default_schema_name
         info_cache = kw.get('info_cache')
-        all_columns = self._get_all_column_info(connection,
-                                                info_cache=info_cache)
+        all_columns = self._get_schema_column_info(connection, schema,
+                                                   info_cache=info_cache)
         key = RelationKey(table_name, schema)
         if key not in all_columns.keys():
             key = key.unquoted()
@@ -601,16 +601,16 @@ class RedshiftDialect(PGDialect_psycopg2):
         if not schema:
             schema = self.default_schema_name
         info_cache = kw.get('info_cache')
-        all_constraints = self._get_all_constraint_info(connection,
-                                                        info_cache=info_cache)
+        all_constraints = self._get_schema_constraint_info(
+            connection, schema, info_cache=info_cache)
         key = RelationKey(table_name, schema)
         if key not in all_constraints.keys():
             key = key.unquoted()
         return all_constraints[key]
 
     @reflection.cache
-    def _get_all_relation_info(self, connection, **kw):
-        result = connection.execute("""
+    def _get_schema_relation_info(self, connection, schema, **kw):
+        result = connection.execute(sa.sql.text("""
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -629,9 +629,9 @@ class RedshiftDialect(PGDialect_psycopg2):
              LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
              JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
         WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
-          AND n.nspname !~ '^pg_'
+          AND n.nspname = :schema
         ORDER BY c.relkind, n.oid, n.nspname;
-        """)
+        """), schema=schema)
         relations = {}
         for rel in result:
             key = RelationKey(rel.relname, rel.schema)
@@ -639,7 +639,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         return relations
 
     @reflection.cache
-    def _get_all_column_info(self, connection, **kw):
+    def _get_schema_column_info(self, connection, schema, **kw):
         all_columns = defaultdict(list)
         with connection.contextual_connect() as cc:
             # We fetch the current search_path, which may or may not quote
@@ -649,18 +649,10 @@ class RedshiftDialect(PGDialect_psycopg2):
                 search_path = search_path.replace('$user', '"$user"')
 
             # Because pg_table_def only shows results for schemas on the
-            # search_path, we explicitly include all non-system schemas, then
-            # replace the original value for search_path.
-            schema_names = ['"%s"' % r.name for r in cc.execute("""
-            SELECT nspname AS "name"
-            FROM pg_catalog.pg_namespace
-            WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
-            ORDER BY 1
-            """)]
-            modified_search_path = ','.join(schema_names)
-            cc.execute("SET LOCAL search_path TO %s" % modified_search_path)
+            # search_path, we explicitly set it to requested schema
+            cc.execute('SET LOCAL search_path TO "%s"' % schema)
 
-            result = cc.execute("""
+            result = cc.execute(sa.sql.text("""
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -680,9 +672,9 @@ class RedshiftDialect(PGDialect_psycopg2):
               ON (att.attrelid, att.attname) = (c.oid, d.column)
             LEFT JOIN pg_catalog.pg_attrdef ad
               ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
-            WHERE n.nspname !~ '^pg_'
+            WHERE n.nspname = :schema
             ORDER BY n.nspname, c.relname, att.attnum
-            """)
+            """), schema=schema)
             for col in result:
                 key = RelationKey(col.table_name, col.schema)
                 all_columns[key].append(col)
@@ -692,8 +684,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         return dict(all_columns)
 
     @reflection.cache
-    def _get_all_constraint_info(self, connection, **kw):
-        result = connection.execute("""
+    def _get_schema_constraint_info(self, connection, schema, **kw):
+        result = connection.execute(sa.sql.text("""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
@@ -712,9 +704,9 @@ class RedshiftDialect(PGDialect_psycopg2):
           ON t.conrelid = c.oid
         JOIN pg_catalog.pg_attribute a
           ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
-        WHERE n.nspname !~ '^pg_'
+        WHERE n.nspname = :schema
         ORDER BY n.nspname, c.relname
-        """)
+        """), schema=schema)
         all_constraints = defaultdict(list)
         for con in result:
             key = RelationKey(con.table_name, con.schema)
