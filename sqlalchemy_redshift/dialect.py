@@ -576,6 +576,8 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     def _get_redshift_relation(self, connection, table_name,
                                schema=None, **kw):
+        if not schema:
+            schema = self.default_schema_name
         info_cache = kw.get('info_cache')
         all_relations = self._get_all_relation_info(connection,
                                                     info_cache=info_cache)
@@ -588,6 +590,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             raise sa.exc.NoSuchTableError(key)
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
+        if not schema:
+            schema = self.default_schema_name
         info_cache = kw.get('info_cache')
         all_columns = self._get_all_column_info(connection,
                                                 info_cache=info_cache)
@@ -598,6 +602,8 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     def _get_redshift_constraints(self, connection, table_name,
                                   schema=None, **kw):
+        if not schema:
+            schema = self.default_schema_name
         info_cache = kw.get('info_cache')
         all_constraints = self._get_all_constraint_info(connection,
                                                         info_cache=info_cache)
