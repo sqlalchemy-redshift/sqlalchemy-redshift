@@ -377,7 +377,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
         constraints = self._get_redshift_constraints(connection, table_name,
-                                                     schema)
+                                                     schema, **kw)
         pk_constraints = [c for c in constraints if c.contype == 'p']
         if not pk_constraints:
             return {'constrained_columns': [], 'name': ''}
@@ -399,7 +399,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
         constraints = self._get_redshift_constraints(connection, table_name,
-                                                     schema)
+                                                     schema, **kw)
         fk_constraints = [c for c in constraints if c.contype == 'f']
         uniques = defaultdict(lambda: defaultdict(dict))
         for con in fk_constraints:
@@ -478,7 +478,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_unique_constraints`.
         """
         constraints = self._get_redshift_constraints(connection,
-                                                     table_name, schema)
+                                                     table_name, schema, **kw)
         constraints = [c for c in constraints if c.contype == 'u']
         uniques = defaultdict(lambda: defaultdict(dict))
         for con in constraints:
