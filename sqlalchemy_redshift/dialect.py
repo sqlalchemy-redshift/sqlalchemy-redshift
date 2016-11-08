@@ -548,7 +548,7 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     def _get_table_or_view_names(self, relkind, connection, schema=None, **kw):
         if not schema:
-            schema = inspect(connection).default_schema_name
+            schema = self.default_schema_name
         info_cache = kw.get('info_cache')
         all_relations = self._get_all_relation_info(connection,
                                                     info_cache=info_cache)
