@@ -138,6 +138,24 @@ class RedshiftCompiler(PGCompiler):
     def visit_now_func(self, fn, **kw):
         return "SYSDATE"
 
+    _cte_selectables = (sa.sql.Insert, sa.sql.Update, sa.sql.Delete)
+
+    def visit_select(self, *args, **kwargs):
+        text = super(RedshiftCompiler, self).visit_select(*args, **kwargs)
+        if self.ctes and len(self.stack) == 1:
+            top_selectable = self.stack[0].get("selectable")
+            if isinstance(top_selectable, self._cte_selectables):
+                text = super(RedshiftCompiler, self) \
+                    ._render_cte_clause() + text
+        return text
+
+    def _render_cte_clause(self):
+        if len(self.stack) == 1:
+            top_selectable = self.stack[0].get("selectable")
+            if isinstance(top_selectable, self._cte_selectables):
+                return ""
+        return super(RedshiftCompiler, self)._render_cte_clause()
+
 
 class RedshiftDDLCompiler(PGDDLCompiler):
     """
