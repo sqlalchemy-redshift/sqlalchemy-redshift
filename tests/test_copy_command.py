@@ -154,7 +154,7 @@ def test_ascii_nul_as_redshift_null():
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
     DELIMITER AS ','
-    LZOP
+    BZIP2
     BLANKSASNULL
     EMPTYASNULL
     IGNOREHEADER AS 0
@@ -166,7 +166,7 @@ def test_ascii_nul_as_redshift_null():
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        compression='LZOP',
+        compression='BZIP2',
         dangerous_null_delimiter=u'\000',
         truncate_columns=True,
         delimiter=',',
