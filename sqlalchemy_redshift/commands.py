@@ -299,7 +299,8 @@ class CopyCommand(_ExecutableClause):
     fixed_width: iterable of (str, int), optional
         List of (column name, length) pairs to control fixed-width output.
     compression : str, optional
-        GZIP, LZOP, indicates the type of compression of the file to copy
+        GZIP, LZOP, BZIP2, indicates the type of compression of the
+        file to copy
     accept_any_date : bool, optional
         Allows any date format, including invalid formats such as
         ``00/00/00 00:00:00``, to be loaded as NULL without generating an error
@@ -388,7 +389,7 @@ class CopyCommand(_ExecutableClause):
         Boolean value denoting whether data_location is a manifest file.
     """
     formats = ['CSV', 'JSON', 'AVRO', None]
-    compression_types = ['GZIP', 'LZOP']
+    compression_types = ['GZIP', 'LZOP', 'BZIP2']
 
     def __init__(self, to, data_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
@@ -551,7 +552,7 @@ def visit_copy_command(element, compiler, **kw):
             type_=sa.String,
         ))
 
-    if element.compression in ['GZIP', 'LZOP']:
+    if element.compression in ['GZIP', 'LZOP', 'BZIP2']:
         parameters.append(element.compression)
 
     if element.manifest:
