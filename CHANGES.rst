@@ -11,6 +11,8 @@
   (`Issue #101 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/101>`_)
 - Support BZIP2 compression in COPY command
   (`Issue #110 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/110>`_)
+- Support CREATE TABLE AS statements
+  (`Issue #113 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/113>`_)
 
 
 0.5.0 (2016-04-21)
