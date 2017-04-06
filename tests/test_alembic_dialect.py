@@ -1,3 +1,6 @@
+import pytest
+
+pytest.importorskip('alembic')
 from alembic.ddl.base import RenameTable
 from alembic import migration
 
