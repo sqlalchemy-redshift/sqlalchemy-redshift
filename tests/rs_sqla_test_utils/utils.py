@@ -5,7 +5,8 @@ from sqlalchemy_redshift import dialect
 
 
 def clean(query):
-    return re.sub(r'\s+', ' ', query).strip()
+    encodings_removed = re.sub(r'\s+ENCODE\s+\w+', '', query)
+    return re.sub(r'\s+', ' ', encodings_removed).strip()
 
 
 def compile_query(q):
