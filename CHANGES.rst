@@ -1,4 +1,4 @@
-0.5.1 (unreleased)
+0.6.0 (2017-05-04)
 ------------------
 
 - Support role-based access control in COPY and UNLOAD commands
