@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from docutils.utils import get_source_line
 import sphinx.environment
 
 import sqlalchemy_redshift
@@ -11,10 +12,9 @@ def _short_version(release):
 
 
 # Hide nonlocal image warnings.
-_old_warn_node = sphinx.environment.BuildEnvironment.warn_node
-def _warn_node(self, msg, node):
+def _warn_node(self, msg, node, **kwargs):
     if not msg.startswith('nonlocal image URI found:'):
-        _old_warn_node(self, msg, node)
+        self._warnfunc(msg, '%s:%s' % get_source_line(node), **kwargs)
 
 sphinx.environment.BuildEnvironment.warn_node = _warn_node
 
