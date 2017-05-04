@@ -13,6 +13,8 @@
   (`Issue #110 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/110>`_)
 - Allow tests to tolerate new default column encodings in Redshift
   (`Issue #114 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/114>`_)
+- Pull in set of reserved words from Redshift docs
+  (`Issue #94 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/94>` _)
 
 
 0.5.0 (2016-04-21)
