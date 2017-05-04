@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 ## Scrapes a list of Redshift reserved words from AWS docs
 ## and formats for copying and pasting into Python code.
