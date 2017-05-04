@@ -6,7 +6,7 @@
 ## This was developed on macOS and may not directly translate to
 ## other platforms.
 
-curl "http://docs.aws.amazon.com/redshift/latest/dg/r_pg_keywords.html" \
+curl "https://docs.aws.amazon.com/redshift/latest/dg/r_pg_keywords.html" \
     | tr '\n' '\r' \
     | sed 's/.*\(AES128.*WITHOUT\).*/\1/' \
     | tr '\r' '\n' \
