@@ -111,6 +111,14 @@ models_and_ddls = [
             PRIMARY KEY ("excellent! & column"),
     ) DISTSTYLE EVEN
     ''')),
+    (models.ReflectionCustomReservedWords, '''
+    CREATE TABLE "aes256" (
+        "open" INTEGER,
+        "tag" INTEGER,
+        pkey INTEGER NOT NULL,
+        PRIMARY KEY (pkey)
+    ) DISTSTYLE EVEN
+    '''),
     (models.Referencing, '''
     CREATE TABLE other_schema.referencing (
         referenced_table_id INTEGER NOT NULL,

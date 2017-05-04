@@ -4,7 +4,9 @@ from collections import defaultdict, namedtuple
 import pkg_resources
 import sqlalchemy as sa
 from sqlalchemy import Column, exc, inspect
-from sqlalchemy.dialects.postgresql.base import PGCompiler, PGDDLCompiler
+from sqlalchemy.dialects.postgresql.base import (
+    PGCompiler, PGDDLCompiler, PGIdentifierPreparer
+)
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
@@ -95,6 +97,36 @@ PRIMARY_KEY_RE = re.compile(r"""
     )
   \s* \) \s*                # Arbitrary whitespace and literal ')'
 """, re.VERBOSE)
+
+# Reserved words as extracted from Redshift docs.
+# See pull_reserved_words.sh at the top level of this repository
+# for the code used to generate this set.
+RESERVED_WORDS = set([
+    "aes128", "aes256", "all", "allowoverwrite", "analyse", "analyze",
+    "and", "any", "array", "as", "asc", "authorization", "backup",
+    "between", "binary", "blanksasnull", "both", "bytedict", "bzip2",
+    "case", "cast", "check", "collate", "column", "constraint", "create",
+    "credentials", "cross", "current_date", "current_time",
+    "current_timestamp", "current_user", "current_user_id", "default",
+    "deferrable", "deflate", "defrag", "delta", "delta32k", "desc",
+    "disable", "distinct", "do", "else", "emptyasnull", "enable",
+    "encode", "encrypt", "encryption", "end", "except", "explicit",
+    "false", "for", "foreign", "freeze", "from", "full", "globaldict256",
+    "globaldict64k", "grant", "group", "gzip", "having", "identity",
+    "ignore", "ilike", "in", "initially", "inner", "intersect", "into",
+    "is", "isnull", "join", "leading", "left", "like", "limit",
+    "localtime", "localtimestamp", "lun", "luns", "lzo", "lzop", "minus",
+    "mostly13", "mostly32", "mostly8", "natural", "new", "not",
+    "notnull", "null", "nulls", "off", "offline", "offset", "oid", "old",
+    "on", "only", "open", "or", "order", "outer", "overlaps", "parallel",
+    "partition", "percent", "permissions", "placing", "primary", "raw",
+    "readratio", "recover", "references", "respect", "rejectlog",
+    "resort", "restore", "right", "select", "session_user", "similar",
+    "snapshot", "some", "sysdate", "system", "table", "tag", "tdes",
+    "text255", "text32k", "then", "timestamp", "to", "top", "trailing",
+    "true", "truncatecolumns", "union", "unique", "user", "using",
+    "verbose", "wallet", "when", "where", "with", "without",
+])
 
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
@@ -312,6 +344,10 @@ class RedshiftDDLCompiler(PGDDLCompiler):
         return text
 
 
+class RedshiftIdentifierPreparer(PGIdentifierPreparer):
+    reserved_words = RESERVED_WORDS
+
+
 class RedshiftDialect(PGDialect_psycopg2):
     """
     Define Redshift-specific behavior.
@@ -326,6 +362,7 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
+    preparer = RedshiftIdentifierPreparer
     construct_arguments = [
         (sa.schema.Index, {
             "using": False,

@@ -159,6 +159,16 @@ class ReflectionDelimitedIdentifiers2(Base):
     )
 
 
+class ReflectionCustomReservedWords(Base):
+    __tablename__ = 'aes256'
+    col1 = sa.Column('open', sa.Integer())
+    col2 = sa.Column('tag', sa.Integer())
+    pkey = sa.Column('pkey', sa.Integer(), primary_key=True)
+    __table_args__ = (
+        {'redshift_diststyle': 'EVEN'}
+    )
+
+
 class ReflectionDelimitedTableName(Base):
     __tablename__ = 'this.table'
     col1 = sa.Column('id', sa.Integer(), primary_key=True)
