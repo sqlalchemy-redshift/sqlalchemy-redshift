@@ -99,8 +99,8 @@ PRIMARY_KEY_RE = re.compile(r"""
 """, re.VERBOSE)
 
 # Reserved words as extracted from Redshift docs.
-# Command used to extract:
-# curl -q "http://docs.aws.amazon.com/redshift/latest/dg/r_pg_keywords.html" | tr '\n' '\r' | sed 's/.*\(AES128.*WITHOUT\).*/\1/' | tr '\r' '\n' | sed 's/^\([A-Z0-9_]*\).*/"\1",/' | paste -s -d' ' - | fold -s -w 70 | awk '{print "    "$0}' | tr 'A-Z' 'a-z'  # noqa
+# See pull_reserved_words.sh in this package for the code used to
+# generate this set.
 RESERVED_WORDS = set([
     "aes128", "aes256", "all", "allowoverwrite", "analyse", "analyze",
     "and", "any", "array", "as", "asc", "authorization", "backup",
