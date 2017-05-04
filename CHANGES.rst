@@ -13,6 +13,8 @@
   (`Issue #110 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/110>`_)
 - Support CREATE TABLE AS statements
   (`Issue #113 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/113>`_)
+- Allow tests to tolerate new default column encodings in Redshift
+  (`Issue #114 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/114>`_)
 
 
 0.5.0 (2016-04-21)
