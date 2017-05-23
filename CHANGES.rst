@@ -1,7 +1,8 @@
 0.6.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Do not enumerate `search_path` with external schemas (`Issue #120
+  <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/120>`_)
 
 
 0.6.0 (2017-05-04)

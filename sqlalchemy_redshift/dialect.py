@@ -689,8 +689,11 @@ class RedshiftDialect(PGDialect_psycopg2):
             # replace the original value for search_path.
             schema_names = ['"%s"' % r.name for r in cc.execute("""
             SELECT nspname AS "name"
-            FROM pg_catalog.pg_namespace
-            WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
+            FROM pg_catalog.pg_namespace n
+            WHERE nspname !~ '^pg_'
+                AND nspname <> 'information_schema'
+                AND n.oid NOT IN
+                  (SELECT esoid FROM pg_catalog.pg_external_schema)
             ORDER BY 1
             """)]
             modified_search_path = ','.join(schema_names)
