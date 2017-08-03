@@ -425,9 +425,10 @@ class CopyCommand(_ExecutableClause):
                     '"ignore_header" parameter should be an integer'
                 )
 
-        if format not in self.formats:
+        if format is not None and str(format).upper() not in self.formats:
             raise ValueError('"format" parameter must be one of %s' %
                              self.formats)
+            format = format.upper()
 
         if compression is not None:
             if compression not in self.compression_types:
