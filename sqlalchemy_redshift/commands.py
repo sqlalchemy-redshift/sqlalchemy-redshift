@@ -388,8 +388,8 @@ class CopyCommand(_ExecutableClause):
     manifest : bool, optional
         Boolean value denoting whether data_location is a manifest file.
     """
-    formats = ['CSV', 'JSON', 'AVRO', None]
-    compression_types = ['GZIP', 'LZOP', 'BZIP2']
+    formats = frozenset(['CSV', 'JSON', 'AVRO', None])
+    compression_types = frozenset(['GZIP', 'LZOP', 'BZIP2'])
 
     def __init__(self, to, data_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
