@@ -3,6 +3,7 @@
 
 - Do not enumerate `search_path` with external schemas (`Issue #120
   <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/120>`_)
+- Return constraint name from get_pk_constraint and get_foreign_keys
 
 
 0.6.0 (2017-05-04)

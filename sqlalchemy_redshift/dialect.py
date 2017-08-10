@@ -424,7 +424,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
         return {
             'constrained_columns': constrained_columns,
-            'name': None,
+            'name': pk_constraint.conname,
         }
 
     @reflection.cache
@@ -452,7 +452,7 @@ class RedshiftDialect(PGDialect_psycopg2):
             colstring = m.group('columns')
             constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
             fkey_d = {
-                'name': None,
+                'name': conname,
                 'constrained_columns': constrained_columns,
                 'referred_schema': referred_schema,
                 'referred_table': referred_table,
