@@ -91,11 +91,38 @@ class ReflectionPrimaryKeyConstraint(Base):
     )
 
 
+class ReflectionNamedPrimaryKeyConstraint(Base):
+    __tablename__ = 'reflection_named_pk_constraint'
+    col1 = sa.Column(sa.Integer())
+    col2 = sa.Column(sa.Integer())
+    __table_args__ = (
+        sa.PrimaryKeyConstraint(
+            col1, col2,
+            name="reflection_named_pk_constraint__pkey"
+        ),
+        {'redshift_diststyle': 'EVEN'}
+    )
+
+
 class ReflectionForeignKeyConstraint(Base):
     __tablename__ = 'reflection_fk_constraint'
     col1 = sa.Column(sa.Integer(),
                      sa.ForeignKey('reflection_unique_constraint.col1'),
                      primary_key=True)
+    col2 = sa.Column(sa.Integer())
+    __table_args__ = (
+        {'redshift_diststyle': 'EVEN'}
+    )
+
+
+class ReflectionNamedForeignKeyConstraint(Base):
+    __tablename__ = 'reflection_named_fk_constraint'
+    col1 = sa.Column(
+        sa.Integer(),
+        sa.ForeignKey('reflection_unique_constraint.col1',
+                      name="reflection_named_fk_constraint__fk"),
+        primary_key=True
+    )
     col2 = sa.Column(sa.Integer())
     __table_args__ = (
         {'redshift_diststyle': 'EVEN'}

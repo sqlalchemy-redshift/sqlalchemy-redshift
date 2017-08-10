@@ -56,12 +56,30 @@ models_and_ddls = [
         PRIMARY KEY (col1, col2)
     ) DISTSTYLE EVEN
     """),
+    (models.ReflectionNamedPrimaryKeyConstraint, """
+    CREATE TABLE reflection_named_pk_constraint (
+        col1 INTEGER NOT NULL,
+        col2 INTEGER NOT NULL,
+        CONSTRAINT reflection_named_pk_constraint__pkey
+            PRIMARY KEY (col1, col2)
+    ) DISTSTYLE EVEN
+    """),
     (models.ReflectionForeignKeyConstraint, """
     CREATE TABLE reflection_fk_constraint (
         col1 INTEGER NOT NULL,
         col2 INTEGER,
         PRIMARY KEY (col1),
         FOREIGN KEY(col1) REFERENCES reflection_unique_constraint (col1)
+    ) DISTSTYLE EVEN
+    """),
+    (models.ReflectionNamedForeignKeyConstraint, """
+    CREATE TABLE reflection_named_fk_constraint (
+        col1 INTEGER NOT NULL,
+        col2 INTEGER,
+        PRIMARY KEY (col1),
+        CONSTRAINT reflection_named_fk_constraint__fk
+            FOREIGN KEY(col1)
+            REFERENCES reflection_unique_constraint (col1)
     ) DISTSTYLE EVEN
     """),
     (models.ReflectionDefaultValue, """
