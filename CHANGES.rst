@@ -1,4 +1,4 @@
-0.6.1 (unreleased)
+0.6.1 (2017-09-12)
 ------------------
 
 - Do not enumerate `search_path` with external schemas (`Issue #120
