@@ -15,7 +15,7 @@ setup(
     license="MIT",
     url='https://github.com/sqlalchemy-redshift/sqlalchemy-redshift',
     packages=['sqlalchemy_redshift', 'redshift_sqlalchemy'],
-    package_data={'sqlalchemy_redshift': ['redshift-ssl-ca-cert.pem']},
+    package_data={'sqlalchemy_redshift': ['redshift-ca-bundle.crt']},
     install_requires=[
         'psycopg2>=2.5',
          # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in

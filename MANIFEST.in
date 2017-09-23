@@ -1,7 +1,7 @@
 include CHANGES.rst
 include README.rst
 
-include sqlalchemy_redshift/redshift-ssl-ca-cert.pem
+include sqlalchemy_redshift/redshift-ca-bundle.crt
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
