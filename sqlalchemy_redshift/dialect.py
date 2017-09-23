@@ -15,7 +15,9 @@ from sqlalchemy.sql.expression import (
 )
 from sqlalchemy.types import VARCHAR, NullType
 
-from .commands import CopyCommand, UnloadFromSelect
+from .commands import (
+    CopyCommand, UnloadFromSelect, Format, Compression, Encoding
+)
 from .compat import string_types
 
 try:
@@ -29,7 +31,10 @@ else:
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
 
-__all__ = ['CopyCommand', 'UnloadFromSelect', 'RedshiftDialect']
+__all__ = [
+    'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
+    'Encoding', 'Format',
+]
 
 
 # Regex for parsing and identity constraint out of adsrc, e.g.:

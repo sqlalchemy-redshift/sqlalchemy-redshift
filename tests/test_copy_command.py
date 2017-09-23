@@ -234,5 +234,19 @@ def test_different_tables():
             data_location='s3://bucket',
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
-            format='CSV'
+            format=dialect.Format.csv,
+        )
+
+
+def test_legacy_string_format():
+    metdata = sa.MetaData()
+    t1 = sa.Table('t1', metdata, sa.Column('col1', sa.Unicode()))
+    t2 = sa.Table('t2', metdata, sa.Column('col1', sa.Unicode()))
+    with pytest.raises(ValueError):
+        dialect.CopyCommand(
+            [t1.c.col1, t2.c.col1],
+            data_location='s3://bucket',
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            format='CSV',
         )

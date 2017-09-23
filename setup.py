@@ -22,6 +22,9 @@ setup(
          # version 0.9.2
         'SQLAlchemy>=0.9.2',
     ],
+    extras_require={
+        ':python_version < "3.4"': 'enum34 >= 1.1.6, < 2.0.0'
+    },
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",
