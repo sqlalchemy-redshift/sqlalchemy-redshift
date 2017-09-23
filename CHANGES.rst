@@ -7,6 +7,9 @@
 - Use Enums for Format, Compression and Encoding.
   Deprecate string parameters for these parameter types
   (`Issue #133 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/133>`_)
+- Update included certificate with the `transitional ACM cert bundle
+  <https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-transitioning-to-acm-certs.html>`_
+  (`Issue #130 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/130>`_)
 
 
 0.6.0 (2017-05-04)
