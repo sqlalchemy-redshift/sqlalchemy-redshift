@@ -388,8 +388,8 @@ class CopyCommand(_ExecutableClause):
     manifest : bool, optional
         Boolean value denoting whether data_location is a manifest file.
     """
-    formats = ['CSV', 'JSON', 'AVRO', None]
-    compression_types = ['GZIP', 'LZOP', 'BZIP2']
+    formats = frozenset(['CSV', 'JSON', 'AVRO', None])
+    compression_types = frozenset(['GZIP', 'LZOP', 'BZIP2'])
 
     def __init__(self, to, data_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
@@ -425,9 +425,10 @@ class CopyCommand(_ExecutableClause):
                     '"ignore_header" parameter should be an integer'
                 )
 
-        if format not in self.formats:
+        if format is not None and str(format).upper() not in self.formats:
             raise ValueError('"format" parameter must be one of %s' %
                              self.formats)
+            format = format.upper()
 
         if compression is not None:
             if compression not in self.compression_types:
