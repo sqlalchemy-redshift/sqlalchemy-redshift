@@ -6,6 +6,8 @@ import sqlalchemy as sa
 from sqlalchemy.ext import compiler as sa_compiler
 from sqlalchemy.sql import expression as sa_expression
 
+from .compat import string_types
+
 
 # At the time of this implementation, no specification for a session token was
 # found. After looking at a few session tokens they appear to be the same as
@@ -22,6 +24,9 @@ SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
 TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
 AWS_ACCOUNT_ID_RE = re.compile('[0-9]{12}')
 IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@-_]{1,64}')
+
+DISTSTYLES = ('EVEN', 'ALL', 'KEY')
+SORTKEY_STYLES = ('COMPOUND', 'INTERLEAVED')
 
 
 def _process_aws_credentials(access_key_id=None, secret_access_key=None,
@@ -670,3 +675,158 @@ def visit_copy_command(element, compiler, **kw):
     )
 
     return compiler.process(sa.text(qs).bindparams(*bindparams), **kw)
+
+
+class CreateTableAs(_ExecutableClause):
+    """
+    Prepares a Redshift CREATE TABLE AS statement.
+    http://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_TABLE_AS.html
+
+    Parameters
+    ----------
+    name : str
+        Name of the table to be created.
+    select : sqlalchemy.sql.selectable.Selectable
+        The selectable Core Table Expression query to create the table from.
+    schema : str, optional
+        Schema to create the table in.
+    temporary : bool
+        Whether the created table is a temporary table.
+    columns : iterable of sqlalchemy.ColumnElement or str, optional
+        Names of columns to use in the created table.
+    diststyle : str, optional
+        Distribution style for the table being created,
+        either 'EVEN', 'ALL', or 'KEY'
+    distkey : str or sqlalchemy.ColumnElement, optional
+        Column to use as the dist key in the created table.
+    sortkey : iterable of str or sqlalchemy.ColumnElement, optional
+        Column to use as the sort key in the created table.
+    sortkey_type : str
+        Type of sortkey to create, either COMPOUND or INTERLEAVED.
+    backup : bool, optional
+        Whether to exclude the created table from backup snapshots taken.
+    """
+    _execution_options = sa_expression.Executable._execution_options.union(
+        {'autocommit': True})
+
+    def __init__(self, table, select,
+                 schema=None,
+                 temporary=False,
+                 columns=None,
+                 diststyle=None,
+                 distkey=None,
+                 sortkey=None,
+                 sortkey_type=None,
+                 backup=True):
+        self.table = table
+        self.select = select
+        self.schema = schema
+        self.temporary = temporary
+
+        if columns is None:
+            self.columns = None
+        else:
+            self.columns = [_try_name(col) for col in columns]
+
+        if diststyle is not None and diststyle.upper() not in DISTSTYLES:
+            raise ValueError(
+                'diststyle must be one of %s' % ', '.join(DISTSTYLES))
+        else:
+            self.diststyle = diststyle
+
+        self.distkey = _try_name(distkey)
+
+        if (sortkey_type is not None and
+                sortkey_type.upper() not in SORTKEY_STYLES):
+            raise ValueError(
+                'sortkey_type must be one of %s' % ', '.join(SORTKEY_STYLES))
+        else:
+            self.sortkey_type = sortkey_type
+
+        if sortkey is None:
+            self.sortkey = None
+        else:
+            if isinstance(sortkey, (string_types, sa.Column)):
+                sortkey = (sortkey,)
+            self.sortkey = [_try_name(key) for key in sortkey]
+
+        self.backup = backup
+
+
+def _try_name(obj):
+    """Attempt return obj.name if the attribute exists, othewise return obj.
+
+    Helper for dealing with situations in which we accept both sa.Column
+    objects and strings.
+    """
+    try:
+        return obj.name
+    except AttributeError:
+        return obj
+
+
+@sa_compiler.compiles(CreateTableAs)
+def _create_table_as(element, compiler, **kw):
+    """Returns the sql query for the CreateTableAs class."""
+
+    template = """
+        CREATE {temporary} TABLE {table}
+        {columns}
+        {diststyle}
+        {distkey}
+        {sortkey_type} {sortkey}
+        {backup}
+        AS
+        {select}
+    """
+    format_kwargs = {}
+
+    if element.schema:
+        table = '%s.%s' % (compiler.preparer.quote(element.schema),
+                           compiler.preparer.quote(element.table))
+    else:
+        table = compiler.preparer.quote(element.table)
+    format_kwargs['table'] = table
+
+    format_kwargs['select'] = compiler.process(
+        element.select, literal_binds=True)
+
+    if element.temporary:
+        format_kwargs['temporary'] = 'TEMPORARY'
+    else:
+        format_kwargs['temporary'] = ''
+
+    if element.columns is not None:
+        format_kwargs['columns'] = '(%s)' % ','.join(
+            compiler.preparer.quote(col) for col in element.columns)
+    else:
+        format_kwargs['columns'] = ''
+
+    if element.diststyle is not None:
+        format_kwargs['diststyle'] = 'DISTSTYLE %s' % element.diststyle
+    else:
+        format_kwargs['diststyle'] = ''
+
+    if element.distkey is not None:
+        format_kwargs['distkey'] = 'DISTKEY (%s)' % compiler.preparer.quote(
+            element.distkey)
+    else:
+        format_kwargs['distkey'] = ''
+
+    format_kwargs['sortkey_type'] = ''
+    if element.sortkey is not None:
+        if element.sortkey_type is not None:
+            format_kwargs['sortkey_type'] = element.sortkey_type
+
+        format_kwargs['sortkey'] = 'SORTKEY (%s)' % ','.join(
+            compiler.preparer.quote(col) for col in element.sortkey)
+    else:
+        format_kwargs['sortkey'] = ''
+
+    if not element.backup:
+        format_kwargs['backup'] = 'BACKUP NO'
+    else:
+        format_kwargs['backup'] = ''
+
+    query = template.format(**format_kwargs)
+    return compiler.process(sa.text(query), **kw)

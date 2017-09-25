@@ -19,6 +19,8 @@
   (`Issue #101 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/101>`_)
 - Support BZIP2 compression in COPY command
   (`Issue #110 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/110>`_)
+- Support CREATE TABLE AS statements
+  (`Issue #113 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/113>`_)
 - Allow tests to tolerate new default column encodings in Redshift
   (`Issue #114 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/114>`_)
 - Pull in set of reserved words from Redshift docs
