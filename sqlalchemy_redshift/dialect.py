@@ -574,7 +574,7 @@ class RedshiftDialect(PGDialect_psycopg2):
             'sslmode': 'verify-full',
             'sslrootcert': pkg_resources.resource_filename(
                 __name__,
-                'redshift-ssl-ca-cert.pem'
+                'redshift-ca-bundle.crt'
             ),
         }
         cargs, cparams = super(RedshiftDialect, self).create_connect_args(

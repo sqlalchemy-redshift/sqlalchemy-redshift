@@ -1,7 +1,4 @@
-import sqlalchemy as sa
-
-
-CERT = b"""-----BEGIN CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
 MIIDeDCCAuGgAwIBAgIJALPHPDcjk979MA0GCSqGSIb3DQEBBQUAMIGFMQswCQYD
 VQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHU2VhdHRsZTET
 MBEGA1UEChMKQW1hem9uLmNvbTELMAkGA1UECxMCQ00xLTArBgkqhkiG9w0BCQEW
@@ -146,19 +143,3 @@ MAoGCCqGSM49BAMDA2gAMGUCMDqLIfG9fhGt0O9Yli/W651+kI0rz2ZVwyzjKKlw
 CkcO8DdZEv8tmZQoTipPNU0zWgIxAOp1AE47xDqUEpHJWEadIRNyp4iciuRMStuW
 1KyLa2tJElMzrdfkviT8tQp21KW8EA==
 -----END CERTIFICATE-----
-"""
-
-
-def test_ssl_args():
-    engine = sa.create_engine('redshift+psycopg2://test')
-    dialect = engine.dialect
-    url = engine.url
-
-    cargs, cparams = dialect.create_connect_args(url)
-
-    assert cargs == []
-    assert cparams.pop('host') == 'test'
-    assert cparams.pop('sslmode') == 'verify-full'
-    with open(cparams.pop('sslrootcert'), 'rb') as cert:
-        assert cert.read() == CERT
-    assert cparams == {}
