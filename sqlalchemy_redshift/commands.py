@@ -1,6 +1,8 @@
 import collections
+import enum
 import numbers
 import re
+import warnings
 
 import sqlalchemy as sa
 from sqlalchemy.ext import compiler as sa_compiler
@@ -261,6 +263,25 @@ def visit_unload_from_select(element, compiler, **kw):
     )
 
 
+class Format(enum.Enum):
+    csv = 'CSV'
+    json = 'JSON'
+    avro = 'AVRO'
+
+
+class Compression(enum.Enum):
+    gzip = 'GZIP'
+    lzop = 'LZOP'
+    bzip2 = 'BZIP2'
+
+
+class Encoding(enum.Enum):
+    utf8 = 'UTF8'
+    utf16 = 'UTF16'
+    utf16le = 'UTF16LE'
+    utf16be = 'UTF16BE'
+
+
 class CopyCommand(_ExecutableClause):
     """
     Prepares a Redshift COPY statement.
@@ -285,11 +306,11 @@ class CopyCommand(_ExecutableClause):
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
-    format : str, optional
-        CSV, JSON, or AVRO. Indicates the type of file to copy from
+    format : Format, optional
+        Indicates the type of file to copy from
     quote : str, optional
         Specifies the character to be used as the quote character when using
-        ``format='CSV'``. The default is a double quotation mark ( ``"`` )
+        ``format=Format.csv``. The default is a double quotation mark ( ``"`` )
     delimiter : File delimiter, optional
         defaults to ``|``
     path_file : str, optional
@@ -298,9 +319,8 @@ class CopyCommand(_ExecutableClause):
         defaults to ``'auto'``
     fixed_width: iterable of (str, int), optional
         List of (column name, length) pairs to control fixed-width output.
-    compression : str, optional
-        GZIP, LZOP, BZIP2, indicates the type of compression of the
-        file to copy
+    compression : Compression, optional
+        indicates the type of compression of the file to copy
     accept_any_date : bool, optional
         Allows any date format, including invalid formats such as
         ``00/00/00 00:00:00``, to be loaded as NULL without generating an error
@@ -319,10 +339,9 @@ class CopyCommand(_ExecutableClause):
     empty_as_null : bool, optional
         Boolean value denoting whether to load VARCHAR fields with empty
         values as NULL instead of empty string
-    encoding : str, optional
-        ``'UTF8'``, ``'UTF16'``, ``'UTF16LE'``, ``'UTF16BE'``. Specifies the
-        encoding type of the load data
-        defaults to ``'UTF8'``
+    encoding : Encoding, optional
+        Specifies the encoding type of the load data defaults to
+        ``Encoding.utf8``
     escape : bool, optional
         When this parameter is specified, the backslash character (``\``) in
         input data is treated as an escape character. The character that
@@ -388,8 +407,6 @@ class CopyCommand(_ExecutableClause):
     manifest : bool, optional
         Boolean value denoting whether data_location is a manifest file.
     """
-    formats = ['CSV', 'JSON', 'AVRO', None]
-    compression_types = ['GZIP', 'LZOP', 'BZIP2']
 
     def __init__(self, to, data_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
@@ -425,16 +442,17 @@ class CopyCommand(_ExecutableClause):
                     '"ignore_header" parameter should be an integer'
                 )
 
-        if format not in self.formats:
-            raise ValueError('"format" parameter must be one of %s' %
-                             self.formats)
+        def check_enum(Enum, val):
+            if val is None:
+                return
 
-        if compression is not None:
-            if compression not in self.compression_types:
-                raise ValueError(
-                    '"compression" parameter must be one of %s' %
-                    self.compression_types
-                )
+            cleaned = Enum(val)
+            if cleaned is not val:
+                tpl = '{val!r} should be, {cleaned!r}, an instance of {Enum!r}'
+                msg = tpl.format(val=val, cleaned=cleaned, Enum=Enum)
+                warnings.warn(msg, DeprecationWarning)
+
+            return cleaned
 
         table = None
         columns = []
@@ -456,19 +474,19 @@ class CopyCommand(_ExecutableClause):
         self.columns = columns
         self.data_location = data_location
         self.credentials = credentials
-        self.format = format
+        self.format = check_enum(Format, format)
         self.quote = quote
         self.path_file = path_file
         self.delimiter = delimiter
         self.fixed_width = fixed_width
-        self.compression = compression
+        self.compression = check_enum(Compression, compression)
         self.manifest = manifest
         self.accept_any_date = accept_any_date
         self.accept_inv_chars = accept_inv_chars
         self.blanks_as_null = blanks_as_null
         self.date_format = date_format
         self.empty_as_null = empty_as_null
-        self.encoding = encoding
+        self.encoding = check_enum(Encoding, encoding)
         self.escape = escape
         self.explicit_ids = explicit_ids
         self.fill_record = fill_record
@@ -510,7 +528,7 @@ def visit_copy_command(element, compiler, **kw):
         ),
     ]
 
-    if element.format == 'CSV':
+    if element.format == Format.csv:
         format_ = 'FORMAT AS CSV'
         if element.quote is not None:
             format_ += ' QUOTE AS :quote_character'
@@ -519,14 +537,14 @@ def visit_copy_command(element, compiler, **kw):
                 value=element.quote,
                 type_=sa.String,
             ))
-    elif element.format == 'JSON':
+    elif element.format == Format.json:
         format_ = 'FORMAT AS JSON AS :json_option'
         bindparams.append(sa.bindparam(
             'json_option',
             value=element.path_file,
             type_=sa.String,
         ))
-    elif element.format == 'AVRO':
+    elif element.format == Format.avro:
         format_ = 'FORMAT AS AVRO AS :avro_option'
         bindparams.append(sa.bindparam(
             'avro_option',
@@ -552,8 +570,8 @@ def visit_copy_command(element, compiler, **kw):
             type_=sa.String,
         ))
 
-    if element.compression in ['GZIP', 'LZOP', 'BZIP2']:
-        parameters.append(element.compression)
+    if element.compression is not None:
+        parameters.append(Compression(element.compression).value)
 
     if element.manifest:
         parameters.append('MANIFEST')
@@ -583,8 +601,8 @@ def visit_copy_command(element, compiler, **kw):
     if element.empty_as_null:
         parameters.append('EMPTYASNULL')
 
-    if element.encoding in ['UTF8', 'UTF16', 'UTF16LE', 'UTF16BE']:
-        parameters.append('ENCODING AS ' + element.encoding)
+    if element.encoding is not None:
+        parameters.append('ENCODING AS ' + Encoding(element.encoding).value)
 
     if element.escape:
         parameters.append('ESCAPE')

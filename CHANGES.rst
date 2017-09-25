@@ -4,6 +4,9 @@
 - Do not enumerate `search_path` with external schemas (`Issue #120
   <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/120>`_)
 - Return constraint name from get_pk_constraint and get_foreign_keys
+- Use Enums for Format, Compression and Encoding.
+  Deprecate string parameters for these parameter types
+  (`Issue #133 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/133>`_)
 
 
 0.6.0 (2017-05-04)
