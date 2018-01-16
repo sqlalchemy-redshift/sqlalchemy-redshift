@@ -1,7 +1,8 @@
 0.7.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Fix incompatibility of reflection code with SQLAlchemy 1.2.0+
+  (`Issue #138 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/138>`_)
 
 
 0.7.0 (2017-10-03)

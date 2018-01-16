@@ -604,6 +604,11 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
+        if sa.__version__ >= '1.2.0':
+            # SQLAlchemy 1.2.0 introduced a required 'comment' param
+            kw['comment'] = kw.get('comment', None)
+        else:
+            kw.pop('comment', None)
         column_info = super(RedshiftDialect, self)._get_column_info(
             *args,
             **kw
