@@ -139,6 +139,13 @@ RESERVED_WORDS = set([
 ])
 
 
+def arglist(fn):
+    """
+    Returns a list of args from a function object.
+    """
+    return getargspec(fn).args
+
+
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
     """
     Structured tuple of table/view name and schema name.
@@ -609,8 +616,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
-        if 'comment' in getargspec(
-                super(RedshiftDialect, self)._get_column_info).args:
+        if 'comment' in arglist(super(RedshiftDialect, self)._get_column_info):
             # SQLAlchemy 1.2.0 introduced a required 'comment' param
             kw['comment'] = kw.get('comment', None)
         else:
