@@ -831,7 +831,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     >>> str(del_stmt.compile(dialect=RedshiftDialect()))
     'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
     >>> str(del_stmt)
-    'DELETE FROM table_1 WHERE table_1.pk = table_2.pk'
+    'DELETE FROM table_1 , table_2 WHERE table_1.pk = table_2.pk'
     >>> del_stmt2 = delete(table1)
     >>> str(del_stmt2)
     'DELETE FROM table_1'
