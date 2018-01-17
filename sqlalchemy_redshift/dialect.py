@@ -21,11 +21,6 @@ from .commands import (
 from .compat import string_types
 
 try:
-    from inspect import getfullargspec as getargspec
-except ImportError:
-    from inspect import getargspec
-
-try:
     from alembic.ddl import postgresql
 except ImportError:
     pass
@@ -137,13 +132,6 @@ RESERVED_WORDS = set([
     "true", "truncatecolumns", "union", "unique", "user", "using",
     "verbose", "wallet", "when", "where", "with", "without",
 ])
-
-
-def arglist(fn):
-    """
-    Returns a list of args from a function object.
-    """
-    return getargspec(fn).args
 
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
@@ -616,7 +604,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
-        if 'comment' in arglist(super(RedshiftDialect, self)._get_column_info):
+        if sa.__version__ >= '1.2.0':
             # SQLAlchemy 1.2.0 introduced a required 'comment' param
             kw['comment'] = kw.get('comment', None)
         else:
