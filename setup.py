@@ -20,7 +20,7 @@ setup(
         'psycopg2>=2.5',
          # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in
          # version 0.9.2
-        'SQLAlchemy>=0.9.2',
+        'SQLAlchemy>=0.9.2,<2.0.0',
     ],
     extras_require={
         ':python_version < "3.4"': 'enum34 >= 1.1.6, < 2.0.0'
