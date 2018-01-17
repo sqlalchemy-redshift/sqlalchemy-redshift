@@ -1,4 +1,4 @@
-0.7.1 (unreleased)
+0.7.1 (2018-01-17)
 ------------------
 
 - Fix incompatibility of reflection code with SQLAlchemy 1.2.0+
