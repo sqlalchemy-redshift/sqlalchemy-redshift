@@ -688,34 +688,17 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_all_column_info(self, connection, **kw):
         all_columns = defaultdict(list)
         with connection.contextual_connect() as cc:
-            # We fetch the current search_path, which may or may not quote
-            # '$user' depending on whether other schemas need quoting.
-            search_path = cc.execute("SHOW search_path").scalar()
-            if '$user' in search_path and '"$user"' not in search_path:
-                search_path = search_path.replace('$user', '"$user"')
-
-            # Because pg_table_def only shows results for schemas on the
-            # search_path, we explicitly include all non-system schemas, then
-            # replace the original value for search_path.
-            schema_names = ['"%s"' % r.name for r in cc.execute("""
-            SELECT nspname AS "name"
-            FROM pg_catalog.pg_namespace n
-            WHERE nspname !~ '^pg_'
-                AND nspname <> 'information_schema'
-                AND n.oid NOT IN
-                  (SELECT esoid FROM pg_catalog.pg_external_schema)
-            ORDER BY 1
-            """)]
-            modified_search_path = ','.join(schema_names)
-            cc.execute("SET LOCAL search_path TO %s" % modified_search_path)
-
             result = cc.execute("""
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
-              d.column as "name",
-              encoding as "encode",
-              type, distkey, sortkey, "notnull", adsrc, attnum,
+              att.attname as "name",
+              format_encoding(att.attencodingtype::integer) as "encode",
+              format_type(att.atttypid, att.atttypmod) as "type",
+              att.attisdistkey as "distkey",
+              att.attsortkeyord as "sortkey",
+              att.attnotnull as "notnull",
+              adsrc, attnum,
               pg_catalog.format_type(att.atttypid, att.atttypmod),
               pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
               n.oid as "schema_oid",
@@ -723,20 +706,18 @@ class RedshiftDialect(PGDialect_psycopg2):
             FROM pg_catalog.pg_class c
             LEFT JOIN pg_catalog.pg_namespace n
               ON n.oid = c.relnamespace
-            JOIN pg_catalog.pg_table_def d
-              ON (d.schemaname, d.tablename) = (n.nspname, c.relname)
             JOIN pg_catalog.pg_attribute att
-              ON (att.attrelid, att.attname) = (c.oid, d.column)
+              ON att.attrelid = c.oid
             LEFT JOIN pg_catalog.pg_attrdef ad
               ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
             WHERE n.nspname !~ '^pg_'
+              AND att.attnum > 0
+              AND NOT att.attisdropped
             ORDER BY n.nspname, c.relname, att.attnum
             """)
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
-
-            cc.execute("SET LOCAL search_path TO %s" % search_path)
 
         return dict(all_columns)
 
