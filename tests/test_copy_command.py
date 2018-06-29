@@ -177,13 +177,14 @@ def test_ascii_nul_as_redshift_null():
     assert clean(expected_result) == clean(compile_query(copy))
 
 
-def test_json_upload_with_manifest_ordered_columns():
+def test_json_upload_with_manifest_region_ordered_columns():
     expected_result = """
     COPY schema1.t1 (col1, col2) FROM 's3://mybucket/data/listing.manifest'
     WITH CREDENTIALS AS '%s'
     FORMAT AS JSON AS 's3://mybucket/data/jsonpath.json'
     GZIP
     MANIFEST
+    REGION AS 'us-east-1'
     ACCEPTANYDATE
     TIMEFORMAT AS 'auto'
     """ % creds
@@ -193,6 +194,7 @@ def test_json_upload_with_manifest_ordered_columns():
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         manifest=True,
+        region='us-east-1',
         format='JSON',
         path_file='s3://mybucket/data/jsonpath.json',
         compression='GZIP',
