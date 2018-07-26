@@ -580,7 +580,7 @@ def visit_copy_command(element, compiler, **kw):
     if element.manifest:
         parameters.append('MANIFEST')
 
-    if element.region is not None:
+    if element.region:
         parameters.append('REGION AS :region')
         bindparams.append(sa.bindparam(
             'region',
