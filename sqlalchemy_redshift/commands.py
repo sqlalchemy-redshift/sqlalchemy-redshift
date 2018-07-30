@@ -406,6 +406,9 @@ class CopyCommand(_ExecutableClause):
         initially empty
     manifest : bool, optional
         Boolean value denoting whether data_location is a manifest file.
+    region : str, optional
+        The AWS region that the source data resides in (required for
+        cross-region loading)
     """
 
     def __init__(self, to, data_location, access_key_id=None,
@@ -422,7 +425,7 @@ class CopyCommand(_ExecutableClause):
                  roundec=False, time_format=None, trim_blanks=False,
                  truncate_columns=False, comp_rows=None, comp_update=None,
                  max_error=None, no_load=False, stat_update=None,
-                 manifest=False):
+                 manifest=False, region=None):
 
         credentials = _process_aws_credentials(
             access_key_id=access_key_id,
@@ -481,6 +484,7 @@ class CopyCommand(_ExecutableClause):
         self.fixed_width = fixed_width
         self.compression = check_enum(Compression, compression)
         self.manifest = manifest
+        self.region = region
         self.accept_any_date = accept_any_date
         self.accept_inv_chars = accept_inv_chars
         self.blanks_as_null = blanks_as_null
@@ -575,6 +579,14 @@ def visit_copy_command(element, compiler, **kw):
 
     if element.manifest:
         parameters.append('MANIFEST')
+
+    if element.region:
+        parameters.append('REGION AS :region')
+        bindparams.append(sa.bindparam(
+            'region',
+            value=element.region,
+            type_=sa.String,
+        ))
 
     if element.accept_any_date:
         parameters.append('ACCEPTANYDATE')

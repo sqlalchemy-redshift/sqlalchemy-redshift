@@ -1,3 +1,8 @@
+0.7.3 (unreleased)
+------------------
+
+- Support copying data from other AWS regions, which requires a REGION AS clause
+
 0.7.2 (unreleased)
 ------------------
 
