@@ -315,7 +315,7 @@ class CopyCommand(_ExecutableClause):
     quote : str, optional
         Specifies the character to be used as the quote character when using
         ``format=Format.csv``. The default is a double quotation mark ( ``"`` )
-    delimiter : File delimiter, optional
+    delimiter : Field delimiter, optional
         defaults to ``|``
     path_file : str, optional
         Specifies an Amazon S3 location to a JSONPaths file to explicitly map
