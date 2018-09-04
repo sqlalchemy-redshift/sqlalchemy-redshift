@@ -1,5 +1,6 @@
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
 
 from sqlalchemy_redshift import dialect
 from sqlalchemy_redshift import commands
@@ -132,6 +133,19 @@ def test_invalid_format():
             secret_access_key=secret_access_key,
             format=';drop table bobby_tables;'
         )
+
+
+def test_fixed_width_format_without_widths():
+    copy = dialect.CopyCommand(
+        tbl,
+        format=commands.Format.fixed_width,
+        data_location='s3://bucket',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key
+    )
+    with pytest.raises(sa_exc.CompileError,
+                       match=r"^'fixed_width' argument required.*$"):
+        compile_query(copy)
 
 
 def test_compression():
