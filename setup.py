@@ -16,6 +16,7 @@ setup(
     url='https://github.com/sqlalchemy-redshift/sqlalchemy-redshift',
     packages=['sqlalchemy_redshift', 'redshift_sqlalchemy'],
     package_data={'sqlalchemy_redshift': ['redshift-ca-bundle.crt']},
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*',
     install_requires=[
         'psycopg2>=2.5',
          # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in
@@ -38,6 +39,7 @@ setup(
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
     ],
     entry_points={
         'sqlalchemy.dialects': [
