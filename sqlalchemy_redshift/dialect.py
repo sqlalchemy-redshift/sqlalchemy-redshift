@@ -707,9 +707,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             ORDER BY 1
             """)]
             modified_search_path = ','.join(schema_names)
-            cc.execute("SET LOCAL search_path TO %s" % modified_search_path)
-
             result = cc.execute("""
+            SET LOCAL search_path TO %s;
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -731,12 +730,10 @@ class RedshiftDialect(PGDialect_psycopg2):
               ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
             WHERE n.nspname !~ '^pg_'
             ORDER BY n.nspname, c.relname, att.attnum
-            """)
+            """ % modified_search_path)
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
-
-            cc.execute("SET LOCAL search_path TO %s" % search_path)
 
         return dict(all_columns)
 
