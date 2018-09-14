@@ -3,6 +3,8 @@
 
 - Update tests to adapt to changes in Redshift and SQLAlchemy
   (`Issue #140 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/140>`_)
+- Fix reflection of tables from schemas which are not in current user's search_path.
+  (`Issue #145 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/145>`_)
 
 
 0.7.1 (2018-01-17)
