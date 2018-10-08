@@ -3,6 +3,7 @@
 
 - Update tests to adapt to changes in Redshift and SQLAlchemy
   (`Issue #140 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/140>`_)
+- Add official support for Python 3.7
 
 
 0.7.1 (2018-01-17)
