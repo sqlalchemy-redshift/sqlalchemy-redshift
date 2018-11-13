@@ -113,7 +113,7 @@ class UnloadFromSelect(_ExecutableClause):
     ----------
     select: sqlalchemy.sql.selectable.Selectable
         The selectable Core Table Expression query to unload from.
-    data_location: str
+    unload_location: str
         The Amazon S3 location where the file will be created, or a manifest
         file if the `manifest` option is used
     access_key_id: str, optional
@@ -131,6 +131,11 @@ class UnloadFromSelect(_ExecutableClause):
         key based credentials (``access_key_id`` and ``secret_access_key``)
     manifest: bool, optional
         Boolean value denoting whether data_location is a manifest file.
+    header: bool, optional
+        Boolean value denoting whether to add header line containing column
+        names at the top of each output file. Text transformation options,
+        such as delimiter, add_quotes, and escape, also apply to the header line.
+        header can't be used with fixed_width.
     delimiter: File delimiter, optional
         defaults to '|'
     fixed_width: iterable of (str, int), optional
@@ -158,13 +163,18 @@ class UnloadFromSelect(_ExecutableClause):
     def __init__(self, select, unload_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
                  aws_account_id=None, iam_role_name=None,
-                 manifest=False, delimiter=None, fixed_width=None,
+                 manifest=False, header=None, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True):
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
                 '"delimiter" parameter must be a single character'
+            )
+
+        if header is not None and fixed_width is not None:
+            raise ValueError(
+                "'header' cannot be used with 'fixed_width'"
             )
 
         credentials = _process_aws_credentials(
@@ -179,6 +189,7 @@ class UnloadFromSelect(_ExecutableClause):
         self.unload_location = unload_location
         self.credentials = credentials
         self.manifest = manifest
+        self.header = header
         self.delimiter = delimiter
         self.fixed_width = fixed_width
         self.encrypted = encrypted
@@ -198,6 +209,7 @@ def visit_unload_from_select(element, compiler, **kw):
        UNLOAD (:select) TO :unload_location
        CREDENTIALS :credentials
        {manifest}
+       {header}
        {delimiter}
        {encrypted}
        {fixed_width}
@@ -212,6 +224,7 @@ def visit_unload_from_select(element, compiler, **kw):
 
     qs = template.format(
         manifest='MANIFEST' if el.manifest else '',
+        header='HEADER' if el.header else '',
         delimiter=(
             'DELIMITER AS :delimiter' if el.delimiter is not None else ''
         ),
