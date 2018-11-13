@@ -154,10 +154,11 @@ class UnloadFromSelect(_ExecutableClause):
     parallel: bool, optional
         If disabled unload sequentially as one file.
     header: bool, optional
-        Boolean value denoting whether to add header line containing column
-        names at the top of each output file. Text transformation options,
-        such as delimiter, add_quotes, and escape, also apply to the header line.
-        header can't be used with fixed_width.
+        Boolean value denoting whether to add header line
+        containing column names at the top of each output file.
+        Text transformation options, such as delimiter, add_quotes,
+        and escape, also apply to the header line.
+        `header` can't be used with fixed_width.
     """
 
     def __init__(self, select, unload_location, access_key_id=None,
@@ -165,7 +166,8 @@ class UnloadFromSelect(_ExecutableClause):
                  aws_account_id=None, iam_role_name=None,
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
-                 escape=False, allow_overwrite=False, parallel=True, header=False):
+                 escape=False, allow_overwrite=False, parallel=True,
+                 header=False):
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
