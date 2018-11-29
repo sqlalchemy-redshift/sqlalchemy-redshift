@@ -114,7 +114,7 @@ class UnloadFromSelect(_ExecutableClause):
     ----------
     select: sqlalchemy.sql.selectable.Selectable
         The selectable Core Table Expression query to unload from.
-    data_location: str
+    unload_location: str
         The Amazon S3 location where the file will be created, or a manifest
         file if the `manifest` option is used
     access_key_id: str, optional
