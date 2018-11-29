@@ -3,6 +3,8 @@
 
 - Update tests to adapt to changes in Redshift and SQLAlchemy
   (`Issue #140 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/140>`_)
+- Add support for Parquet and ORC file formats in the COPY command
+  (`Issue #151 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/150>`_)
 
 
 0.7.1 (2018-01-17)
