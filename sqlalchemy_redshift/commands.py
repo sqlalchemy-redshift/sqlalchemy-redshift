@@ -5,6 +5,7 @@ import re
 import warnings
 
 import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.ext import compiler as sa_compiler
 from sqlalchemy.sql import expression as sa_expression
 
@@ -113,7 +114,7 @@ class UnloadFromSelect(_ExecutableClause):
     ----------
     select: sqlalchemy.sql.selectable.Selectable
         The selectable Core Table Expression query to unload from.
-    data_location: str
+    unload_location: str
         The Amazon S3 location where the file will be created, or a manifest
         file if the `manifest` option is used
     access_key_id: str, optional
@@ -267,6 +268,9 @@ class Format(enum.Enum):
     csv = 'CSV'
     json = 'JSON'
     avro = 'AVRO'
+    orc = 'ORC'
+    parquet = 'PARQUET'
+    fixed_width = 'FIXEDWIDTH'
 
 
 class Compression(enum.Enum):
@@ -311,7 +315,7 @@ class CopyCommand(_ExecutableClause):
     quote : str, optional
         Specifies the character to be used as the quote character when using
         ``format=Format.csv``. The default is a double quotation mark ( ``"`` )
-    delimiter : File delimiter, optional
+    delimiter : Field delimiter, optional
         defaults to ``|``
     path_file : str, optional
         Specifies an Amazon S3 location to a JSONPaths file to explicitly map
@@ -551,6 +555,13 @@ def visit_copy_command(element, compiler, **kw):
             value=element.path_file,
             type_=sa.String,
         ))
+    elif element.format == Format.orc:
+        format_ = 'FORMAT AS ORC'
+    elif element.format == Format.parquet:
+        format_ = 'FORMAT AS PARQUET'
+    elif element.format == Format.fixed_width and element.fixed_width is None:
+        raise sa_exc.CompileError(
+            "'fixed_width' argument required for format 'FIXEDWIDTH'.")
     else:
         format_ = ''
 
