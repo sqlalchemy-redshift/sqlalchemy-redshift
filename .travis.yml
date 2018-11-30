@@ -1,3 +1,4 @@
+dist: xenial
 sudo: false
 language: python
 python:
@@ -5,7 +6,7 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-  - "3.7-dev"   # Change to "3.7" once Travis gets 3.7.0 on their machines
+  - "3.7"
 
 env:
   global:
