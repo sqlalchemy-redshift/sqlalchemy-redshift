@@ -4,6 +4,7 @@
 - Update tests to adapt to changes in Redshift and SQLAlchemy
   (`Issue #140 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/140>`_)
 - Add `header` option to `UnloadFromSelect` command
+  (`Issue #156 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/156>`_)
 
 
 0.7.1 (2018-01-17)
