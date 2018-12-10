@@ -3,7 +3,8 @@
 
 - Update tests to adapt to changes in Redshift and SQLAlchemy
   (`Issue #140 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/140>`_)
-
+- Avoid manipulating search path in table metadata fetch by using system table tables
+  directly (`Issue #147 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/147>`_)
 
 0.7.1 (2018-01-17)
 ------------------
