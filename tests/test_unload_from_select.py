@@ -107,3 +107,42 @@ def test_all_redshift_options():
     """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)
+
+
+def test_all_redshift_options_with_header():
+    """Tests that UnloadFromSelect handles all options correctly."""
+
+    unload = dialect.UnloadFromSelect(
+        sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        manifest=True,
+        header=True,
+        delimiter=',',
+        encrypted=True,
+        gzip=True,
+        add_quotes=True,
+        null='---',
+        escape=True,
+        allow_overwrite=True,
+        parallel=False,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+        MANIFEST
+        HEADER
+        DELIMITER AS ','
+        ENCRYPTED
+        GZIP
+        ADDQUOTES
+        NULL AS '---'
+        ESCAPE
+        ALLOWOVERWRITE
+        PARALLEL OFF
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
