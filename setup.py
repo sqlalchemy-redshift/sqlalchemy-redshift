@@ -5,7 +5,7 @@ history = open('CHANGES.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='sqlalchemy-redshift',
-    version='0.7.2.dev0',
+    version='0.7.2',
     description='Amazon Redshift Dialect for sqlalchemy',
     long_description=readme + '\n\n' + history,
     author='Matt George',

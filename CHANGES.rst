@@ -1,4 +1,4 @@
-0.7.2 (unreleased)
+0.7.2 (2018-12-11)
 ------------------
 
 - Update tests to adapt to changes in Redshift and SQLAlchemy
