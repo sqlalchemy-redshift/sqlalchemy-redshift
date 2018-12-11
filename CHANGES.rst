@@ -9,6 +9,8 @@
   (`Issue #151 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/150>`_)
 - Add official support for Python 3.7
   (`Issue #153 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/153>`_)
+- Avoid manipulating search path in table metadata fetch by using system tables
+  directly (`Issue #147 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/147>`_)
 
 0.7.1 (2018-01-17)
 ------------------
