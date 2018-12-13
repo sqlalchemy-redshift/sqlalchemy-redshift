@@ -160,6 +160,9 @@ class UnloadFromSelect(_ExecutableClause):
         Text transformation options, such as delimiter, add_quotes,
         and escape, also apply to the header line.
         `header` can't be used with fixed_width.
+    region: str, optional
+        The AWS region where the target S3 bucket is located, if the Redshift
+        cluster isn't in the same region as the S3 bucket.
     """
 
     def __init__(self, select, unload_location, access_key_id=None,
@@ -168,7 +171,7 @@ class UnloadFromSelect(_ExecutableClause):
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True,
-                 header=False):
+                 header=False, region=None):
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
@@ -202,6 +205,7 @@ class UnloadFromSelect(_ExecutableClause):
         self.escape = escape
         self.allow_overwrite = allow_overwrite
         self.parallel = parallel
+        self.region = region
 
 
 @sa_compiler.compiles(UnloadFromSelect)
@@ -222,6 +226,7 @@ def visit_unload_from_select(element, compiler, **kw):
        {escape}
        {allow_overwrite}
        {parallel}
+       {region}
     """
     el = element
 
@@ -239,6 +244,7 @@ def visit_unload_from_select(element, compiler, **kw):
         null='NULL AS :null_as' if el.null is not None else '',
         allow_overwrite='ALLOWOVERWRITE' if el.allow_overwrite else '',
         parallel='PARALLEL OFF' if not el.parallel else '',
+        region='REGION :region' if el.region is not None else '',
     )
 
     query = sa.text(qs)
@@ -258,6 +264,11 @@ def visit_unload_from_select(element, compiler, **kw):
     if el.null is not None:
         query = query.bindparams(sa.bindparam(
             'null_as', value=el.null, type_=sa.String
+        ))
+
+    if el.region is not None:
+        query = query.bindparams(sa.bindparam(
+            'region', value=el.region, type_=sa.String
         ))
 
     return compiler.process(
@@ -362,7 +373,7 @@ class CopyCommand(_ExecutableClause):
         Specifies the encoding type of the load data defaults to
         ``Encoding.utf8``
     escape : bool, optional
-        When this parameter is specified, the backslash character (``\``) in
+        When this parameter is specified, the backslash character (``\\``) in
         input data is treated as an escape character. The character that
         immediately follows the backslash character is loaded into the table
         as part of the current column value, even if it is a character that
@@ -425,6 +436,9 @@ class CopyCommand(_ExecutableClause):
         initially empty
     manifest : bool, optional
         Boolean value denoting whether data_location is a manifest file.
+    region: str, optional
+        The AWS region where the target S3 bucket is located, if the Redshift
+        cluster isn't in the same region as the S3 bucket.
     """
 
     def __init__(self, to, data_location, access_key_id=None,
@@ -441,7 +455,7 @@ class CopyCommand(_ExecutableClause):
                  roundec=False, time_format=None, trim_blanks=False,
                  truncate_columns=False, comp_rows=None, comp_update=None,
                  max_error=None, no_load=False, stat_update=None,
-                 manifest=False):
+                 manifest=False, region=None):
 
         credentials = _process_aws_credentials(
             access_key_id=access_key_id,
@@ -522,6 +536,7 @@ class CopyCommand(_ExecutableClause):
         self.max_error = max_error
         self.no_load = no_load
         self.stat_update = stat_update
+        self.region = region
 
 
 @sa_compiler.compiles(CopyCommand)
@@ -701,6 +716,14 @@ def visit_copy_command(element, compiler, **kw):
         parameters.append('STATUPDATE ON')
     elif element.stat_update is not None:
         parameters.append('STATUPDATE OFF')
+
+    if element.region is not None:
+        parameters.append('REGION :region')
+        bindparams.append(sa.bindparam(
+            'region',
+            value=element.region,
+            type_=sa.String
+        ))
 
     columns = ' (%s)' % ', '.join(
         compiler.preparer.format_column(column) for column in element.columns
