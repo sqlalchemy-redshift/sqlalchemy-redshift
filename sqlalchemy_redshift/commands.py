@@ -753,3 +753,90 @@ def visit_copy_command(element, compiler, **kw):
     )
 
     return compiler.process(sa.text(qs).bindparams(*bindparams), **kw)
+
+
+class CreateLibraryCommand(_ExecutableClause):
+    """Prepares a Redshift CREATE LIBRARY statement.
+    https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_LIBRARY.html
+
+    Parameters
+    ----------
+    library_name: str, required
+        The name of the library to install.
+    location: str, required
+        The location of the library file. Must be either a HTTP/HTTPS URL or an
+        S3 location.
+    access_key_id: str, optional
+        Access Key. Required unless you supply role-based credentials
+        (``aws_account_id`` and ``iam_role_name``)
+    secret_access_key: str, optional
+        Secret Access Key ID. Required unless you supply role-based credentials
+        (``aws_account_id`` and ``iam_role_name``)
+    session_token : str, optional
+    aws_account_id: str, optional
+        AWS account ID for role-based credentials. Required unless you supply
+        key based credentials (``access_key_id`` and ``secret_access_key``)
+    iam_role_name: str, optional
+        IAM role name for role-based credentials. Required unless you supply
+        key based credentials (``access_key_id`` and ``secret_access_key``)
+    replace: bool, optional, default False
+        Controls the presence of ``OR REPLACE`` in the compiled statement. See
+        the command documentation for details.
+    region: str, optional
+        The AWS region where the library's S3 bucket is located, if the
+        Redshift cluster isn't in the same region as the S3 bucket.
+    """
+    def __init__(self, library_name, location, access_key_id=None,
+                 secret_access_key=None, session_token=None,
+                 aws_account_id=None, iam_role_name=None, replace=False,
+                 region=None):
+        self.library_name = library_name
+        self.location = location
+        self.credentials = _process_aws_credentials(
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            session_token=session_token,
+            aws_account_id=aws_account_id,
+            iam_role_name=iam_role_name,
+        )
+        self.replace = replace
+        self.region = region
+
+
+@sa_compiler.compiles(CreateLibraryCommand)
+def visit_create_library_command(element, compiler, **kw):
+    """
+    Returns the actual sql query for the CreateLibraryCommand class.
+    """
+    query = """
+        CREATE {or_replace} LIBRARY {name}
+        LANGUAGE pythonplu
+        FROM :location
+        WITH CREDENTIALS AS :credentials
+        {region}
+    """
+    bindparams = [
+        sa.bindparam(
+            'location',
+            value=element.location,
+            type_=sa.String,
+        ),
+        sa.bindparam(
+            'credentials',
+            value=element.credentials,
+            type_=sa.String,
+        ),
+    ]
+
+    if element.region is not None:
+        bindparams.append(sa.bindparam(
+            'region',
+            value=element.region,
+            type_=sa.String,
+        ))
+
+    quoted_lib_name = compiler.preparer.quote_identifier(element.library_name)
+    query = query.format(name=quoted_lib_name,
+                         or_replace='OR REPLACE' if element.replace else '',
+                         region='REGION :region' if element.region else '')
+    return compiler.process(sa.text(query).bindparams(*bindparams), **kw)

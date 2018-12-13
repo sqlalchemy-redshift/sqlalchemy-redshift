@@ -16,7 +16,8 @@ from sqlalchemy.sql.expression import (
 from sqlalchemy.types import VARCHAR, NullType
 
 from .commands import (
-    CopyCommand, UnloadFromSelect, Format, Compression, Encoding
+    CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
+    CreateLibraryCommand,
 )
 from .compat import string_types
 
@@ -33,7 +34,7 @@ else:
 
 __all__ = [
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
-    'Encoding', 'Format',
+    'Encoding', 'Format', 'CreateLibraryCommand',
 ]
 
 
