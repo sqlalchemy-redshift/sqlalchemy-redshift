@@ -88,6 +88,7 @@ def test_all_redshift_options():
         escape=True,
         allow_overwrite=True,
         parallel=False,
+        region='us-west-2',
     )
 
     expected_result = """
@@ -104,6 +105,7 @@ def test_all_redshift_options():
         ESCAPE
         ALLOWOVERWRITE
         PARALLEL OFF
+        REGION 'us-west-2'
     """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)
@@ -127,6 +129,7 @@ def test_all_redshift_options_with_header():
         escape=True,
         allow_overwrite=True,
         parallel=False,
+        region='ap-northeast-2'
     )
 
     expected_result = """
@@ -143,6 +146,7 @@ def test_all_redshift_options_with_header():
         ESCAPE
         ALLOWOVERWRITE
         PARALLEL OFF
+        REGION 'ap-northeast-2'
     """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)

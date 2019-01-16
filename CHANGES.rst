@@ -1,7 +1,8 @@
 0.7.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add support for ``REGION`` argument to ``COPY`` and ``UNLOAD`` commands.
+  (`Issue #90 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/90>`_)
 
 
 0.7.2 (2018-12-11)

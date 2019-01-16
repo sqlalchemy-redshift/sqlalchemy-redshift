@@ -37,6 +37,7 @@ def test_basic_copy_case():
     EMPTYASNULL
     IGNOREHEADER AS 0
     TRUNCATECOLUMNS
+    REGION 'eu-west-3'
     """ % creds
 
     copy = dialect.CopyCommand(
@@ -49,6 +50,7 @@ def test_basic_copy_case():
         ignore_header=0,
         empty_as_null=True,
         blanks_as_null=True,
+        region='eu-west-3',
     )
     assert clean(expected_result) == clean(compile_query(copy))
 
