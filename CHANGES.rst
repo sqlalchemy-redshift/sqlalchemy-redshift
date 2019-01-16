@@ -1,4 +1,4 @@
-0.7.3 (unreleased)
+0.7.3 (2019-01-16)
 ------------------
 
 - Add support for ``REGION`` argument to ``COPY`` and ``UNLOAD`` commands.
