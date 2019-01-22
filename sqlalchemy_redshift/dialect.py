@@ -724,7 +724,7 @@ class RedshiftDialect(PGDialect_psycopg2):
               0 as "sortkey",
               null as "notnull",
               null as "adsrc",
-              null as "attmum",
+              null as "attnum",
               col_type as "format_type",
               null as "default",
               null as "schema_oid",
