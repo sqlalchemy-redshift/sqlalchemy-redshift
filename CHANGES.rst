@@ -1,8 +1,6 @@
 0.7.4 (unreleased)
 ------------------
-
-- Nothing changed yet.
-
+- Add support for column info on redshift late binding views
 
 0.7.3 (2019-01-16)
 ------------------

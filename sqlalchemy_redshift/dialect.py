@@ -713,7 +713,29 @@ class RedshiftDialect(PGDialect_psycopg2):
             WHERE n.nspname !~ '^pg_'
               AND att.attnum > 0
               AND NOT att.attisdropped
-            ORDER BY n.nspname, c.relname, att.attnum
+            UNION
+            SELECT
+              view_schema as "schema",
+              view_name as "table_name",
+              col_name as "name",
+              null as "encode",
+              col_type as "type",
+              null as "distkey",
+              0 as "sortkey",
+              null as "notnull",
+              null as "adsrc",
+              null as "attnum",
+              col_type as "format_type",
+              null as "default",
+              null as "schema_oid",
+              null as "table_oid"
+            FROM pg_get_late_binding_view_cols() cols(
+              view_schema name,
+              view_name name,
+              col_name name,
+              col_type varchar,
+              col_num int)
+            ORDER BY "schema", "table_name", "attnum";
             """)
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
