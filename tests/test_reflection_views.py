@@ -22,3 +22,21 @@ def test_view_reflection(redshift_engine):
     view = Table('my_view', MetaData(),
                  autoload=True, autoload_with=redshift_engine)
     assert(len(view.columns) == 2)
+
+
+def test_late_binding_view_reflection(redshift_engine):
+    table_ddl = "CREATE TABLE my_table (col1 INTEGER, col2 INTEGER)"
+    view_query = "SELECT my_table.col1, my_table.col2 FROM public.my_table"
+    view_ddl = ("CREATE VIEW my_late_view AS "
+                "%s WITH NO SCHEMA BINDING" % view_query)
+    conn = redshift_engine.connect()
+    conn.execute(table_ddl)
+    conn.execute(view_ddl)
+    insp = inspect(redshift_engine)
+    view_definition = insp.get_view_definition('my_late_view')
+
+    # For some reason, Redshift returns the entire DDL for late binding views.
+    assert(clean(compile_query(view_definition)) == clean(view_ddl))
+    view = Table('my_late_view', MetaData(),
+                 autoload=True, autoload_with=redshift_engine)
+    assert(len(view.columns) == 2)
