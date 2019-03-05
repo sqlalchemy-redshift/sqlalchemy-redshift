@@ -163,6 +163,10 @@ class UnloadFromSelect(_ExecutableClause):
     region: str, optional
         The AWS region where the target S3 bucket is located, if the Redshift
         cluster isn't in the same region as the S3 bucket.
+    max_file_size: int, optional
+        Maximum size (in bytes) of files to create in S3. This must be between
+        5 * 1024**2 and 6.24 * 1024**3. Note that Redshift appears to round
+        to the nearest KiB.
     """
 
     def __init__(self, select, unload_location, access_key_id=None,
@@ -171,7 +175,7 @@ class UnloadFromSelect(_ExecutableClause):
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True,
-                 header=False, region=None):
+                 header=False, region=None, max_file_size=None):
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
@@ -206,6 +210,7 @@ class UnloadFromSelect(_ExecutableClause):
         self.allow_overwrite = allow_overwrite
         self.parallel = parallel
         self.region = region
+        self.max_file_size = max_file_size
 
 
 @sa_compiler.compiles(UnloadFromSelect)
@@ -227,6 +232,7 @@ def visit_unload_from_select(element, compiler, **kw):
        {allow_overwrite}
        {parallel}
        {region}
+       {max_file_size}
     """
     el = element
 
@@ -245,6 +251,10 @@ def visit_unload_from_select(element, compiler, **kw):
         allow_overwrite='ALLOWOVERWRITE' if el.allow_overwrite else '',
         parallel='PARALLEL OFF' if not el.parallel else '',
         region='REGION :region' if el.region is not None else '',
+        max_file_size=(
+            'MAXFILESIZE :max_file_size MB'
+            if el.max_file_size is not None else ''
+        ),
     )
 
     query = sa.text(qs)
@@ -269,6 +279,12 @@ def visit_unload_from_select(element, compiler, **kw):
     if el.region is not None:
         query = query.bindparams(sa.bindparam(
             'region', value=el.region, type_=sa.String
+        ))
+
+    if el.max_file_size is not None:
+        max_file_size_mib = float(el.max_file_size) / 1024 / 1024
+        query = query.bindparams(sa.bindparam(
+            'max_file_size', value=max_file_size_mib, type_=sa.Float
         ))
 
     return compiler.process(

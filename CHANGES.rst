@@ -1,6 +1,8 @@
 0.7.4 (unreleased)
 ------------------
 - Add support for column info on redshift late binding views
+- Add support for ``MAXFILESIZE`` argument to ``UNLOAD``.
+  (`Issue #123 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/123>`_)
 
 0.7.3 (2019-01-16)
 ------------------

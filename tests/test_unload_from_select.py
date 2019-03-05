@@ -89,6 +89,7 @@ def test_all_redshift_options():
         allow_overwrite=True,
         parallel=False,
         region='us-west-2',
+        max_file_size=10 * 1024**2,
     )
 
     expected_result = """
@@ -106,6 +107,7 @@ def test_all_redshift_options():
         ALLOWOVERWRITE
         PARALLEL OFF
         REGION 'us-west-2'
+        MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)
@@ -129,7 +131,8 @@ def test_all_redshift_options_with_header():
         escape=True,
         allow_overwrite=True,
         parallel=False,
-        region='ap-northeast-2'
+        region='ap-northeast-2',
+        max_file_size=10 * 1024 ** 2,
     )
 
     expected_result = """
@@ -147,6 +150,7 @@ def test_all_redshift_options_with_header():
         ALLOWOVERWRITE
         PARALLEL OFF
         REGION 'ap-northeast-2'
+        MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)
