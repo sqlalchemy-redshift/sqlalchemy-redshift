@@ -235,7 +235,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     ...     'product',
     ...     metadata,
     ...     sa.Column('id', sa.Integer, primary_key=True),
-    ...     sa.Column('name', sa.String, redshift_encode='lzo'})
+    ...     sa.Column('name', sa.String, redshift_encode='lzo')
     ... )
     >>> print(CreateTable(product).compile(engine))
     <BLANKLINE>
@@ -254,7 +254,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     ...     metadata,
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column(
-    ...         'name', sa.String, redshift_distkey=True, redshift_sortkey=True}
+    ...         'name', sa.String, redshift_distkey=True, redshift_sortkey=True
     ...     )
     ... )
     >>> print(CreateTable(sku).compile(engine))

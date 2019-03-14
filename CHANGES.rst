@@ -1,5 +1,7 @@
 0.7.4 (unreleased)
 ------------------
+
+- Switch from info to keyword arguments on columns for SQLAlchemy >= 1.3.0
 - Add support for column info on redshift late binding views
 - Add support for ``MAXFILESIZE`` argument to ``UNLOAD``.
   (`Issue #123 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/123>`_)
