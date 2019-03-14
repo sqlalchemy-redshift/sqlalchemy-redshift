@@ -4,7 +4,6 @@ from sqlalchemy import event
 from sqlalchemy.ext import declarative
 from sqlalchemy.schema import CreateSchema
 
-
 Base = declarative.declarative_base()
 event.listen(Base.metadata, 'before_create', CreateSchema('other_schema'))
 
@@ -217,7 +216,8 @@ class ReflectionDelimitedTableNoSchema(Base):
 class Referenced(Base):
     __tablename__ = 'referenced'
     id = sa.Column(
-        sa.Integer(), primary_key=True, nullable=False, redshift_identity= (1, 1)
+        sa.Integer(), primary_key=True, nullable=False,
+        redshift_identity=(1, 1)
     )
     __table_args__ = {
         'redshift_diststyle': 'EVEN',
