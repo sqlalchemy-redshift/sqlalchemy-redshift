@@ -1,6 +1,7 @@
 from sqlalchemy_redshift import commands
 from rs_sqla_test_utils.utils import clean, compile_query
 
+# These are fake credentials for the tests.
 ACCESS_KEY_ID = 'IO1IWSZL5YRFM3BEW256'
 SECRET_ACCESS_KEY = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'
 CREDS = (
