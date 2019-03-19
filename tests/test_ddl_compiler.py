@@ -45,7 +45,7 @@ class TestDDLCompiler(object):
         table = Table(
             't1',
             MetaData(),
-            Column('id', Integer, primary_key=True, info={'identity': [1, 2]}),
+            Column('id', Integer, primary_key=True, redshift_identity=[1, 2]),
             Column('name', String),
         )
 
@@ -192,7 +192,7 @@ class TestDDLCompiler(object):
         table = Table('t1',
                       MetaData(),
                       Column('id', Integer, primary_key=True,
-                             info=dict(sortkey=True)),
+                             redshift_sortkey=True),
                       Column('name', String)
                       )
 
@@ -210,7 +210,7 @@ class TestDDLCompiler(object):
         table = Table('t1',
                       MetaData(),
                       Column('id', Integer, primary_key=True,
-                             info=dict(distkey=True)),
+                             redshift_distkey=True),
                       Column('name', String)
                       )
 
@@ -228,7 +228,7 @@ class TestDDLCompiler(object):
         table = Table('t1',
                       MetaData(),
                       Column('id', Integer, primary_key=True,
-                             info=dict(encode="LZO")),
+                             redshift_encode="LZO"),
                       Column('name', String)
                       )
 

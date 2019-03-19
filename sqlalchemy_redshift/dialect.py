@@ -229,14 +229,15 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
-    Column-level special syntax can also be applied using the column info
-    dictionary. For example, we can specify the ENCODE for a column:
+    Column-level special syntax can also be applied using Redshift dialect
+    specific keyword arguments.
+    For example, we can specify the ENCODE for a column:
 
     >>> product = sa.Table(
     ...     'product',
     ...     metadata,
     ...     sa.Column('id', sa.Integer, primary_key=True),
-    ...     sa.Column('name', sa.String, info={'encode': 'lzo'})
+    ...     sa.Column('name', sa.String, redshift_encode='lzo')
     ... )
     >>> print(CreateTable(product).compile(engine))
     <BLANKLINE>
@@ -248,6 +249,17 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
+    For SQLAlchemy versions < 1.3.0, passing Redshift dialect options
+    as keyword arguments is not supported on the column level.
+    Instead, a column info dictionary can be used:
+
+    >>> product_pre_1_3_0 = sa.Table(
+    ...     'product_pre_1_3_0',
+    ...     metadata,
+    ...     sa.Column('id', sa.Integer, primary_key=True),
+    ...     sa.Column('name', sa.String, info={'encode': 'lzo'})
+    ... )
+
     We can also specify the distkey and sortkey options:
 
     >>> sku = sa.Table(
@@ -255,7 +267,10 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     ...     metadata,
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column(
-    ...         'name', sa.String, info={'distkey': True, 'sortkey': True}
+    ...         'name',
+    ...         sa.String,
+    ...         redshift_distkey=True,
+    ...         redshift_sortkey=True
     ...     )
     ... )
     >>> print(CreateTable(sku).compile(engine))
@@ -329,9 +344,13 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     def _fetch_redshift_column_attributes(self, column):
         text = ""
-        if not hasattr(column, 'info'):
-            return text
-        info = column.info
+        if sa.__version__ >= '1.3.0':
+            info = column.dialect_options['redshift']
+        else:
+            if not hasattr(column, 'info'):
+                return text
+            info = column.info
+
         identity = info.get('identity')
         if identity:
             text += " IDENTITY({0},{1})".format(identity[0], identity[1])
@@ -381,6 +400,12 @@ class RedshiftDialect(PGDialect_psycopg2):
             "distkey": None,
             "sortkey": None,
             "interleaved_sortkey": None,
+        }),
+        (sa.schema.Column, {
+            "encode": None,
+            "distkey": None,
+            "sortkey": None,
+            "identity": None,
         }),
     ]
 

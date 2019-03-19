@@ -13,7 +13,7 @@ class Basic(Base):
     __tablename__ = 'basic'
     name = sa.Column(
         sa.Unicode(64), primary_key=True,
-        info={'distkey': True, 'sortkey': True, 'encode': 'lzo'}
+        redshift_distkey=True, redshift_sortkey=True, redshift_encode='lzo'
     )
 
 
@@ -156,7 +156,7 @@ class ReflectionDefaultValue(Base):
 class ReflectionIdentity(Base):
     __tablename__ = 'reflection_identity'
     col1 = sa.Column(sa.Integer(), primary_key=True)
-    col2 = sa.Column(sa.Integer(), info={'identity': (1, 3)})
+    col2 = sa.Column(sa.Integer(), redshift_identity=(1, 3))
     col3 = sa.Column(sa.Integer())
     __table_args__ = (
         {'redshift_diststyle': 'EVEN'}
@@ -218,9 +218,7 @@ class Referenced(Base):
     __tablename__ = 'referenced'
     id = sa.Column(
         sa.Integer(), primary_key=True, nullable=False,
-        info={
-            'identity': (1, 1),
-        }
+        redshift_identity=(1, 1)
     )
     __table_args__ = {
         'redshift_diststyle': 'EVEN',
