@@ -252,15 +252,15 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     as keyword arguments is not supported on the column level.
     Instead, column info dictionary can be used.
 
-    >>> product = sa.Table(
-    ...     'product',
+    >>> product_pre_1_3_0 = sa.Table(
+    ...     'product_pre_1_3_0',
     ...     metadata,
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column('name', sa.String, info={'encode': 'lzo'})
     ... )
-    >>> print(CreateTable(product).compile(engine))
+    >>> print(CreateTable(productproduct_pre_1_3_0).compile(engine))
     <BLANKLINE>
-    CREATE TABLE product (
+    CREATE TABLE product_pre_1_3_0 (
         id INTEGER NOT NULL,
         name VARCHAR ENCODE lzo,
         PRIMARY KEY (id)
