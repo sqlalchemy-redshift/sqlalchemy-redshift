@@ -258,15 +258,6 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column('name', sa.String, info={'encode': 'lzo'})
     ... )
-    >>> print(CreateTable(product_pre_1_3_0).compile(engine))
-    <BLANKLINE>
-    CREATE TABLE product_pre_1_3_0 (
-        id INTEGER NOT NULL,
-        name VARCHAR ENCODE lzo,
-        PRIMARY KEY (id)
-    )
-    <BLANKLINE>
-    <BLANKLINE>
 
     We can also specify the distkey and sortkey options:
 
