@@ -250,7 +250,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     For SQLAlchemy versions < 1.3.0, passing Redshift dialect options
     as keyword arguments is not supported on the column level.
-    Instead, column info dictionary can be used.
+    Instead, a column info dictionary can be used:
 
     >>> product_pre_1_3_0 = sa.Table(
     ...     'product_pre_1_3_0',
