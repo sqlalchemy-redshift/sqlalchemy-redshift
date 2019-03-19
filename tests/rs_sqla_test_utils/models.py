@@ -4,6 +4,7 @@ from sqlalchemy import event
 from sqlalchemy.ext import declarative
 from sqlalchemy.schema import CreateSchema
 
+
 Base = declarative.declarative_base()
 event.listen(Base.metadata, 'before_create', CreateSchema('other_schema'))
 

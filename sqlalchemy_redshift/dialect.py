@@ -26,7 +26,6 @@ except ImportError:
     pass
 else:
     from alembic.ddl.base import RenameTable
-
     compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
@@ -36,6 +35,7 @@ __all__ = [
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
     'Encoding', 'Format',
 ]
+
 
 # Regex for parsing and identity constraint out of adsrc, e.g.:
 #   "identity"(445178, 0, '1,1'::text)
@@ -248,6 +248,26 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
+    For SQLAlchemy versions < 1.3.0, passing Redshift dialect options
+    as keyword arguments is not supported on the column level.
+    Instead, column info dictionary can be used.
+
+    >>> product = sa.Table(
+    ...     'product',
+    ...     metadata,
+    ...     sa.Column('id', sa.Integer, primary_key=True),
+    ...     sa.Column('name', sa.String, info={'encode': 'lzo'})
+    ... )
+    >>> print(CreateTable(product).compile(engine))
+    <BLANKLINE>
+    CREATE TABLE product (
+        id INTEGER NOT NULL,
+        name VARCHAR ENCODE lzo,
+        PRIMARY KEY (id)
+    )
+    <BLANKLINE>
+    <BLANKLINE>
+
     We can also specify the distkey and sortkey options:
 
     >>> sku = sa.Table(
@@ -255,7 +275,8 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     ...     metadata,
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column(
-    ...         'name', sa.String,
+    ...         'name',
+    ...         sa.String,
     ...         redshift_distkey=True,
     ...         redshift_sortkey=True
     ...     )
@@ -555,13 +576,11 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.Inspector.get_table_options`.
         """
-
         def keyfunc(column):
             num = int(column.sortkey)
             # If sortkey is interleaved, column numbers alternate
             # negative values, so take abs.
             return abs(num)
-
         table = self._get_redshift_relation(connection, table_name,
                                             schema, **kw)
         columns = self._get_redshift_columns(connection, table_name,
