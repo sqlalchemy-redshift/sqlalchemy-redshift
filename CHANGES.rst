@@ -5,8 +5,11 @@
   (`Issue #123 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/123>`_)
 - Add support for the `CREATE LIBRARY`_ command.
   (`Issue #124 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/124>`_)
+- Add support for the `ALTER TABLE APPEND`_ command.
+  (`Issue #162 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/162>`_)
 
 .. _CREATE LIBRARY: https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_LIBRARY.html
+.. _ALTER TABLE APPEND: https://docs.aws.amazon.com/redshift/latest/dg/r_ALTER_TABLE_APPEND.html
 
 
 0.7.3 (2019-01-16)
