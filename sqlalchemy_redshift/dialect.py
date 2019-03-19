@@ -258,7 +258,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column('name', sa.String, info={'encode': 'lzo'})
     ... )
-    >>> print(CreateTable(productproduct_pre_1_3_0).compile(engine))
+    >>> print(CreateTable(product_pre_1_3_0).compile(engine))
     <BLANKLINE>
     CREATE TABLE product_pre_1_3_0 (
         id INTEGER NOT NULL,
