@@ -761,6 +761,38 @@ class RedshiftDialect(PGDialect_psycopg2):
               col_name name,
               col_type varchar,
               col_num int)
+            UNION
+            SELECT schemaname AS "schema",
+               tablename AS "table_name",
+               columnname AS "name",
+               null AS "encode",
+               -- Spectrum represents data types differently.
+               -- Standardize, so we can infer types.
+               CASE
+                 WHEN external_type = 'int' THEN 'integer'
+                 ELSE
+                   replace(
+                    replace(external_type, 'decimal', 'numeric'),
+                    'varchar', 'character varying')
+                 END
+                    AS "type",
+               null AS "distkey",
+               0 AS "sortkey",
+               null AS "notnull",
+               null AS "adsrc",
+               null AS "attnum",
+               CASE
+                 WHEN external_type = 'int' THEN 'integer'
+                 ELSE
+                   replace(
+                    replace(external_type, 'decimal', 'numeric'),
+                    'varchar', 'character varying')
+                 END
+                    AS "format_type",
+               null AS "default",
+               null AS "schema_oid",
+               null AS "table_oid"
+            FROM svv_external_columns
             ORDER BY "schema", "table_name", "attnum";
             """)
             for col in result:
