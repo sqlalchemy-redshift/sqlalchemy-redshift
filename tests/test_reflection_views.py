@@ -40,3 +40,25 @@ def test_late_binding_view_reflection(redshift_engine):
     view = Table('my_late_view', MetaData(),
                  autoload=True, autoload_with=redshift_engine)
     assert(len(view.columns) == 2)
+
+
+def test_late_binding_view_reflection(redshift_engine):
+    table_ddl = """create external table spectrum.sales(
+        salesid integer,
+        listid integer,
+        sellerid integer,
+        pricepaid decimal(8,2),
+        saletime timestamp)
+        row format delimited
+        fields terminated by '\t'
+        stored as textfile
+        location 's3://awssampledbuswest2/tickit/spectrum/sales/'
+        table properties ('numRows'='172000');
+    """
+    conn = redshift_engine.connect()
+    conn.execute(table_ddl)
+    insp = inspect(redshift_engine)
+    table_definition = insp.get_columns('sales', schema='spectrum')
+
+    assert 'sales_id' in table_definition.columns
+    assert 'pricepaid' in table_definition.columns
