@@ -1,6 +1,8 @@
 0.7.4 (unreleased)
 ------------------
 
+- Add support for reflection of spectrum tables.
+  (`Issue #122 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/122>`_)
 - Switch from info to keyword arguments on columns for ``SQLAlchemy >= 1.3.0``
   (`Issue #161 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/161>`_)
 - Add support for column info on redshift late binding views
