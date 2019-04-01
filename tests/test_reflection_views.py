@@ -42,7 +42,7 @@ def test_late_binding_view_reflection(redshift_engine):
     assert(len(view.columns) == 2)
 
 
-def test_late_binding_view_reflection(redshift_engine):
+def test_spectrum_reflection(redshift_engine):
     table_ddl = """create external table spectrum.sales(
         salesid integer,
         listid integer,
