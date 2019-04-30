@@ -105,6 +105,65 @@ class _ExecutableClause(sa_expression.Executable,
     pass
 
 
+class AlterTableAppendCommand(_ExecutableClause):
+    """
+    Prepares an `ALTER TABLE APPEND` statement to efficiently move data from
+    one table to another, much faster than an INSERT INTO ... SELECT.
+
+    CAUTION: This moves the underlying storage blocks from the source table to
+    the target table, so the source table will be *empty* after this command
+    finishes.
+
+    See the documentation for additional restrictions and other information:
+    https://docs.aws.amazon.com/redshift/latest/dg/r_ALTER_TABLE_APPEND.html
+
+    Parameters
+    ----------
+
+    source: sqlalchemy.Table
+        The table to move data from. Must be an existing permanent table.
+    target: sqlalchemy.Table
+        The table to move data into. Must be an existing permanent table.
+    ignore_extra: bool, optional
+        If the source table includes columns not present in the target table,
+        discard those columns. Mutually exclusive with `fill_target`.
+    fill_target: bool, optional
+        If the target table includes columns not present in the source table,
+        fill those columns with the default column value or NULL. Mutually
+        exclusive with `ignore_extra`.
+    """
+    def __init__(self, source, target, ignore_extra=False, fill_target=False):
+        if ignore_extra and fill_target:
+            raise ValueError(
+                '"ignore_extra" cannot be used with "fill_target".')
+
+        self.source = source
+        self.target = target
+        self.ignore_extra = ignore_extra
+        self.fill_target = fill_target
+
+
+@sa_compiler.compiles(AlterTableAppendCommand)
+def visit_alter_table_append_command(element, compiler, **kw):
+    """
+    Returns the actual SQL query for the AlterTableAppendCommand class.
+    """
+    if element.ignore_extra:
+        fill_option = 'IGNOREEXTRA'
+    elif element.fill_target:
+        fill_option = 'FILLTARGET'
+    else:
+        fill_option = ''
+
+    query_text = \
+        'ALTER TABLE {target} APPEND FROM {source} {fill_option}'.format(
+            target=compiler.preparer.format_table(element.target),
+            source=compiler.preparer.format_table(element.source),
+            fill_option=fill_option,
+        )
+    return compiler.process(sa.text(query_text), **kw)
+
+
 class UnloadFromSelect(_ExecutableClause):
     """
     Prepares a Redshift unload statement to drop a query to Amazon S3
