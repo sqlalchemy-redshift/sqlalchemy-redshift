@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql.base import (
     PGCompiler, PGDDLCompiler, PGIdentifierPreparer
 )
 from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -373,7 +374,7 @@ class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
 
-class RedshiftDialect(PGDialect):
+class BaseRedshiftDialect(object):
     """
     Define Redshift-specific behavior.
 
@@ -798,6 +799,10 @@ class RedshiftDialect(PGDialect):
             key = RelationKey(con.table_name, con.schema, connection)
             all_constraints[key].append(con)
         return all_constraints
+
+
+class RedshiftDialect(BaseRedshiftDialect, PGDialect_psycopg2):
+    pass
 
 
 def gen_columns_from_children(root):
