@@ -411,7 +411,7 @@ class BaseRedshiftDialect(object):
     ]
 
     def __init__(self, *args, **kw):
-        super(RedshiftDialect, self).__init__(*args, **kw)
+        super(BaseRedshiftDialect, self).__init__(*args, **kw)
         # Cache domains, as these will be static;
         # Redshift does not support user-created domains.
         self._domains = None
@@ -609,7 +609,7 @@ class BaseRedshiftDialect(object):
                 'redshift-ca-bundle.crt'
             ),
         }
-        cargs, cparams = super(RedshiftDialect, self).create_connect_args(
+        cargs, cparams = super(BaseRedshiftDialect, self).create_connect_args(
             *args, **kwargs
         )
         default_args.update(cparams)
@@ -636,7 +636,7 @@ class BaseRedshiftDialect(object):
             kw['comment'] = kw.get('comment', None)
         else:
             kw.pop('comment', None)
-        column_info = super(RedshiftDialect, self)._get_column_info(
+        column_info = super(BaseRedshiftDialect, self)._get_column_info(
             *args,
             **kw
         )
