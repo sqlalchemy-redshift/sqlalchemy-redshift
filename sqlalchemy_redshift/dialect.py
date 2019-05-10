@@ -7,7 +7,7 @@ from sqlalchemy import Column, exc, inspect
 from sqlalchemy.dialects.postgresql.base import (
     PGCompiler, PGDDLCompiler, PGIdentifierPreparer
 )
-from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -373,7 +373,7 @@ class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
 
-class RedshiftDialect(PGDialect_psycopg2):
+class RedshiftDialect(PGDialect):
     """
     Define Redshift-specific behavior.
 
