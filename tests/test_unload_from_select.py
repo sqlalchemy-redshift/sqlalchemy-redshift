@@ -154,3 +154,24 @@ def test_all_redshift_options_with_header():
     """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)
+
+
+def test_csv_format():
+    """Tests that UnloadFromSelect uses the format_as_csv option correctly."""
+
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        format_as_csv=True
+    )
+
+    expected_result = """
+            UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+            TO 's3://bucket/key'
+            CREDENTIALS '{creds}'
+            FORMAT AS CSV
+        """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)

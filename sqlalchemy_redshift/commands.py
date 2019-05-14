@@ -226,6 +226,11 @@ class UnloadFromSelect(_ExecutableClause):
         Maximum size (in bytes) of files to create in S3. This must be between
         5 * 1024**2 and 6.24 * 1024**3. Note that Redshift appears to round
         to the nearest KiB.
+    format_as_csv : bool, optional
+        If enabled, files will be in CSV format, with comma delimiters,
+        double quotes when fields contain special characters, and additional
+        double quotes to escape double quotes. This can't be used with
+        delimiter or fixed_width.
     """
 
     def __init__(self, select, unload_location, access_key_id=None,
@@ -234,7 +239,15 @@ class UnloadFromSelect(_ExecutableClause):
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True,
-                 header=False, region=None, max_file_size=None):
+                 header=False, region=None, max_file_size=None,
+                 format_as_csv=False):
+
+        if format_as_csv and (delimiter is not None
+                              or fixed_width is not None):
+            raise ValueError(
+                '"format_as_csv" parameter cannot be used with "delimiter" or '
+                '"fixed_width"'
+            )
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
@@ -259,6 +272,7 @@ class UnloadFromSelect(_ExecutableClause):
         self.credentials = credentials
         self.manifest = manifest
         self.header = header
+        self.format_as_csv = format_as_csv
         self.delimiter = delimiter
         self.fixed_width = fixed_width
         self.encrypted = encrypted
@@ -281,6 +295,7 @@ def visit_unload_from_select(element, compiler, **kw):
        CREDENTIALS :credentials
        {manifest}
        {header}
+       {format_as_csv}
        {delimiter}
        {encrypted}
        {fixed_width}
@@ -298,6 +313,7 @@ def visit_unload_from_select(element, compiler, **kw):
     qs = template.format(
         manifest='MANIFEST' if el.manifest else '',
         header='HEADER' if el.header else '',
+        format_as_csv='FORMAT AS CSV' if el.format_as_csv else '',
         delimiter=(
             'DELIMITER AS :delimiter' if el.delimiter is not None else ''
         ),
