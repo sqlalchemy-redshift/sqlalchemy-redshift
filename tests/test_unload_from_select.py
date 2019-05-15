@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 
+from sqlalchemy_redshift import commands
 from sqlalchemy_redshift import dialect
 
 from rs_sqla_test_utils.utils import clean, compile_query
@@ -157,14 +158,14 @@ def test_all_redshift_options_with_header():
 
 
 def test_csv_format():
-    """Tests that UnloadFromSelect uses the format_as_csv option correctly."""
+    """Tests that UnloadFromSelect uses the format option correctly."""
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        format_as_csv=True
+        format=commands.Format.csv
     )
 
     expected_result = """
