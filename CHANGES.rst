@@ -11,6 +11,8 @@
   (`Issue #124 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/124>`_)
 - Add support for the `ALTER TABLE APPEND`_ command.
   (`Issue #162 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/162>`_)
+- Add support for the ``CSV`` format to `UnloadFromSelect`.
+  (`Issue #169 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/169>`_)
 
 .. _CREATE LIBRARY: https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_LIBRARY.html
 .. _ALTER TABLE APPEND: https://docs.aws.amazon.com/redshift/latest/dg/r_ALTER_TABLE_APPEND.html

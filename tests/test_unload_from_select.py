@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 
+from sqlalchemy_redshift import commands
 from sqlalchemy_redshift import dialect
 
 from rs_sqla_test_utils.utils import clean, compile_query
@@ -152,5 +153,26 @@ def test_all_redshift_options_with_header():
         REGION 'ap-northeast-2'
         MAXFILESIZE 10.0 MB
     """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
+
+
+def test_csv_format():
+    """Tests that UnloadFromSelect uses the format option correctly."""
+
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        format=commands.Format.csv
+    )
+
+    expected_result = """
+            UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+            TO 's3://bucket/key'
+            CREDENTIALS '{creds}'
+            FORMAT AS CSV
+        """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)
