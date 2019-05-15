@@ -300,15 +300,15 @@ def visit_unload_from_select(element, compiler, **kw):
     """
     el = element
 
+    if el.format is not None:
+        format_ = 'FORMAT AS {}'.format(el.format.value)
+    else:
+        format_ = ''
+
     if el.format == Format.csv:
-        format_ = 'FORMAT AS CSV'
         if el.delimiter is not None or el.fixed_width is not None:
             raise ValueError(
                 'CSV format cannot be used with delimiter or fixed_width')
-    elif el.format is None:
-        format_ = ''
-    else:
-        raise ValueError('Only CSV format is currently supported')
 
     qs = template.format(
         manifest='MANIFEST' if el.manifest else '',
