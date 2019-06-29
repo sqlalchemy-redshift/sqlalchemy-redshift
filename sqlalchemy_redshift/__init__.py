@@ -1,6 +1,6 @@
 from pkg_resources import get_distribution
 try:
-    import psycopg2
+    import psycopg2  # noqa: F401
 except ImportError:
     raise ImportError(
         'No module named psycopg2. Please install either '
