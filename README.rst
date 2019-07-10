@@ -23,6 +23,8 @@ The package is available on PyPI::
     * psycopg2-binary - already compiled distribution (no system dependencies are required)
     * psycopg2cffi - pypy compatible version
 
+    See `Psycopg2's binary install docs <http://initd.org/psycopg/docs/install.html#binary-install-from-pypi>`_
+    for more context on choosing a distribution.
 Usage
 -----
 The DSN format is similar to that of regular Postgres::
