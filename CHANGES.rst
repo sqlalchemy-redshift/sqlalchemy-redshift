@@ -3,6 +3,8 @@
 
 - Add support for reflection of spectrum tables.
   (`Issue #122 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/122>`_)
+- Drop hard dependency on psycopg2 but require package to be present on runtime
+  (`Issue #165 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/165>`_)
 - Switch from info to keyword arguments on columns for ``SQLAlchemy >= 1.3.0``
   (`Issue #161 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/161>`_)
 - Add support for column info on redshift late binding views
@@ -11,8 +13,13 @@
   (`Issue #123 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/123>`_)
 - Add support for the `CREATE LIBRARY`_ command.
   (`Issue #124 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/124>`_)
+- Add support for the `ALTER TABLE APPEND`_ command.
+  (`Issue #162 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/162>`_)
+- Add support for the ``CSV`` format to `UnloadFromSelect`.
+  (`Issue #169 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/169>`_)
 
 .. _CREATE LIBRARY: https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_LIBRARY.html
+.. _ALTER TABLE APPEND: https://docs.aws.amazon.com/redshift/latest/dg/r_ALTER_TABLE_APPEND.html
 
 
 0.7.3 (2019-01-16)

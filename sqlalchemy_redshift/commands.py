@@ -105,6 +105,65 @@ class _ExecutableClause(sa_expression.Executable,
     pass
 
 
+class AlterTableAppendCommand(_ExecutableClause):
+    """
+    Prepares an `ALTER TABLE APPEND` statement to efficiently move data from
+    one table to another, much faster than an INSERT INTO ... SELECT.
+
+    CAUTION: This moves the underlying storage blocks from the source table to
+    the target table, so the source table will be *empty* after this command
+    finishes.
+
+    See the documentation for additional restrictions and other information:
+    https://docs.aws.amazon.com/redshift/latest/dg/r_ALTER_TABLE_APPEND.html
+
+    Parameters
+    ----------
+
+    source: sqlalchemy.Table
+        The table to move data from. Must be an existing permanent table.
+    target: sqlalchemy.Table
+        The table to move data into. Must be an existing permanent table.
+    ignore_extra: bool, optional
+        If the source table includes columns not present in the target table,
+        discard those columns. Mutually exclusive with `fill_target`.
+    fill_target: bool, optional
+        If the target table includes columns not present in the source table,
+        fill those columns with the default column value or NULL. Mutually
+        exclusive with `ignore_extra`.
+    """
+    def __init__(self, source, target, ignore_extra=False, fill_target=False):
+        if ignore_extra and fill_target:
+            raise ValueError(
+                '"ignore_extra" cannot be used with "fill_target".')
+
+        self.source = source
+        self.target = target
+        self.ignore_extra = ignore_extra
+        self.fill_target = fill_target
+
+
+@sa_compiler.compiles(AlterTableAppendCommand)
+def visit_alter_table_append_command(element, compiler, **kw):
+    """
+    Returns the actual SQL query for the AlterTableAppendCommand class.
+    """
+    if element.ignore_extra:
+        fill_option = 'IGNOREEXTRA'
+    elif element.fill_target:
+        fill_option = 'FILLTARGET'
+    else:
+        fill_option = ''
+
+    query_text = \
+        'ALTER TABLE {target} APPEND FROM {source} {fill_option}'.format(
+            target=compiler.preparer.format_table(element.target),
+            source=compiler.preparer.format_table(element.source),
+            fill_option=fill_option,
+        )
+    return compiler.process(sa.text(query_text), **kw)
+
+
 class UnloadFromSelect(_ExecutableClause):
     """
     Prepares a Redshift unload statement to drop a query to Amazon S3
@@ -167,6 +226,8 @@ class UnloadFromSelect(_ExecutableClause):
         Maximum size (in bytes) of files to create in S3. This must be between
         5 * 1024**2 and 6.24 * 1024**3. Note that Redshift appears to round
         to the nearest KiB.
+    format : Format, optional
+        Indicates the type of file to unload to.
     """
 
     def __init__(self, select, unload_location, access_key_id=None,
@@ -175,7 +236,8 @@ class UnloadFromSelect(_ExecutableClause):
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True,
-                 header=False, region=None, max_file_size=None):
+                 header=False, region=None, max_file_size=None,
+                 format=None):
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
@@ -200,6 +262,7 @@ class UnloadFromSelect(_ExecutableClause):
         self.credentials = credentials
         self.manifest = manifest
         self.header = header
+        self.format = _check_enum(Format, format)
         self.delimiter = delimiter
         self.fixed_width = fixed_width
         self.encrypted = encrypted
@@ -222,6 +285,7 @@ def visit_unload_from_select(element, compiler, **kw):
        CREDENTIALS :credentials
        {manifest}
        {header}
+       {format}
        {delimiter}
        {encrypted}
        {fixed_width}
@@ -236,9 +300,20 @@ def visit_unload_from_select(element, compiler, **kw):
     """
     el = element
 
+    if el.format is None:
+        format_ = ''
+    elif el.format == Format.csv:
+        format_ = 'FORMAT AS {}'.format(el.format.value)
+        if el.delimiter is not None or el.fixed_width is not None:
+            raise ValueError(
+                'CSV format cannot be used with delimiter or fixed_width')
+    else:
+        raise ValueError('Only CSV format is currently supported')
+
     qs = template.format(
         manifest='MANIFEST' if el.manifest else '',
         header='HEADER' if el.header else '',
+        format=format_,
         delimiter=(
             'DELIMITER AS :delimiter' if el.delimiter is not None else ''
         ),
@@ -326,6 +401,19 @@ class Encoding(enum.Enum):
     utf16 = 'UTF16'
     utf16le = 'UTF16LE'
     utf16be = 'UTF16BE'
+
+
+def _check_enum(Enum, val):
+    if val is None:
+        return
+
+    cleaned = Enum(val)
+    if cleaned is not val:
+        tpl = '{val!r} should be, {cleaned!r}, an instance of {Enum!r}'
+        msg = tpl.format(val=val, cleaned=cleaned, Enum=Enum)
+        warnings.warn(msg, DeprecationWarning)
+
+    return cleaned
 
 
 class CopyCommand(_ExecutableClause):
@@ -491,18 +579,6 @@ class CopyCommand(_ExecutableClause):
                     '"ignore_header" parameter should be an integer'
                 )
 
-        def check_enum(Enum, val):
-            if val is None:
-                return
-
-            cleaned = Enum(val)
-            if cleaned is not val:
-                tpl = '{val!r} should be, {cleaned!r}, an instance of {Enum!r}'
-                msg = tpl.format(val=val, cleaned=cleaned, Enum=Enum)
-                warnings.warn(msg, DeprecationWarning)
-
-            return cleaned
-
         table = None
         columns = []
         if isinstance(to, collections.Iterable):
@@ -523,19 +599,19 @@ class CopyCommand(_ExecutableClause):
         self.columns = columns
         self.data_location = data_location
         self.credentials = credentials
-        self.format = check_enum(Format, format)
+        self.format = _check_enum(Format, format)
         self.quote = quote
         self.path_file = path_file
         self.delimiter = delimiter
         self.fixed_width = fixed_width
-        self.compression = check_enum(Compression, compression)
+        self.compression = _check_enum(Compression, compression)
         self.manifest = manifest
         self.accept_any_date = accept_any_date
         self.accept_inv_chars = accept_inv_chars
         self.blanks_as_null = blanks_as_null
         self.date_format = date_format
         self.empty_as_null = empty_as_null
-        self.encoding = check_enum(Encoding, encoding)
+        self.encoding = _check_enum(Encoding, encoding)
         self.escape = escape
         self.explicit_ids = explicit_ids
         self.fill_record = fill_record
