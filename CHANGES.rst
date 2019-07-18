@@ -1,6 +1,8 @@
 0.7.4 (unreleased)
 ------------------
 
+- Drop hard dependency on psycopg2 but require package to be present on runtime
+  (`Issue #165 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/165>`_)
 - Switch from info to keyword arguments on columns for ``SQLAlchemy >= 1.3.0``
   (`Issue #161 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/161>`_)
 - Add support for column info on redshift late binding views
