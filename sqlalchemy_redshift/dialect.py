@@ -713,7 +713,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     @reflection.cache
     def _get_all_column_info(self, connection, **kw):
         all_columns = defaultdict(list)
-        with connection.contextual_connect() as cc:
+        with connection.connect() as cc:
             result = cc.execute("""
             SELECT
               n.nspname as "schema",
