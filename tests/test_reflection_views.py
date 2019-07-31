@@ -43,14 +43,13 @@ def test_late_binding_view_reflection(redshift_engine):
 
 
 def test_spectrum_reflection(redshift_engine):
-    table_ddl = """
-        create external schema spectrum
+    schema_ddl = """create external schema spectrum
         from data catalog
         database 'spectrumdb'
         iam_role 'arn:aws:iam::688441717003:role/SqlAlchemyRedshiftTestRole'
         create external database if not exists;
-
-        create external table spectrum.sales(
+    """
+    table_ddl = """create external table spectrum.sales(
         salesid integer,
         listid integer,
         sellerid integer,
@@ -63,6 +62,7 @@ def test_spectrum_reflection(redshift_engine):
         table properties ('numRows'='172000');
     """
     conn = redshift_engine.connect()
+    conn.execute(schema_ddl)
     conn.execute(table_ddl)
     insp = inspect(redshift_engine)
     table_definition = insp.get_columns('sales', schema='spectrum')
