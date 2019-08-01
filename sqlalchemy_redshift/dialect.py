@@ -799,6 +799,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
 
+        print(all_columns)
         return dict(all_columns)
 
     @reflection.cache
