@@ -48,7 +48,7 @@ def test_spectrum_reflection(redshift_engine):
         database 'spectrumdb'
         iam_role 'arn:aws:iam::688441717003:role/SqlAlchemyRedshiftTestRole';
     """
-    table_ddl = """create external table spectrum.sales(
+    table_ddl = """create external table if not exists spectrum.sales(
         salesid integer,
         listid integer,
         sellerid integer,
