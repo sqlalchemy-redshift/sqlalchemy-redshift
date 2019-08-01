@@ -61,8 +61,8 @@ def test_spectrum_reflection(redshift_engine):
         table properties ('numRows'='172000');
     """
     conn = redshift_engine.connect()
-    # conn.execute(schema_ddl)
-    conn.execution_options(isolation_level='AUTOCOMMIT').execute(table_ddl)
+    conn.execute(schema_ddl)
+    # conn.execution_options(isolation_level='AUTOCOMMIT').execute(table_ddl)
     insp = inspect(redshift_engine)
     table_definition = insp.get_columns('sales', schema='spectrum')
 
