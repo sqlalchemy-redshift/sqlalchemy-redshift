@@ -1,4 +1,4 @@
-from sqlalchemy import MetaData, Table, inspect, text
+from sqlalchemy import MetaData, Table, inspect
 from sqlalchemy.schema import CreateTable
 
 from rs_sqla_test_utils.utils import clean, compile_query
@@ -62,7 +62,7 @@ def test_spectrum_reflection(redshift_engine):
     """
     conn = redshift_engine.connect()
     conn.execute(schema_ddl)
-    conn.execute(text(table_ddl).execution_options(autocommit=True))
+    conn.execution_options(isolation_level='AUTOCOMMIT').execute(table_ddl)
     insp = inspect(redshift_engine)
     table_definition = insp.get_columns('sales', schema='spectrum')
 
