@@ -46,9 +46,12 @@ def test_spectrum_reflection(redshift_engine):
     schema_ddl = """create external schema spectrum
         from data catalog
         database 'spectrumdb'
-        iam_role 'arn:aws:iam::688441717003:role/SqlAlchemyRedshiftTestRole';
+        iam_role 'arn:aws:iam::688441717003:role/SqlAlchemyRedshiftTestRole'
+        create external database if not exists;
     """
-    table_ddl = """create external table if not exists spectrum.sales(
+    table_ddl = """
+    drop table if exists spectrum.sales;
+    create external table if not exists spectrum.sales(
         salesid integer,
         listid integer,
         sellerid integer,
@@ -62,9 +65,8 @@ def test_spectrum_reflection(redshift_engine):
     """
     conn = redshift_engine.connect()
     conn.execute(schema_ddl)
-    # conn.execution_options(isolation_level='AUTOCOMMIT').execute(table_ddl)
-    insp = inspect(redshift_engine)
-    table_definition = insp.get_columns('sales', schema='spectrum')
-
-    assert 'sales_id' in table_definition.columns
-    assert 'pricepaid' in table_definition.columns
+    conn.execution_options(isolation_level='AUTOCOMMIT').execute(table_ddl)
+    view  = Table('sales', MetaData(), schema='spectrum',
+                  autoload=True, autoload_with=redshift_engine)
+    print(view.columns)
+    assert(len(view.columns) == 5)
