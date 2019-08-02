@@ -51,7 +51,7 @@ def test_spectrum_reflection(redshift_engine):
     """
     table_ddl = """
     drop table if exists spectrum.sales;
-    create external table if not exists spectrum.sales(
+    create external table spectrum.sales(
         salesid integer,
         listid integer,
         sellerid integer,
