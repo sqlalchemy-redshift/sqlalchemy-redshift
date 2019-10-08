@@ -1,4 +1,4 @@
-0.7.4 (unreleased)
+0.7.4 (2019-10-08)
 ------------------
 
 - Drop hard dependency on psycopg2 but require package to be present on runtime
