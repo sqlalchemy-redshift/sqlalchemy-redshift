@@ -25,6 +25,7 @@ The package is available on PyPI::
 
     See `Psycopg2's binary install docs <http://initd.org/psycopg/docs/install.html#binary-install-from-pypi>`_
     for more context on choosing a distribution.
+
 Usage
 -----
 The DSN format is similar to that of regular Postgres::
