@@ -7,7 +7,7 @@ except ImportError:
         'No module named psycopg2. Please install either '
         'psycopg2 or psycopg2-binary package for CPython '
         'or psycopg2cffi for Pypy.'
-    ) from None
+    )
 
 for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
     try:
