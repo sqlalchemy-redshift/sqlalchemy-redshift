@@ -1,4 +1,4 @@
-0.7.5 (unreleased)
+0.7.5 (2019-10-09)
 ------------------
 
 - Extend psycopg2 package version check to also support psycopg2-binary and psycopg2cffi
