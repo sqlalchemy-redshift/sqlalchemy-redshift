@@ -16,13 +16,6 @@ for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
         break
     except DistributionNotFound:
         pass
-else:
-    raise ImportError(
-        'A module was found named psycopg2, '
-        'but the version of it could not be checked '
-        'as it was neither the Python package psycopg2, '
-        'psycopg2-binary or psycopg2cffi.'
-    )
 
 __version__ = get_distribution('sqlalchemy-redshift').version
 
