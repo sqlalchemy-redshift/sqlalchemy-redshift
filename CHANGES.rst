@@ -1,7 +1,8 @@
 0.7.5 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Extend psycopg2 package version check to also support psycopg2-binary and psycopg2cffi
+  (`Issue #178 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/178>`_)
 
 
 0.7.4 (2019-10-08)
