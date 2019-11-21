@@ -1,7 +1,8 @@
 0.7.6 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Expose supported types for import from the dialect
+  (`Issue #181 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/181>`_)
 
 
 0.7.5 (2019-10-09)
