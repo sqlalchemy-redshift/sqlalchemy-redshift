@@ -626,7 +626,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         sortkey_cols = sorted([col for col in columns if col.sortkey],
                               key=keyfunc)
         interleaved = any([int(col.sortkey) < 0 for col in sortkey_cols])
-        sortkey = [col.name for col in sortkey_cols]
+        sortkey = tuple(col.name for col in sortkey_cols)
         interleaved_sortkey = None
         if interleaved:
             interleaved_sortkey = sortkey
