@@ -478,7 +478,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             column_info = self._get_column_info(
                 name=col.name, format_type=col.format_type,
                 default=col.default, notnull=col.notnull, domains=domains,
-                enums=[], schema=col.schema, encode=col.encode)
+                enums=[], schema=col.schema, encode=col.encode,
+                comment=col.comment)
             columns.append(column_info)
         return columns
 
@@ -676,11 +677,9 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
-        if sa.__version__ >= '1.2.0':
-            # SQLAlchemy 1.2.0 introduced a required 'comment' param
-            kw['comment'] = kw.get('comment', None)
-        else:
-            kw.pop('comment', None)
+        if sa.__version__ < '1.2.0':
+            # SQLAlchemy 1.2.0 introduced the 'comment' param
+            del kw['comment']
         column_info = super(RedshiftDialect, self)._get_column_info(
             *args,
             **kw
@@ -770,7 +769,10 @@ class RedshiftDialect(PGDialect_psycopg2):
               att.attisdistkey as "distkey",
               att.attsortkeyord as "sortkey",
               att.attnotnull as "notnull",
-              adsrc, attnum,
+              pg_catalog.col_description(att.attrelid, att.attnum)
+                as "comment",
+              adsrc,
+              attnum,
               pg_catalog.format_type(att.atttypid, att.atttypmod),
               pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
               n.oid as "schema_oid",
@@ -795,6 +797,7 @@ class RedshiftDialect(PGDialect_psycopg2):
               null as "distkey",
               0 as "sortkey",
               null as "notnull",
+              null as "comment",
               null as "adsrc",
               null as "attnum",
               col_type as "format_type",
