@@ -13,11 +13,12 @@ class TestColumnReflection(TestCase):
         dialect = RedshiftDialect()
         column_info = dialect._get_column_info(
             'Null Column',
-            'character varying', None, False, {}, {}, 'default'
+            'character varying', None, False, {}, {}, 'default', 'test column'
         )
         assert isinstance(column_info['type'], NullType)
         column_info_1 = dialect._get_column_info(
             'character column',
-            'character varying(30)', None, False, {}, {}, 'default'
+            'character varying(30)', None, False, {}, {}, 'default',
+            comment='test column'
         )
         assert isinstance(column_info_1['type'], VARCHAR)

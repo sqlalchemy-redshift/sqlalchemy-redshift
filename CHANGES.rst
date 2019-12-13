@@ -3,6 +3,7 @@
 
 - Expose supported types for import from the dialect
   (`Issue #181 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/181>`_)
+- Reflect column comments
 
 
 0.7.5 (2019-10-09)
