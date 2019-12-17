@@ -4,6 +4,7 @@
 - Expose supported types for import from the dialect
   (`Issue #181 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/181>`_)
 - Reflect column comments
+  (`Issue #186 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/186>`_)
 
 
 0.7.5 (2019-10-09)
