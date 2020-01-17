@@ -1,6 +1,8 @@
 0.7.6 (unreleased)
 ------------------
 
+- Fix unhashable type error for sortkey reflection in SQLAlchemy >= 1.3.11
+  (`Issue #180 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/180>`_)
 - Expose supported types for import from the dialect
   (`Issue #181 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/181>`_)
 - Reflect column comments
