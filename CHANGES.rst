@@ -1,4 +1,4 @@
-0.7.6 (unreleased)
+0.7.6 (2020-01-17)
 ------------------
 
 - Fix unhashable type error for sortkey reflection in SQLAlchemy >= 1.3.11
