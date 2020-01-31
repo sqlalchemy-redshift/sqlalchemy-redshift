@@ -231,7 +231,7 @@ def test_parquet_format__basic():
     {'header': True},
 ))
 def test_parquet_format__bad_options_crash(kwargs):
-    """Verify we crash if we try to use the Parquet format with a bad option."""
+    """Verify we crash if we use the Parquet format with a bad option."""
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
