@@ -1,3 +1,4 @@
+import pytest
 import sqlalchemy as sa
 
 from sqlalchemy_redshift import commands
@@ -157,7 +158,7 @@ def test_all_redshift_options_with_header():
     assert clean(compile_query(unload)) == clean(expected_result)
 
 
-def test_csv_format():
+def test_csv_format__basic():
     """Tests that UnloadFromSelect uses the format option correctly."""
 
     unload = dialect.UnloadFromSelect(
@@ -176,3 +177,69 @@ def test_csv_format():
         """.format(creds=creds)
 
     assert clean(compile_query(unload)) == clean(expected_result)
+
+
+@pytest.mark.parametrize('delimiter,fixed_width', (
+    ('\t', None),
+    (None, 'id:8,name:32'),
+    (';', 'id:8,name:32'),
+))
+def test_csv_format__bad_options_crash(delimiter, fixed_width):
+    """Test that UnloadFromSelect crashes if you try to use DELIMITER and/or
+    FIXEDWIDTH with the CSV format.
+    """
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        format=commands.Format.csv,
+        delimiter=delimiter,
+        fixed_width=fixed_width
+    )
+
+    with pytest.raises(ValueError):
+        compile_query(unload)
+
+
+def test_parquet_format__basic():
+    """Basic successful test of unloading with the Parquet format."""
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        format=commands.Format.parquet,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+        FORMAT AS PARQUET
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
+
+
+@pytest.mark.parametrize('kwargs', (
+    {'delimiter': '\t'},
+    {'fixed_width': 'id:8,name:32'},
+    {'gzip': True},
+    {'add_quotes': True, 'escape': True},
+    {'null': '\\N'},
+    {'header': True},
+))
+def test_parquet_format__bad_options_crash(kwargs):
+    """Verify we crash if we try to use the Parquet format with a bad option."""
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+        format=commands.Format.parquet,
+        **kwargs
+    )
+
+    with pytest.raises(ValueError):
+        compile_query(unload)
