@@ -1,7 +1,8 @@
 0.7.7 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add support for Parquet format in ``UNLOAD`` command
+  (`Issue #187 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/187>`_)
 
 
 0.7.6 (2020-01-17)
