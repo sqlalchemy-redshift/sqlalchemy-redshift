@@ -317,11 +317,13 @@ def visit_unload_from_select(element, compiler, **kw):
             el.header, el.gzip
         )):
             raise ValueError(
-                'Parquet format cannot be used with `delimiter`, `fixed_width`,'
-                ' `add_quotes`, `escape`, `null_as`, `header`, or `gzip`.'
+                "Parquet format can't be used with `delimiter`, `fixed_width`,"
+                ' `add_quotes`, `escape`, `null`, `header`, or `gzip`.'
             )
     else:
-        raise ValueError('Only CSV and Parquet formats are currently supported')
+        raise ValueError(
+            'Only CSV and Parquet formats are currently supported.'
+        )
 
     qs = template.format(
         manifest='MANIFEST' if el.manifest else '',
