@@ -1,8 +1,11 @@
-import collections
 import enum
 import numbers
 import re
 import warnings
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
@@ -581,7 +584,7 @@ class CopyCommand(_ExecutableClause):
 
         table = None
         columns = []
-        if isinstance(to, collections.Iterable):
+        if isinstance(to, Iterable):
             for column in to:
                 if table is not None and table != column.table:
                     raise ValueError(
