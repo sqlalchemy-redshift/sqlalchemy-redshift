@@ -1,4 +1,4 @@
-0.7.7 (unreleased)
+0.7.7 (2020-02-02)
 ------------------
 
 - Import Iterable from collections.abc for Python 3.9 compatibility
