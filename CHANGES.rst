@@ -1,6 +1,8 @@
 0.7.7 (unreleased)
 ------------------
 
+- Import Iterable from collections.abc for Python 3.9 compatibility
+  (`Issue #189 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/189>`_)
 - Add support for Parquet format in ``UNLOAD`` command
   (`Issue #187 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/187>`_)
 
