@@ -429,6 +429,8 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     name = 'redshift'
     max_identifier_length = 127
+    iam_argument = 'iam'
+    aws_region = 'aws-region'
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
@@ -641,23 +643,85 @@ class RedshiftDialect(PGDialect_psycopg2):
             'redshift_interleaved_sortkey': interleaved_sortkey,
         }
 
+    def _do_generate_iam_auth_token(self, redshift, cparams):
+        # Hostname is the cluster identifier
+        cluster_id = cparams['host']
+        response = redshift.describe_clusters(ClusterIdentifier=cluster_id)
+        # If there is no cluster, it will throw an exception
+        rs_cluster = response['Clusters'][0]
+
+        response = redshift.get_cluster_credentials(
+            DbUser=cparams['user'],
+            DbName=cparams['database'],
+            ClusterIdentifier=cluster_id,
+            AutoCreate=False)
+
+        # Extract user, password, hostname, and port from the response
+        return {
+            'host': rs_cluster['Endpoint']['Address'],
+            'port': rs_cluster['Endpoint']['Port'],
+            'user': response['DbUser'],
+            'password': response['DbPassword'],
+            'database': cparams['database']
+        }
+
+    def _generate_iam_auth_token(self, cparams):
+        """
+        Parses for necessary information to generate username and
+        password using the necessary Redshift API.
+
+        Username and database are passed to the get_cluster_credentials()
+        API to verify permissions.
+        """
+        try:
+            import boto3
+            if self.aws_region not in cparams:
+                raise ValueError(
+                    "Need AWS Region as part of the connection configuration.")
+
+            redshift = boto3.client('redshift',
+                                    region_name=cparams[self.aws_region])
+
+            # Verify that the parameters make sense.
+            if "password" in cparams:
+                raise ValueError(
+                    "'password' cannot be used when connecting with"
+                    " IAM federation."
+                )
+
+            return self._do_generate_iam_auth_token(redshift, cparams)
+
+        except ImportError:
+            raise ImportError(
+                "Could not find boto3 library, make sure the dependency "
+                "is installed."
+            )
+
     def create_connect_args(self, *args, **kwargs):
         """
         Build DB-API compatible connection arguments.
+
+        In addition, since Redshift offers different authentication
+        mechanisms, we use this method to dynamically retrieve
+        credentials via IAM, if the "iam" parameter is present.
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
         """
         default_args = {
-            'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                __name__,
-                'redshift-ca-bundle.crt'
-            ),
+            'sslmode':
+            'verify-full',
+            'sslrootcert':
+            pkg_resources.resource_filename(__name__,
+                                            'redshift-ca-bundle.crt'),
         }
-        cargs, cparams = super(RedshiftDialect, self).create_connect_args(
-            *args, **kwargs
-        )
+        cargs, cparams = super(RedshiftDialect,
+                               self).create_connect_args(*args, **kwargs)
+
+        if self.iam_argument in cparams:
+            cparams.update(self._generate_iam_auth_token(cparams))
+            del cparams[self.iam_argument]
+
         default_args.update(cparams)
         return cargs, default_args
 
