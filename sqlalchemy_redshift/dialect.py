@@ -479,7 +479,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                 name=col.name, format_type=col.format_type,
                 default=col.default, notnull=col.notnull, domains=domains,
                 enums=[], schema=col.schema, encode=col.encode,
-                comment=col.comment)
+                comment=col.comment, generated=col.generated)
             columns.append(column_info)
         return columns
 
@@ -758,6 +758,13 @@ class RedshiftDialect(PGDialect_psycopg2):
     @reflection.cache
     def _get_all_column_info(self, connection, **kw):
         all_columns = defaultdict(list)
+
+        generated = (
+            "a.attgenerated as generated"
+            if self.server_version_info >= (12,)
+            else "NULL as generated"
+        )
+
         with connection.contextual_connect() as cc:
             result = cc.execute("""
             SELECT
@@ -771,6 +778,7 @@ class RedshiftDialect(PGDialect_psycopg2):
               att.attnotnull as "notnull",
               pg_catalog.col_description(att.attrelid, att.attnum)
                 as "comment",
+              %s,
               adsrc,
               attnum,
               pg_catalog.format_type(att.atttypid, att.atttypmod),
@@ -798,6 +806,7 @@ class RedshiftDialect(PGDialect_psycopg2):
               0 as "sortkey",
               null as "notnull",
               null as "comment",
+              null as "generated",
               null as "adsrc",
               null as "attnum",
               col_type as "format_type",
@@ -811,7 +820,9 @@ class RedshiftDialect(PGDialect_psycopg2):
               col_type varchar,
               col_num int)
             ORDER BY "schema", "table_name", "attnum";
-            """)
+            """
+            % generated
+            )
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
