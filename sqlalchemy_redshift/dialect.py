@@ -760,9 +760,9 @@ class RedshiftDialect(PGDialect_psycopg2):
         all_columns = defaultdict(list)
 
         generated = (
-            "a.attgenerated as generated"
+            "att.attgenerated as generated"
             if self.server_version_info >= (12,)
-            else "NULL as generated"
+            else "null as generated"
         )
 
         with connection.contextual_connect() as cc:
