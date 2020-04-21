@@ -30,7 +30,9 @@ except ImportError:
     pass
 else:
     from alembic.ddl.base import RenameTable
+    from alembic.ddl.base import ColumnComment
     compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
+    compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
