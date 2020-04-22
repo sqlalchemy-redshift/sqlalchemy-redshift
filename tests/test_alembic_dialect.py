@@ -16,6 +16,7 @@ def test_rename_table():
     sql = compiler.process(RenameTable("old", "new", "schema"))
     assert sql == 'ALTER TABLE schema."old" RENAME TO "new"'
 
+
 def test_alter_column_comment():
     compiler = dialect.RedshiftDDLCompiler(dialect.RedshiftDialect(), None)
     sql = compiler.process(ColumnComment("table_name", "column_name", "my comment"))
