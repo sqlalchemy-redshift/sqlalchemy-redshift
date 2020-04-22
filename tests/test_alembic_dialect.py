@@ -19,5 +19,7 @@ def test_rename_table():
 
 def test_alter_column_comment():
     compiler = dialect.RedshiftDDLCompiler(dialect.RedshiftDialect(), None)
-    sql = compiler.process(ColumnComment("table_name", "column_name", "my comment"))
+    sql = compiler.process(
+        ColumnComment("table_name", "column_name", "my comment")
+    )
     assert sql == "COMMENT ON COLUMN table_name.column_name IS 'my comment'"
