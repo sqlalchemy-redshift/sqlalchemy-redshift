@@ -1,4 +1,4 @@
-from alembic.ddl.base import RenameTable
+from alembic.ddl.base import RenameTable, ColumnComment
 from alembic import migration
 
 from sqlalchemy_redshift import dialect
@@ -13,5 +13,10 @@ def test_configure_migration_context():
 
 def test_rename_table():
     compiler = dialect.RedshiftDDLCompiler(dialect.RedshiftDialect(), None)
-    sql = compiler.process(RenameTable("old", "new", "scheme"))
-    assert sql == 'ALTER TABLE scheme."old" RENAME TO "new"'
+    sql = compiler.process(RenameTable("old", "new", "schema"))
+    assert sql == 'ALTER TABLE schema."old" RENAME TO "new"'
+
+def test_alter_column_comment():
+    compiler = dialect.RedshiftDDLCompiler(dialect.RedshiftDialect(), None)
+    sql = compiler.process(ColumnComment("table_name", "column_name", "my comment"))
+    assert sql == "COMMENT ON COLUMN table_name.column_name IS 'my comment'"
