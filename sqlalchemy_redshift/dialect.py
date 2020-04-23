@@ -601,7 +601,7 @@ class RedshiftDialect(PGDialect_psycopg2):
             uniques[con.conname]["cols"][con.attnum] = con.attname
 
         return [
-            {'name': None,
+            {'name': name,
              'column_names': [uc["cols"][i] for i in uc["key"]]}
             for name, uc in uniques.items()
         ]

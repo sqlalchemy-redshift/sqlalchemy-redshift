@@ -1,7 +1,8 @@
 0.7.8 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Fix reflection of unique constraints
+  (`Issue #199 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/199>`_)
 
 
 0.7.7 (2020-02-02)
