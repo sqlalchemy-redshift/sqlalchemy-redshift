@@ -820,9 +820,7 @@ class RedshiftDialect(PGDialect_psycopg2):
               col_type varchar,
               col_num int)
             ORDER BY "schema", "table_name", "attnum";
-            """
-            % generated
-            )
+            """ % generated)
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
