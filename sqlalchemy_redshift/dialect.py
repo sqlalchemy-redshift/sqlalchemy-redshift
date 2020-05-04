@@ -25,14 +25,18 @@ from .commands import (
 from .compat import string_types
 
 try:
-    from alembic.ddl import postgresql
+    import alembic
 except ImportError:
     pass
 else:
+    from alembic.ddl import postgresql
+
     from alembic.ddl.base import RenameTable
-    from alembic.ddl.base import ColumnComment
     compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
-    compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
+
+    if alembic.__version__ >= '1.0.6':
+        from alembic.ddl.base import ColumnComment
+        compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
