@@ -659,6 +659,9 @@ class RedshiftDialect(PGDialect_psycopg2):
         if sa.__version__ < '1.2.0':
             # SQLAlchemy 1.2.0 introduced the 'comment' param
             del kw['comment']
+        if sa.__version__ >= '1.3.16':
+            # SQLAlchemy 1.3.16 introduced generated columns, not supported in redshift
+            kw['generated'] = ''
         column_info = super(RedshiftDialect, self)._get_column_info(
             *args,
             **kw
