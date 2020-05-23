@@ -61,7 +61,7 @@ def get_table_attributes(preparer,
             keys = [keys]
         keys = [key.name if isinstance(key, Column) else key
                 for key in keys]
-        if interleaved_sortkey:
+        if has_interleaved:
             text += " INTERLEAVED"
         sortkey_string = ", ".join(preparer.quote(key)
                                    for key in keys)

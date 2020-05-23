@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import exc as sa_exc, Integer
+from sqlalchemy import exc as sa_exc, Integer, Column
 
 from sqlalchemy_redshift import ddl, dialect
 
