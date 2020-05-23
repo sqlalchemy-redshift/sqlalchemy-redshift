@@ -84,7 +84,9 @@ def test_no_distkey_with_key_diststyle(preparer):
 def test_distkey_with_other_diststyles(preparer):
     for style in ("EVEN", "NONE", "ALL"):
         with pytest.raises(sa_exc.ArgumentError):
-            _ = ddl.get_table_attributes(preparer, diststyle=style, distkey="a_key")
+            _ = ddl.get_table_attributes(preparer,
+                                         diststyle=style,
+                                         distkey="a_key")
 
 
 def test_all_diststyle(preparer):
