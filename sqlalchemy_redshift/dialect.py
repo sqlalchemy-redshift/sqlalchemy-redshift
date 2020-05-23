@@ -377,7 +377,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     def post_create_table(self, table):
         info = table.dialect_options['redshift']
-        return self.get_table_attributes(self, self.preparer, **info)
+        return self.get_table_attributes(self.preparer, **info)
 
 
     def get_column_specification(self, column, **kwargs):
