@@ -934,9 +934,15 @@ def visit_create_library_command(element, compiler, **kw):
 
 
 class RefereshMaterializedView(_ExecutableClause):
+    """Prepares a Redshift REFRESH MATERIALIZED VIEW statement.
+    SEE:
+    docs.aws.amazon.com/redshift/latest/dg/materialized-view-refresh-sql-command
+
+    Parameters
+    ----------
+    name: str, required
+        The name of the view to refresh
     """
-    """
-    #TODO document above
     def __init__(self, name):
         self.name = name
 
