@@ -329,11 +329,21 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     """
 
-    def post_create_table(self, table):
-        text = ""
-        info = table.dialect_options['redshift']
+    @classmethod
+    def get_table_attributes(cls,
+                             preparer,
+                             diststyle=None,
+                             distkey=None,
+                             sortkey=None,
+                             interleaved_sortkey=None,
+                             **kwargs):
+        """
+        Parse the table attributes into an acceptable string for Redshift,
+        checking for valid combinations of distribution options.
 
-        diststyle = info.get('diststyle')
+        :param diststyle:
+        """
+        text = ""
         if diststyle:
             diststyle = diststyle.upper()
             if diststyle not in ('EVEN', 'KEY', 'ALL'):
@@ -342,12 +352,9 @@ class RedshiftDDLCompiler(PGDDLCompiler):
                 )
             text += " DISTSTYLE " + diststyle
 
-        distkey = info.get('distkey')
         if distkey:
-            text += " DISTKEY ({0})".format(self.preparer.quote(distkey))
+            text += " DISTKEY ({0})".format(preparer.quote(distkey))
 
-        sortkey = info.get('sortkey')
-        interleaved_sortkey = info.get('interleaved_sortkey')
         if sortkey and interleaved_sortkey:
             raise exc.ArgumentError(
                 "Parameters sortkey and interleaved_sortkey are "
@@ -362,10 +369,16 @@ class RedshiftDDLCompiler(PGDDLCompiler):
                     for key in keys]
             if interleaved_sortkey:
                 text += " INTERLEAVED"
-            sortkey_string = ", ".join(self.preparer.quote(key)
+            sortkey_string = ", ".join(preparer.quote(key)
                                        for key in keys)
             text += " SORTKEY ({0})".format(sortkey_string)
         return text
+
+
+    def post_create_table(self, table):
+        info = table.dialect_options['redshift']
+        return self.get_table_attributes(self, self.preparer, **info)
+
 
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
