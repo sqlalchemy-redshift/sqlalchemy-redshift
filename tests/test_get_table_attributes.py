@@ -66,9 +66,9 @@ def test_table_attributes_two_sort_key_interleaved(preparer, sortkey):
 
 def test_table_attributes_one_sort_one_interleaved_raises(preparer):
     with pytest.raises(sa_exc.ArgumentError):
-        _ = ddl.get_table_attributes(preparer,
-                                     sortkey="b_key",
-                                     interleaved_sortkey="b_key")
+        ddl.get_table_attributes(preparer,
+                                 sortkey="b_key",
+                                 interleaved_sortkey="b_key")
 
 
 def test_dist_key_with_key_diststyle(preparer):
@@ -78,15 +78,15 @@ def test_dist_key_with_key_diststyle(preparer):
 
 def test_no_distkey_with_key_diststyle(preparer):
     with pytest.raises(sa_exc.ArgumentError):
-        _ = ddl.get_table_attributes(preparer, diststyle="KEY")
+        ddl.get_table_attributes(preparer, diststyle="KEY")
 
 
 def test_distkey_with_other_diststyles(preparer):
     for style in ("EVEN", "NONE", "ALL"):
         with pytest.raises(sa_exc.ArgumentError):
-            _ = ddl.get_table_attributes(preparer,
-                                         diststyle=style,
-                                         distkey="a_key")
+            ddl.get_table_attributes(preparer,
+                                     diststyle=style,
+                                     distkey="a_key")
 
 
 def test_all_diststyle(preparer):
@@ -101,4 +101,4 @@ def test_even_diststyle(preparer):
 
 def test_bad_diststyle(preparer):
     with pytest.raises(sa_exc.ArgumentError):
-        _ = ddl.get_table_attributes(preparer, diststyle="BAD_SHOULD_FAIL")
+        ddl.get_table_attributes(preparer, diststyle="BAD_SHOULD_FAIL")
