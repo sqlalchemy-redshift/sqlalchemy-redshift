@@ -96,3 +96,15 @@ def test_interleaved_sortkey_materialized_view(selectable):
             interleaved_sortkey=key
         )
         assert clean(expected_result) == clean(compile_query(view))
+
+
+def test_drop_materialized_view():
+    expected_result = "DROP MATERIALIZED VIEW test_view"
+    view = ddl.DropMaterializedView("test_view")
+    assert clean(expected_result) == clean(compile_query(view))
+
+
+def test_drop_materialized_view_if_exists():
+    expected_result = "DROP MATERIALIZED VIEW IF EXISTS test_view"
+    view = ddl.DropMaterializedView("test_view", if_exists=True)
+    assert clean(expected_result) == clean(compile_query(view))

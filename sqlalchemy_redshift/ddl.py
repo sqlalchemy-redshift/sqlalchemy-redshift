@@ -115,3 +115,21 @@ def compile_create_materialized_view(element, compiler, **kw):
         selectable=selectable
     )
     return text
+
+
+class DropMaterializedView(DDLElement):
+    """
+    """
+    def __init__(self, name, if_exists=False):
+        self.name = name
+        self.if_exists = if_exists
+
+
+@sa_compiler.compiles(DropMaterializedView)
+def compile_drop_materialized_view(element, compiler, **kw):
+    """
+    Formats and returns the drop statement for materialized views.
+    """
+    text = "DROP MATERIALIZED VIEW {if_exists}{name}"
+    if_exists = "IF EXISTS " if element.if_exists else ""
+    return text.format(if_exists=if_exists, name=element.name)
