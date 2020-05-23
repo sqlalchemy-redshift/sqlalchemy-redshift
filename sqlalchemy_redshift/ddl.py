@@ -1,4 +1,3 @@
-import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc, Column
 from sqlalchemy.ext import compiler as sa_compiler
 from sqlalchemy.schema import DDLElement
@@ -120,6 +119,7 @@ def compile_create_materialized_view(element, compiler, **kw):
 class DropMaterializedView(DDLElement):
     """
     """
+    #TODO document above
     def __init__(self, name, if_exists=False):
         self.name = name
         self.if_exists = if_exists

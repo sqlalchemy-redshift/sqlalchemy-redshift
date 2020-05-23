@@ -931,3 +931,20 @@ def visit_create_library_command(element, compiler, **kw):
                          or_replace='OR REPLACE' if element.replace else '',
                          region='REGION :region' if element.region else '')
     return compiler.process(sa.text(query).bindparams(*bindparams), **kw)
+
+
+class RefereshMaterializedView(_ExecutableClause):
+    """
+    """
+    #TODO document above
+    def __init__(self, name):
+        self.name = name
+
+
+@sa_compiler.compiles(RefereshMaterializedView)
+def compile_drop_materialized_view(element, compiler, **kw):
+    """
+    Formats and returns the refresh statement for materialized views.
+    """
+    text = "REFRESH MATERIALIZED VIEW {name}"
+    return text.format(name=element.name)
