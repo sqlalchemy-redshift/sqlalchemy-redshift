@@ -23,6 +23,7 @@ from .commands import (
     CreateLibraryCommand, AlterTableAppendCommand,
 )
 from .compat import string_types
+from .ddl import CreateMaterializedView
 
 try:
     import alembic
@@ -60,6 +61,8 @@ __all__ = (
 
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
+
+    'CreateMaterializedView'
 )
 
 
@@ -341,8 +344,12 @@ class RedshiftDDLCompiler(PGDDLCompiler):
         Parse the table attributes into an acceptable string for Redshift,
         checking for valid combinations of distribution options.
 
-        :param diststyle:
+        Parameters
+        ----------
+        preparer: RedshiftIdentifierPreparer
+            TODO
         """
+        # TODO fill out above
         text = ""
         if diststyle:
             diststyle = diststyle.upper()
