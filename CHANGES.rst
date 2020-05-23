@@ -1,3 +1,9 @@
+0.7.9 (unreleased)
+------------------
+
+- Added support for materialized views
+  (`AWS Docs <https://docs.aws.amazon.com/redshift/latest/dg/materialized-view-overview.html`_)
+
 0.7.8 (unreleased)
 ------------------
 
