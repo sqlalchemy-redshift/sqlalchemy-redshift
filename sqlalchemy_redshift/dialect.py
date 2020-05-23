@@ -20,9 +20,9 @@ from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 
 from .commands import (
     CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
-    CreateLibraryCommand, AlterTableAppendCommand,
+    CreateLibraryCommand, AlterTableAppendCommand, RefereshMaterializedView
 )
-from .ddl import CreateMaterializedView, get_table_attributes
+from .ddl import CreateMaterializedView, DropMaterializedView, get_table_attributes
 
 try:
     import alembic

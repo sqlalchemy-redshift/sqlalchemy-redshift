@@ -934,16 +934,35 @@ def visit_create_library_command(element, compiler, **kw):
 
 
 class RefereshMaterializedView(_ExecutableClause):
-    """Prepares a Redshift REFRESH MATERIALIZED VIEW statement.
+    """
+    Prepares a Redshift REFRESH MATERIALIZED VIEW statement.
     SEE:
     docs.aws.amazon.com/redshift/latest/dg/materialized-view-refresh-sql-command
 
-    Parameters
-    ----------
-    name: str, required
-        The name of the view to refresh
+    This reruns the query underlying the view to ensure the materialized data is
+    up to date.
+
+    >>> import sqlalchemy as sa
+    >>> from sqlalchemy_redshift.commands import RefereshMaterializedView
+    >>> engine = sa.create_engine('redshift+psycopg2://example')
+    >>> refresh = RefereshMaterializedView('materialized_view_of_users')
+    >>> print(refresh.compile(engine))
+    <BLANKLINE>
+    REFRESH MATERIALIZED VIEW materialized_view_of_users
+    <BLANKLINE>
+    <BLANKLINE>
+
+    This can be included in any execute() statement.
     """
     def __init__(self, name):
+        """
+        Builds the Executable/ClauseElement that represents the refresh command.
+
+        Parameters
+        ----------
+        name: str, required
+            The name of the view to refresh
+        """
         self.name = name
 
 
