@@ -4,6 +4,7 @@ from sqlalchemy import Table, Integer, String, MetaData, Column, select
 from sqlalchemy_redshift import ddl, commands
 from rs_sqla_test_utils.utils import clean, compile_query
 
+
 @pytest.fixture
 def selectable():
     table = Table('t1',
@@ -108,6 +109,7 @@ def test_drop_materialized_view_if_exists():
     expected_result = "DROP MATERIALIZED VIEW IF EXISTS test_view"
     view = ddl.DropMaterializedView("test_view", if_exists=True)
     assert clean(expected_result) == clean(compile_query(view))
+
 
 def test_refresh_materialized_view():
     expected_result = "REFRESH MATERIALIZED VIEW test_view"

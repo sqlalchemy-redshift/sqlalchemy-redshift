@@ -939,8 +939,8 @@ class RefereshMaterializedView(_ExecutableClause):
     SEE:
     docs.aws.amazon.com/redshift/latest/dg/materialized-view-refresh-sql-command
 
-    This reruns the query underlying the view to ensure the materialized data is
-    up to date.
+    This reruns the query underlying the view to ensure the materialized data
+    is up to date.
 
     >>> import sqlalchemy as sa
     >>> from sqlalchemy_redshift.commands import RefereshMaterializedView
@@ -956,7 +956,7 @@ class RefereshMaterializedView(_ExecutableClause):
     """
     def __init__(self, name):
         """
-        Builds the Executable/ClauseElement that represents the refresh command.
+        Builds the Executable/ClauseElement that represents the refresh command
 
         Parameters
         ----------

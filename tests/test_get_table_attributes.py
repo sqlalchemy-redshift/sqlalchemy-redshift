@@ -48,8 +48,8 @@ def test_table_attributes_two_sort_key(preparer, sortkey):
 
 @pytest.mark.parametrize('sortkey', ("b_key", ["b_key"]))
 def test_table_attributes_one_sort_key_interleaved(preparer, sortkey):
-    # A single interleaved key doesn't make too much sense, but redshift doesn't
-    # complain, so neither should we.
+    # A single interleaved key doesn't make too much sense, but redshift
+    # doesn't complain, so neither should we.
     text = ddl.get_table_attributes(preparer, interleaved_sortkey=sortkey)
     assert text == " INTERLEAVED SORTKEY (b_key)"
 
