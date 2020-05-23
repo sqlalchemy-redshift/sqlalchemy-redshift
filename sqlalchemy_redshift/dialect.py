@@ -3,7 +3,7 @@ from collections import defaultdict, namedtuple
 
 import pkg_resources
 import sqlalchemy as sa
-from sqlalchemy import Column, exc, inspect
+from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql.base import (
     PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
 )
@@ -22,8 +22,7 @@ from .commands import (
     CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
     CreateLibraryCommand, AlterTableAppendCommand,
 )
-from .compat import string_types
-from .ddl import CreateMaterializedView
+from .ddl import CreateMaterializedView, get_table_attributes
 
 try:
     import alembic
@@ -332,60 +331,11 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     """
 
-    @classmethod
-    def get_table_attributes(cls,
-                             preparer,
-                             diststyle=None,
-                             distkey=None,
-                             sortkey=None,
-                             interleaved_sortkey=None,
-                             **kwargs):
-        """
-        Parse the table attributes into an acceptable string for Redshift,
-        checking for valid combinations of distribution options.
-
-        Parameters
-        ----------
-        preparer: RedshiftIdentifierPreparer
-            TODO
-        """
-        # TODO fill out above
-        text = ""
-        if diststyle:
-            diststyle = diststyle.upper()
-            if diststyle not in ('EVEN', 'KEY', 'ALL'):
-                raise exc.CompileError(
-                    u"diststyle {0} is invalid".format(diststyle)
-                )
-            text += " DISTSTYLE " + diststyle
-
-        if distkey:
-            text += " DISTKEY ({0})".format(preparer.quote(distkey))
-
-        if sortkey and interleaved_sortkey:
-            raise exc.ArgumentError(
-                "Parameters sortkey and interleaved_sortkey are "
-                "mutually exclusive; you may not specify both."
-            )
-        if sortkey or interleaved_sortkey:
-            if isinstance(sortkey, string_types):
-                keys = [sortkey]
-            else:
-                keys = sortkey or interleaved_sortkey
-            keys = [key.name if isinstance(key, Column) else key
-                    for key in keys]
-            if interleaved_sortkey:
-                text += " INTERLEAVED"
-            sortkey_string = ", ".join(preparer.quote(key)
-                                       for key in keys)
-            text += " SORTKEY ({0})".format(sortkey_string)
-        return text
-
-
     def post_create_table(self, table):
+        kwargs = ["diststyle", "distkey", "sortkey", "interleaved_sortkey"]
         info = table.dialect_options['redshift']
-        return self.get_table_attributes(self.preparer, **info)
-
+        info = {key: info.get(key) for key in kwargs}
+        return get_table_attributes(self.preparer, **info)
 
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
