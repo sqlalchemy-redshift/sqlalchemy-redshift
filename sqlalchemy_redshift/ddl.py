@@ -4,8 +4,10 @@ from sqlalchemy.schema import DDLElement
 
 from .compat import string_types
 
+
 def _check_if_key_exists(key):
     return isinstance(key, sa.Column) or key
+
 
 def get_table_attributes(preparer,
                          diststyle=None,
@@ -20,20 +22,21 @@ def get_table_attributes(preparer,
     ----------
     preparer: RedshiftIdentifierPreparer, required
         The preparer associated with the compiler, usually accessed through
-        compiler.preparer.  You can use a RedshiftDDLCompiler instance to access
-        it.
+        compiler.preparer.  You can use a RedshiftDDLCompiler instance to
+        access it.
     diststyle: str, optional
         The diststle to use for the table attributes.  This must be one of:
-        ("ALL", "EVEN", "KEY").  If unset, Redshift passes AUTO. If KEY is used,
+        ("ALL", "EVEN", "KEY").  If unset, Redshift passes AUTO. If KEY is used
         a distkey argument must be provided.  Inversely, if a diststyle other
         than KEY is provided, a distkey argument cannot be provided.
     distkey: str or sqlalchemy.Column, optional
         The distribution key to use the for the table attributes.  This can be
-        provided without any distsyle specified or with KEY diststyle specified.
+        provided without any distsyle specified or with KEY diststyle
+        specified.
     sortkey: str or sqlalchemy.Column (or iterable thereof), optional
         The (compound) sort key(s) to use for the table attributes. Mutually
         exclusive option from interleaved_sortkey.
-    interleaved_sortkey: str or sqlalchemy.Column (or iterable thereof), optional
+    interleaved_sortkey: str or sqlalchemy.Column (or iterable), optional
         The (interleaved) sort key(s) to use for the table attributes. Mutually
         exclusive option from sortkey.
 
@@ -150,15 +153,15 @@ class CreateMaterializedView(DDLElement):
             The diststle to use for the table attributes.  This must be one of:
             ("ALL", "EVEN", "KEY").  If unset, Redshift passes AUTO. If KEY is
             used, a distkey argument must be provided.  Inversely, if
-            a diststyle other than KEY is provided, a distkey argument cannot be
-            provided.
+            a diststyle other than KEY is provided, a distkey argument cannot
+            be provided.
         distkey: str or sqlalchemy.Column, optional
             The distribution key to use the for the table attributes.  This can
             be provided without any distsyle specified or with KEY diststyle
             specified.
         sortkey: str or sqlalchemy.Column (or iterable thereof), optional
-            The (compound) sort key(s) to use for the table attributes. Mutually
-            exclusive option from interleaved_sortkey.
+            The (compound) sort key(s) to use for the table attributes.
+            Mutually exclusive option from interleaved_sortkey.
         interleaved_sortkey: str or sqlalchemy.Column (or iterable), optional
             The (interleaved) sort key(s) to use for the table attributes.
             Mutually exclusive option from sortkey.
@@ -202,8 +205,10 @@ def compile_create_materialized_view(element, compiler, **kw):
         selectable=selectable
     )
     # Clean it up to have no leading spaces
-    text = "\n".join([line.strip() for line in text.split("\n") if line.strip()])
+    text = "\n".join([line.strip() for line in text.split("\n")
+                      if line.strip()])
     return text
+
 
 class DropMaterializedView(DDLElement):
     """
