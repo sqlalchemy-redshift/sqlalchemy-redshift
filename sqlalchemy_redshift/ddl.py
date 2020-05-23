@@ -24,6 +24,7 @@ def get_table_attributes(preparer,
     """
     # TODO fill out above
     text = ""
+
     has_distkey = _check_if_key_exists(distkey)
     if diststyle:
         diststyle = diststyle.upper()
@@ -34,6 +35,10 @@ def get_table_attributes(preparer,
         if diststyle != 'KEY' and has_distkey:
             raise sa_exc.ArgumentError(
                 u"DISTSTYLE EVEN/ALL is not compatible with a DISTKEY."
+            )
+        if diststyle == 'KEY' and not has_distkey:
+            raise sa_exc.ArgumentError(
+                u"DISTKEY specification is required for DISTSTYLE KEY"
             )
         text += " DISTSTYLE " + diststyle
 
@@ -49,6 +54,7 @@ def get_table_attributes(preparer,
             "Parameters sortkey and interleaved_sortkey are "
             "mutually exclusive; you may not specify both."
         )
+
     if has_sortkey or has_interleaved:
         keys = sortkey if has_sortkey else interleaved_sortkey
         if isinstance(keys, (string_types, Column)):

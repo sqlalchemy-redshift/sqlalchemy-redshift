@@ -2,7 +2,7 @@ import difflib
 
 import pytest
 from sqlalchemy import Table, Column, Integer, String, MetaData
-from sqlalchemy.exc import CompileError
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.schema import CreateTable
 
 from sqlalchemy_redshift.dialect import RedshiftDDLCompiler, RedshiftDialect
@@ -90,7 +90,7 @@ class TestDDLCompiler(object):
 
         create_table = CreateTable(table)
 
-        with pytest.raises(CompileError):
+        with pytest.raises(ArgumentError):
             compiler.process(create_table)
 
     def test_create_table_with_distkey(self, compiler):
