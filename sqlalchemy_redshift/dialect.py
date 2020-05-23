@@ -60,8 +60,9 @@ __all__ = (
 
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
+    'RefereshMaterializedView',
 
-    'CreateMaterializedView'
+    'CreateMaterializedView', 'DropMaterializedView'
 )
 
 
