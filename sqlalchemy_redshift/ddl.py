@@ -92,20 +92,19 @@ def compile_create_materialized_view(element, compiler, **kw):
 
     text = """
         CREATE MATERIALIZED VIEW {name}
-        BACKUP {backup}
+        {backup}
         {table_attributes}
         AS {selectable}
     """
-
-    # TODO check element.preparer is the right type
     table_attributes = get_table_attributes(
-        element.preparer,
+        compiler.preparer,
         diststyle=element.diststyle,
         distkey=element.distkey,
         sortkey=element.sortkey,
         interleaved_sortkey=element.interleaved_sortkey
     )
-    backup = "YES" if element.backup else "NO"
+    # Defaults to yes, so omit default cas3
+    backup = " " if element.backup else "BACKUP NO "
     selectable = compiler.sql_compiler.process(element.selectable,
                                                literal_binds=True)
 
@@ -115,4 +114,4 @@ def compile_create_materialized_view(element, compiler, **kw):
         table_attributes=table_attributes,
         selectable=selectable
     )
-    return compiler.process(sa.text(text), **kw)
+    return text

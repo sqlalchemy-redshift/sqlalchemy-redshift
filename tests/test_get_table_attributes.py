@@ -1,11 +1,7 @@
 import pytest
-import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc, Integer
-from sqlalchemy import Table, Column, Integer, String, MetaData
 
 from sqlalchemy_redshift import ddl, dialect
-from sqlalchemy_redshift import commands
-from rs_sqla_test_utils.utils import clean, compile_query
 
 
 @pytest.fixture
