@@ -943,9 +943,9 @@ class RefreshMaterializedView(_ExecutableClause):
     is up to date.
 
     >>> import sqlalchemy as sa
-    >>> from sqlalchemy_redshift.commands import RefereshMaterializedView
+    >>> from sqlalchemy_redshift.commands import RefreshMaterializedView
     >>> engine = sa.create_engine('redshift+psycopg2://example')
-    >>> refresh = RefereshMaterializedView('materialized_view_of_users')
+    >>> refresh = RefreshMaterializedView('materialized_view_of_users')
     >>> print(refresh.compile(engine))
     <BLANKLINE>
     REFRESH MATERIALIZED VIEW materialized_view_of_users
@@ -966,7 +966,7 @@ class RefreshMaterializedView(_ExecutableClause):
         self.name = name
 
 
-@sa_compiler.compiles(RefereshMaterializedView)
+@sa_compiler.compiles(RefreshMaterializedView)
 def compile_refresh_materialized_view(element, compiler, **kw):
     """
     Formats and returns the refresh statement for materialized views.

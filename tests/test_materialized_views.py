@@ -113,5 +113,5 @@ def test_drop_materialized_view_if_exists():
 
 def test_refresh_materialized_view():
     expected_result = "REFRESH MATERIALIZED VIEW test_view"
-    view = commands.RefereshMaterializedView("test_view")
+    view = commands.RefreshMaterializedView("test_view")
     assert clean(expected_result) == clean(compile_query(view))

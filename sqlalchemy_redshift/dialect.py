@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 
 from .commands import (
     CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
-    CreateLibraryCommand, AlterTableAppendCommand, RefereshMaterializedView
+    CreateLibraryCommand, AlterTableAppendCommand, RefreshMaterializedView
 )
 from .ddl import (
     CreateMaterializedView, DropMaterializedView, get_table_attributes
@@ -62,7 +62,7 @@ __all__ = (
 
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
-    'RefereshMaterializedView',
+    'RefreshMaterializedView',
 
     'CreateMaterializedView', 'DropMaterializedView'
 )
