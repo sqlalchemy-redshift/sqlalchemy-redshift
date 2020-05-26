@@ -933,7 +933,7 @@ def visit_create_library_command(element, compiler, **kw):
     return compiler.process(sa.text(query).bindparams(*bindparams), **kw)
 
 
-class RefereshMaterializedView(_ExecutableClause):
+class RefreshMaterializedView(_ExecutableClause):
     """
     Prepares a Redshift REFRESH MATERIALIZED VIEW statement.
     SEE:
