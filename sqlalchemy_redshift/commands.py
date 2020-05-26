@@ -967,7 +967,7 @@ class RefereshMaterializedView(_ExecutableClause):
 
 
 @sa_compiler.compiles(RefereshMaterializedView)
-def compile_drop_materialized_view(element, compiler, **kw):
+def compile_refresh_materialized_view(element, compiler, **kw):
     """
     Formats and returns the refresh statement for materialized views.
     """
