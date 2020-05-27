@@ -8,6 +8,7 @@ setup(
     version='0.7.8.dev0',
     description='Amazon Redshift Dialect for sqlalchemy',
     long_description=readme + '\n\n' + history,
+    long_description_content_type='text/x-rst',
     author='Matt George',
     author_email='mgeorge@gmail.com',
     maintainer='Thomas Grainger',
