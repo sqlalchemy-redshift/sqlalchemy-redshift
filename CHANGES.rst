@@ -2,7 +2,7 @@
 ------------------
 
 - Added support for materialized views
-  (`Issue #202 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/202>`_)
+  (`Issue #202 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/202>`_)
 - Fix reflection of unique constraints
   (`Issue #199 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/199>`_)
 - Support for altering column comments in Alembic migrations
