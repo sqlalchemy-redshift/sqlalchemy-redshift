@@ -3,7 +3,6 @@ import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 
 from sqlalchemy_redshift import dialect
-from sqlalchemy_redshift import commands
 from rs_sqla_test_utils.utils import clean, compile_query
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
@@ -106,8 +105,8 @@ def test_format():
 
 
 @pytest.mark.parametrize('format_type', (
-    commands.Format.orc,
-    commands.Format.parquet,
+    dialect.Format.orc,
+    dialect.Format.parquet,
 ))
 def test_format__columnar(format_type):
     expected_result = """
@@ -140,7 +139,7 @@ def test_invalid_format():
 def test_fixed_width_format_without_widths():
     copy = dialect.CopyCommand(
         tbl,
-        format=commands.Format.fixed_width,
+        format=dialect.Format.fixed_width,
         data_location='s3://bucket',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key

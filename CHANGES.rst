@@ -5,6 +5,8 @@
   (`Issue #199 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/199>`_)
 - Support for altering column comments in Alembic migrations
   (`Issue #191 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/191>`_)
+- Added support for materialized views
+  (`AWS Docs <https://docs.aws.amazon.com/redshift/latest/dg/materialized-view-overview.html`_)
 
 0.7.7 (2020-02-02)
 ------------------

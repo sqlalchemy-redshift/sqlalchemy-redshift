@@ -1,4 +1,4 @@
-from sqlalchemy_redshift import commands
+from sqlalchemy_redshift import dialect
 from rs_sqla_test_utils.utils import clean, compile_query
 
 # These are fake credentials for the tests.
@@ -26,7 +26,7 @@ def test_basic():
         WITH CREDENTIALS AS '{creds}'
     """.format(name=name, where=where, creds=CREDS)
 
-    cmd = commands.CreateLibraryCommand(
+    cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY)
     assert clean(expected_result) == clean(compile_query(cmd))
@@ -43,7 +43,7 @@ def test_or_replace():
         WITH CREDENTIALS AS '{creds}'
     """.format(name=name, where=where, creds=CREDS)
 
-    cmd = commands.CreateLibraryCommand(
+    cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, replace=True)
     assert clean(expected_result) == clean(compile_query(cmd))
@@ -62,7 +62,7 @@ def test_region():
         REGION '{region}'
     """.format(name=name, where=where, creds=CREDS, region=region)
 
-    cmd = commands.CreateLibraryCommand(
+    cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, region=region)
     assert clean(expected_result) == clean(compile_query(cmd))
@@ -81,7 +81,7 @@ def test_everything():
         REGION '{region}'
     """.format(name=name, where=where, creds=CREDS, region=region)
 
-    cmd = commands.CreateLibraryCommand(
+    cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, replace=True, region=region)
     assert clean(expected_result) == clean(compile_query(cmd))
