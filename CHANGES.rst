@@ -1,4 +1,4 @@
-0.7.8 (unreleased)
+0.7.8 (2020-05-27)
 ------------------
 
 - Added support for materialized views
