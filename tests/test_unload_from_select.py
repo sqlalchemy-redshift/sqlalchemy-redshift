@@ -1,7 +1,6 @@
 import pytest
 import sqlalchemy as sa
 
-from sqlalchemy_redshift import commands
 from sqlalchemy_redshift import dialect
 
 from rs_sqla_test_utils.utils import clean, compile_query
@@ -166,7 +165,7 @@ def test_csv_format__basic():
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        format=commands.Format.csv
+        format=dialect.Format.csv
     )
 
     expected_result = """
@@ -193,7 +192,7 @@ def test_csv_format__bad_options_crash(delimiter, fixed_width):
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        format=commands.Format.csv,
+        format=dialect.Format.csv,
         delimiter=delimiter,
         fixed_width=fixed_width
     )
@@ -209,7 +208,7 @@ def test_parquet_format__basic():
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        format=commands.Format.parquet,
+        format=dialect.Format.parquet,
     )
 
     expected_result = """
@@ -237,7 +236,7 @@ def test_parquet_format__bad_options_crash(kwargs):
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        format=commands.Format.parquet,
+        format=dialect.Format.parquet,
         **kwargs
     )
 

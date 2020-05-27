@@ -943,7 +943,7 @@ class RefreshMaterializedView(_ExecutableClause):
     is up to date.
 
     >>> import sqlalchemy as sa
-    >>> from sqlalchemy_redshift.commands import RefreshMaterializedView
+    >>> from sqlalchemy_redshift.dialect import RefreshMaterializedView
     >>> engine = sa.create_engine('redshift+psycopg2://example')
     >>> refresh = RefreshMaterializedView('materialized_view_of_users')
     >>> print(refresh.compile(engine))

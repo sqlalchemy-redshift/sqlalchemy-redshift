@@ -1,7 +1,7 @@
 import pytest
 
 from sqlalchemy import Table, Integer, String, MetaData, Column, select
-from sqlalchemy_redshift import ddl, commands
+from sqlalchemy_redshift import dialect
 from rs_sqla_test_utils.utils import clean, compile_query
 
 
@@ -19,7 +19,7 @@ def test_basic_materialized_view(selectable):
     CREATE MATERIALIZED VIEW test_view
     AS SELECT t1.id, t1.name FROM t1
     """
-    view = ddl.CreateMaterializedView(
+    view = dialect.CreateMaterializedView(
         "test_view",
         selectable
     )
@@ -32,7 +32,7 @@ def test_no_backup_materialized_view(selectable):
     BACKUP NO
     AS SELECT t1.id, t1.name FROM t1
     """
-    view = ddl.CreateMaterializedView(
+    view = dialect.CreateMaterializedView(
         "test_view",
         selectable,
         backup=False
@@ -46,7 +46,7 @@ def test_diststyle_materialized_view(selectable):
     DISTSTYLE ALL
     AS SELECT t1.id, t1.name FROM t1
     """
-    view = ddl.CreateMaterializedView(
+    view = dialect.CreateMaterializedView(
         "test_view",
         selectable,
         diststyle='ALL'
@@ -61,7 +61,7 @@ def test_distkey_materialized_view(selectable):
     AS SELECT t1.id, t1.name FROM t1
     """
     for key in ("id", selectable.c.id):
-        view = ddl.CreateMaterializedView(
+        view = dialect.CreateMaterializedView(
             "test_view",
             selectable,
             distkey=key
@@ -76,7 +76,7 @@ def test_sortkey_materialized_view(selectable):
     AS SELECT t1.id, t1.name FROM t1
     """
     for key in ("id", selectable.c.id):
-        view = ddl.CreateMaterializedView(
+        view = dialect.CreateMaterializedView(
             "test_view",
             selectable,
             sortkey=key
@@ -91,7 +91,7 @@ def test_interleaved_sortkey_materialized_view(selectable):
     AS SELECT t1.id, t1.name FROM t1
     """
     for key in ("id", selectable.c.id):
-        view = ddl.CreateMaterializedView(
+        view = dialect.CreateMaterializedView(
             "test_view",
             selectable,
             interleaved_sortkey=key
@@ -101,17 +101,17 @@ def test_interleaved_sortkey_materialized_view(selectable):
 
 def test_drop_materialized_view():
     expected_result = "DROP MATERIALIZED VIEW test_view"
-    view = ddl.DropMaterializedView("test_view")
+    view = dialect.DropMaterializedView("test_view")
     assert clean(expected_result) == clean(compile_query(view))
 
 
 def test_drop_materialized_view_if_exists():
     expected_result = "DROP MATERIALIZED VIEW IF EXISTS test_view"
-    view = ddl.DropMaterializedView("test_view", if_exists=True)
+    view = dialect.DropMaterializedView("test_view", if_exists=True)
     assert clean(expected_result) == clean(compile_query(view))
 
 
 def test_refresh_materialized_view():
     expected_result = "REFRESH MATERIALIZED VIEW test_view"
-    view = commands.RefreshMaterializedView("test_view")
+    view = dialect.RefreshMaterializedView("test_view")
     assert clean(expected_result) == clean(compile_query(view))

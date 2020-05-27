@@ -109,7 +109,7 @@ class CreateMaterializedView(DDLElement):
     This works for any selectable.  Consider the trivial example of this table:
 
     >>> import sqlalchemy as sa
-    >>> from sqlalchemy_redshift.ddl import CreateMaterializedView
+    >>> from sqlalchemy_redshift.dialect import CreateMaterializedView
     >>> engine = sa.create_engine('redshift+psycopg2://example')
     >>> metadata = sa.MetaData()
     >>> user = sa.Table(
@@ -219,7 +219,7 @@ class DropMaterializedView(DDLElement):
     This undoes the create command, as expected:
 
     >>> import sqlalchemy as sa
-    >>> from sqlalchemy_redshift.ddl import DropMaterializedView
+    >>> from sqlalchemy_redshift.dialect import DropMaterializedView
     >>> engine = sa.create_engine('redshift+psycopg2://example')
     >>> drop = DropMaterializedView(
     ...     'materialized_view_of_users',
