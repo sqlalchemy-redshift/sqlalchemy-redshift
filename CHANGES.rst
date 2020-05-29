@@ -1,4 +1,4 @@
-0.7.9 (unreleased)
+0.7.9 (2020-05-29)
 ------------------
 
 - Fix for supporting SQLAlchemy 1.3.11+
