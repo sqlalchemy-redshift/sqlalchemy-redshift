@@ -1,8 +1,8 @@
 0.7.9 (unreleased)
 ------------------
 
-- Nothing changed yet.
-
+- Fix for supporting SQLAlchemy 1.3.11+
+  (`Issue #195 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/195>`_)
 
 0.7.8 (2020-05-27)
 ------------------
