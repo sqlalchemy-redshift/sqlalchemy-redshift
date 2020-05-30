@@ -111,6 +111,12 @@ def test_drop_materialized_view_if_exists():
     assert clean(expected_result) == clean(compile_query(view))
 
 
+def test_drop_materialized_view_cascade():
+    expected_result = "DROP MATERIALIZED VIEW test_view CASCADE"
+    view = dialect.DropMaterializedView("test_view", cascade=True)
+    assert clean(expected_result) == clean(compile_query(view))
+
+
 def test_refresh_materialized_view():
     expected_result = "REFRESH MATERIALIZED VIEW test_view"
     view = dialect.RefreshMaterializedView("test_view")

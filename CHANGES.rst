@@ -1,7 +1,8 @@
 0.7.10 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Add option to drop materialized view with CASCADE
+  (`Pull #204 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/204>`_)
 
 
 0.7.9 (2020-05-29)
