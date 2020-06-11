@@ -548,6 +548,12 @@ class CopyCommand(_ExecutableClause):
         If the load returns the ``max_error`` number of errors or greater, the
         load fails
         defaults to 100000
+    read_ratio: int, optional
+        The percentage of the DynamoDB table's provisioned throughput to use for
+        the data load. READRATIO is required for COPY from DynamoDB. It cannot be
+        used with COPY from Amazon S3. We highly recommend setting the ratio to a
+        value less than the average unused provisioned throughput. Valid values are
+        integers 1–200.
     no_load : bool, optional
         Checks the validity of the data file without actually loading the data
     stat_update : bool, optional
@@ -573,8 +579,8 @@ class CopyCommand(_ExecutableClause):
                  dangerous_null_delimiter=None, remove_quotes=False,
                  roundec=False, time_format=None, trim_blanks=False,
                  truncate_columns=False, comp_rows=None, comp_update=None,
-                 max_error=None, no_load=False, stat_update=None,
-                 manifest=False, region=None):
+                 max_error=None, read_ratio=None, no_load=False,
+                 stat_update=None, manifest=False, region=None):
 
         credentials = _process_aws_credentials(
             access_key_id=access_key_id,
@@ -641,6 +647,7 @@ class CopyCommand(_ExecutableClause):
         self.comp_rows = comp_rows
         self.comp_update = comp_update
         self.max_error = max_error
+        self.read_ratio = read_ratio
         self.no_load = no_load
         self.stat_update = stat_update
         self.region = region
@@ -815,6 +822,10 @@ def visit_copy_command(element, compiler, **kw):
             value=element.max_error,
             type_=sa.Integer,
         ))
+
+    if element.read_ratio is not None:
+        parameters.append("READRATIO :read_ratio")
+        bindparams.append(sa.bindparam("read_ratio", value=element.read_ratio, type_=sa.Integer,))
 
     if element.no_load:
         parameters.append('NOLOAD')
