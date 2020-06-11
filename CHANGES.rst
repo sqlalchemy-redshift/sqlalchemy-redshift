@@ -1,7 +1,7 @@
 0.7.8 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add support for READRATIO parameter in ``COPY`` command.
 
 
 0.7.7 (2020-02-02)
