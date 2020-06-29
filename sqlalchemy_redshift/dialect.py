@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict, namedtuple
 
+from packaging.version import Version
 import pkg_resources
 import sqlalchemy as sa
 from sqlalchemy import inspect
@@ -26,6 +27,8 @@ from .ddl import (
     CreateMaterializedView, DropMaterializedView, get_table_attributes
 )
 
+sa_version = Version(sa.__version__)
+
 try:
     import alembic
 except ImportError:
@@ -36,7 +39,7 @@ else:
     from alembic.ddl.base import RenameTable
     compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
 
-    if alembic.__version__ >= '1.0.6':
+    if Version(alembic.__version__) >= Version('1.0.6'):
         from alembic.ddl.base import ColumnComment
         compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
 
@@ -362,7 +365,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     def _fetch_redshift_column_attributes(self, column):
         text = ""
-        if sa.__version__ >= '1.3.0':
+        if sa_version >= Version('1.3.0'):
             info = column.dialect_options['redshift']
         else:
             if not hasattr(column, 'info'):
@@ -656,10 +659,10 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
-        if sa.__version__ < '1.2.0':
+        if sa_version < Version('1.2.0'):
             # SQLAlchemy 1.2.0 introduced the 'comment' param
             del kw['comment']
-        if sa.__version__ >= '1.3.16':
+        if sa_version >= Version('1.3.16'):
             # SQLAlchemy 1.3.16 introduced generated columns,
             # not supported in redshift
             kw['generated'] = ''
