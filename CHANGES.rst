@@ -3,6 +3,8 @@
 
 - Add option to drop materialized view with CASCADE
   (`Pull #204 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/204>`_)
+- Fix invalid SQLAlchemy version comparison
+  (`Pull #206 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/206>`_)
 
 
 0.7.9 (2020-05-29)
