@@ -1,7 +1,8 @@
 0.8.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Support AWS partitions for role-based access control in COPY and UNLOAD
+  commands. This allows these commands to be used, e.g. in GovCloud.
 
 
 0.8.0 (2020-06-30)

@@ -26,13 +26,14 @@ from sqlalchemy.sql import expression as sa_expression
 ACCESS_KEY_ID_RE = re.compile('[A-Z0-9]{20}')
 SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
 TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
+AWS_PARTITIONS = frozenset({'aws', 'aws-cn', 'aws-us-gov'})
 AWS_ACCOUNT_ID_RE = re.compile('[0-9]{12}')
 IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@-_]{1,64}')
 
 
 def _process_aws_credentials(access_key_id=None, secret_access_key=None,
-                             session_token=None, aws_account_id=None,
-                             iam_role_name=None):
+                             session_token=None, aws_partition='aws',
+                             aws_account_id=None, iam_role_name=None):
 
     if (access_key_id is not None and secret_access_key is not None and
             aws_account_id is not None and iam_role_name is not None):
@@ -44,6 +45,8 @@ def _process_aws_credentials(access_key_id=None, secret_access_key=None,
     credentials = None
 
     if aws_account_id is not None and iam_role_name is not None:
+        if aws_partition not in AWS_PARTITIONS:
+            raise ValueError('invalid AWS partition')
         if not AWS_ACCOUNT_ID_RE.match(aws_account_id):
             raise ValueError(
                 'invalid AWS account ID; does not match {pattern}'.format(
@@ -57,7 +60,8 @@ def _process_aws_credentials(access_key_id=None, secret_access_key=None,
                 )
             )
 
-        credentials = 'aws_iam_role=arn:aws:iam::{0}:role/{1}'.format(
+        credentials = 'aws_iam_role=arn:{0}:iam::{1}:role/{2}'.format(
+            aws_partition,
             aws_account_id,
             iam_role_name,
         )
@@ -186,6 +190,10 @@ class UnloadFromSelect(_ExecutableClause):
         Secret Access Key ID. Required unless you supply role-based credentials
         (``aws_account_id`` and ``iam_role_name``)
     session_token : str, optional
+    aws_partition: str, optional
+        AWS partition to use with role-based credentials. Defaults to
+        ``'aws'``. Not applicable when using key based credentials
+        (``access_key_id`` and ``secret_access_key``).
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
@@ -235,7 +243,7 @@ class UnloadFromSelect(_ExecutableClause):
 
     def __init__(self, select, unload_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
-                 aws_account_id=None, iam_role_name=None,
+                 aws_partition='aws', aws_account_id=None, iam_role_name=None,
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True,
@@ -256,6 +264,7 @@ class UnloadFromSelect(_ExecutableClause):
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             session_token=session_token,
+            aws_partition=aws_partition,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
         )
@@ -449,6 +458,10 @@ class CopyCommand(_ExecutableClause):
         Secret Access Key ID. Required unless you supply role-based credentials
         (``aws_account_id`` and ``iam_role_name``)
     session_token : str, optional
+    aws_partition: str, optional
+        AWS partition to use with role-based credentials. Defaults to
+        ``'aws'``. Not applicable when using key based credentials
+        (``access_key_id`` and ``secret_access_key``).
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
@@ -562,7 +575,7 @@ class CopyCommand(_ExecutableClause):
 
     def __init__(self, to, data_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
-                 aws_account_id=None, iam_role_name=None,
+                 aws_partition='aws', aws_account_id=None, iam_role_name=None,
                  format=None, quote=None,
                  path_file='auto', delimiter=None, fixed_width=None,
                  compression=None, accept_any_date=False,
@@ -580,6 +593,7 @@ class CopyCommand(_ExecutableClause):
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             session_token=session_token,
+            aws_partition=aws_partition,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
         )
