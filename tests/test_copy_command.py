@@ -78,6 +78,49 @@ def test_iam_role():
     assert clean(expected_result) == clean(compile_query(copy))
 
 
+def test_iam_role_partition():
+    """Tests the use of iam role with a custom partition"""
+
+    aws_partition = 'aws-us-gov'
+    aws_account_id = '000123456789'
+    iam_role_name = 'redshiftrole'
+    creds = 'aws_iam_role=arn:{0}:iam::{1}:role/{2}'.format(
+        aws_partition,
+        aws_account_id,
+        iam_role_name,
+    )
+
+    expected_result = """
+    COPY schema1.t1 FROM 's3://mybucket/data/listing/'
+    WITH CREDENTIALS AS '{creds}'
+    """.format(creds=creds)
+
+    copy = dialect.CopyCommand(
+        tbl,
+        data_location='s3://mybucket/data/listing/',
+        aws_partition=aws_partition,
+        aws_account_id=aws_account_id,
+        iam_role_name=iam_role_name,
+    )
+    assert clean(expected_result) == clean(compile_query(copy))
+
+
+def test_iam_role_partition_validation():
+    """Tests the use of iam role with an invalid partition"""
+
+    aws_partition = 'aws-invalid'
+    aws_account_id = '000123456789'
+    iam_role_name = 'redshiftrole'
+    with pytest.raises(ValueError):
+        dialect.CopyCommand(
+            tbl,
+            data_location='s3://mybucket/data/listing/',
+            aws_partition=aws_partition,
+            aws_account_id=aws_account_id,
+            iam_role_name=iam_role_name,
+        )
+
+
 def test_format():
     expected_result = """
     COPY t1 FROM 's3://mybucket/data/listing/'

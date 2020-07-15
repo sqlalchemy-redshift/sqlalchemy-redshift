@@ -71,6 +71,52 @@ def test_iam_role():
     assert clean(compile_query(unload)) == clean(expected_result)
 
 
+def test_iam_role_partition():
+    """Tests the use of iam role with a custom partition"""
+
+    aws_partition = 'aws-us-gov'
+    aws_account_id = '000123456789'
+    iam_role_name = 'redshiftrole'
+    creds = 'aws_iam_role=arn:{0}:iam::{1}:role/{2}'.format(
+        aws_partition,
+        aws_account_id,
+        iam_role_name,
+    )
+
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        aws_partition=aws_partition,
+        aws_account_id=aws_account_id,
+        iam_role_name=iam_role_name,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
+
+
+def test_iam_role_partition_validation():
+    """Tests the use of iam role with an invalid partition"""
+
+    aws_partition = 'aws-invalid'
+    aws_account_id = '000123456789'
+    iam_role_name = 'redshiftrole'
+
+    with pytest.raises(ValueError):
+        dialect.UnloadFromSelect(
+            select=sa.select([sa.func.count(table.c.id)]),
+            unload_location='s3://bucket/key',
+            aws_partition=aws_partition,
+            aws_account_id=aws_account_id,
+            iam_role_name=iam_role_name,
+        )
+
+
 def test_all_redshift_options():
     """Tests that UnloadFromSelect handles all options correctly."""
 
