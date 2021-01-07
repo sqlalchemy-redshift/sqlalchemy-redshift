@@ -121,6 +121,44 @@ def test_iam_role_partition_validation():
         )
 
 
+def test_iam_role_arns_list():
+    """Tests the use of multiple iam role arns instead of access keys."""
+
+    iam_role_arns = ['arn:aws:iam::000123456789:role/redshiftrole', 'arn:aws:iam::000123456789:role/redshiftrole2']
+    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole,arn:aws:iam::000123456789:role/redshiftrole2'
+
+    expected_result = """
+    COPY schema1.t1 FROM 's3://mybucket/data/listing/'
+    WITH CREDENTIALS AS '{creds}'
+    """.format(creds=creds)
+
+    copy = dialect.CopyCommand(
+        tbl,
+        data_location='s3://mybucket/data/listing/',
+        iam_role_arns=iam_role_arns,
+    )
+    assert clean(expected_result) == clean(compile_query(copy))
+
+
+def test_iam_role_arns_single():
+    """Tests the use of a single iam role arn instead of access keys."""
+
+    iam_role_arns = 'arn:aws:iam::000123456789:role/redshiftrole'
+    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole'
+
+    expected_result = """
+    COPY schema1.t1 FROM 's3://mybucket/data/listing/'
+    WITH CREDENTIALS AS '{creds}'
+    """.format(creds=creds)
+
+    copy = dialect.CopyCommand(
+        tbl,
+        data_location='s3://mybucket/data/listing/',
+        iam_role_arns=iam_role_arns,
+    )
+    assert clean(expected_result) == clean(compile_query(copy))
+
+
 def test_format():
     expected_result = """
     COPY t1 FROM 's3://mybucket/data/listing/'

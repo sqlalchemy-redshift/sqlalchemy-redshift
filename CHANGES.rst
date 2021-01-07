@@ -1,7 +1,9 @@
 0.8.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Allow supplying multiple role ARNs in COPY and UNLOAD commands. This allows
+  the first role to assume other roles as explained
+  `here <https://docs.aws.amazon.com/redshift/latest/mgmt/authorizing-redshift-service.html#authorizing-redshift-service-chaining-roles>`_.
 
 
 0.8.1 (2020-07-15)

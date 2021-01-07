@@ -117,6 +117,48 @@ def test_iam_role_partition_validation():
         )
 
 
+def test_iam_role_arns_list():
+    """Tests the use of multiple iam role arns instead of access keys."""
+
+    iam_role_arns = ['arn:aws:iam::000123456789:role/redshiftrole', 'arn:aws:iam::000123456789:role/redshiftrole2']
+    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole,arn:aws:iam::000123456789:role/redshiftrole2'
+
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        iam_role_arns=iam_role_arns,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
+
+
+def test_iam_role_arns_single():
+    """Tests the use of a single iam role arn instead of access keys."""
+
+    iam_role_arns = 'arn:aws:iam::000123456789:role/redshiftrole'
+    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole'
+
+    unload = dialect.UnloadFromSelect(
+        select=sa.select([sa.func.count(table.c.id)]),
+        unload_location='s3://bucket/key',
+        iam_role_arns=iam_role_arns,
+    )
+
+    expected_result = """
+        UNLOAD ('SELECT count(t1.id) AS count_1 FROM t1')
+        TO 's3://bucket/key'
+        CREDENTIALS '{creds}'
+    """.format(creds=creds)
+
+    assert clean(compile_query(unload)) == clean(expected_result)
+
+
 def test_all_redshift_options():
     """Tests that UnloadFromSelect handles all options correctly."""
 
