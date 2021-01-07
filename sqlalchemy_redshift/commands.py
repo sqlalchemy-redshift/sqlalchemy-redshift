@@ -28,15 +28,20 @@ SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
 TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
 AWS_PARTITIONS = frozenset({'aws', 'aws-cn', 'aws-us-gov'})
 AWS_ACCOUNT_ID_RE = re.compile('[0-9]{12}')
-IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@-_]{1,64}')
+IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@\-_]{1,64}')
+IAM_ROLE_ARN_RE = re.compile('arn:(aws|aws-cn|aws-us-gov):iam::'
+                             '[0-9]{12}:role/[A-Za-z0-9+=,.@\-_]{1,64}')
 
 
 def _process_aws_credentials(access_key_id=None, secret_access_key=None,
                              session_token=None, aws_partition='aws',
-                             aws_account_id=None, iam_role_name=None):
+                             aws_account_id=None, iam_role_name=None,
+                             iam_role_arns=None):
+    uses_iam_role = aws_account_id is not None and iam_role_name is not None
+    uses_iam_roles = iam_role_arns is not None
+    uses_key = access_key_id is not None and secret_access_key is not None
 
-    if (access_key_id is not None and secret_access_key is not None and
-            aws_account_id is not None and iam_role_name is not None):
+    if uses_iam_role + uses_iam_roles + uses_key > 1:
         raise TypeError(
             'Either access key based credentials or role based credentials '
             'should be specified, but not both'
@@ -65,6 +70,21 @@ def _process_aws_credentials(access_key_id=None, secret_access_key=None,
             aws_account_id,
             iam_role_name,
         )
+
+    if iam_role_arns is not None:
+        if isinstance(iam_role_arns, str):
+            iam_role_arns = [iam_role_arns]
+        if not isinstance(iam_role_arns, list):
+            raise ValueError('iam_role_arns must be a list')
+        for arn in iam_role_arns:
+            if not IAM_ROLE_ARN_RE.match(arn):
+                raise ValueError(
+                    'invalid AWS account ID; does not match {pattern}'.format(
+                        pattern=IAM_ROLE_ARN_RE.pattern,
+                    )
+                )
+
+        credentials = 'aws_iam_role=' + ','.join(iam_role_arns)
 
     if access_key_id is not None and secret_access_key is not None:
         if not ACCESS_KEY_ID_RE.match(access_key_id):
@@ -185,21 +205,29 @@ class UnloadFromSelect(_ExecutableClause):
         file if the `manifest` option is used
     access_key_id: str, optional
         Access Key. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     secret_access_key: str, optional
         Secret Access Key ID. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
+    iam_role_arns : str or list of strings, optional
+        Either a single arn or a list of arns of roles to assume when unloading
+        Required unless you supply key based credentials (``access_key_id`` and
+        ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
+        separately.
     aws_partition: str, optional
         AWS partition to use with role-based credentials. Defaults to
         ``'aws'``. Not applicable when using key based credentials
-        (``access_key_id`` and ``secret_access_key``).
+        (``access_key_id`` and ``secret_access_key``) or role arns
+        (``iam_role_arns``) directly.
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     manifest: bool, optional
         Boolean value denoting whether data_location is a manifest file.
     delimiter: File delimiter, optional
@@ -248,7 +276,7 @@ class UnloadFromSelect(_ExecutableClause):
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True,
                  header=False, region=None, max_file_size=None,
-                 format=None):
+                 format=None, iam_role_arns=None):
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
@@ -267,6 +295,7 @@ class UnloadFromSelect(_ExecutableClause):
             aws_partition=aws_partition,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
+            iam_role_arns=iam_role_arns,
         )
 
         self.select = select
@@ -453,21 +482,29 @@ class CopyCommand(_ExecutableClause):
         the `manifest` option is used
     access_key_id: str, optional
         Access Key. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     secret_access_key: str, optional
         Secret Access Key ID. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
+    iam_role_arns : str or list of strings, optional
+        Either a single arn or a list of arns of roles to assume when unloading
+        Required unless you supply key based credentials (``access_key_id`` and
+        ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
+        separately.
     aws_partition: str, optional
         AWS partition to use with role-based credentials. Defaults to
         ``'aws'``. Not applicable when using key based credentials
-        (``access_key_id`` and ``secret_access_key``).
+        (``access_key_id`` and ``secret_access_key``) or role arns
+        (``iam_role_arns``) directly.
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+         or role arns (``iam_role_arns``) directly.
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     format : Format, optional
         Indicates the type of file to copy from
     quote : str, optional
@@ -587,7 +624,7 @@ class CopyCommand(_ExecutableClause):
                  roundec=False, time_format=None, trim_blanks=False,
                  truncate_columns=False, comp_rows=None, comp_update=None,
                  max_error=None, no_load=False, stat_update=None,
-                 manifest=False, region=None):
+                 manifest=False, region=None, iam_role_arns=None):
 
         credentials = _process_aws_credentials(
             access_key_id=access_key_id,
@@ -596,6 +633,7 @@ class CopyCommand(_ExecutableClause):
             aws_partition=aws_partition,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
+            iam_role_arns=iam_role_arns,
         )
 
         if delimiter is not None and len(delimiter) != 1:
@@ -873,17 +911,29 @@ class CreateLibraryCommand(_ExecutableClause):
         S3 location.
     access_key_id: str, optional
         Access Key. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     secret_access_key: str, optional
         Secret Access Key ID. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
+    iam_role_arns : str or list of strings, optional
+        Either a single arn or a list of arns of roles to assume when unloading
+        Required unless you supply key based credentials (``access_key_id`` and
+        ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
+        separately.
+    aws_partition: str, optional
+        AWS partition to use with role-based credentials. Defaults to
+        ``'aws'``. Not applicable when using key based credentials
+        (``access_key_id`` and ``secret_access_key``) or role arns
+        (``iam_role_arns``) directly.
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+         or role arns (``iam_role_arns``) directly.
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     replace: bool, optional, default False
         Controls the presence of ``OR REPLACE`` in the compiled statement. See
         the command documentation for details.
@@ -894,7 +944,7 @@ class CreateLibraryCommand(_ExecutableClause):
     def __init__(self, library_name, location, access_key_id=None,
                  secret_access_key=None, session_token=None,
                  aws_account_id=None, iam_role_name=None, replace=False,
-                 region=None):
+                 region=None, iam_role_arns=None):
         self.library_name = library_name
         self.location = location
         self.credentials = _process_aws_credentials(
@@ -903,6 +953,7 @@ class CreateLibraryCommand(_ExecutableClause):
             session_token=session_token,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
+            iam_role_arns=iam_role_arns,
         )
         self.replace = replace
         self.region = region
