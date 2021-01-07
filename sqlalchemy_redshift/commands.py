@@ -29,17 +29,19 @@ TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
 AWS_PARTITIONS = frozenset({'aws', 'aws-cn', 'aws-us-gov'})
 AWS_ACCOUNT_ID_RE = re.compile('[0-9]{12}')
 IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@\-_]{1,64}')
-IAM_ROLE_ARN_RE = re.compile('arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role/[A-Za-z0-9+=,.@\-_]{1,64}')
+IAM_ROLE_ARN_RE = re.compile('arn:(aws|aws-cn|aws-us-gov):iam::'
+                             '[0-9]{12}:role/[A-Za-z0-9+=,.@\-_]{1,64}')
 
 
 def _process_aws_credentials(access_key_id=None, secret_access_key=None,
                              session_token=None, aws_partition='aws',
                              aws_account_id=None, iam_role_name=None,
                              iam_role_arns=None):
+    uses_iam_role = aws_account_id is not None and iam_role_name is not None
+    uses_iam_roles = iam_role_arns is not None
+    uses_key = access_key_id is not None and secret_access_key is not None
 
-    if (access_key_id is not None and secret_access_key is not None and
-            aws_account_id is not None and iam_role_name is not None and
-            iam_role_arns is not None):
+    if uses_iam_role + uses_iam_roles + uses_key > 1:
         raise TypeError(
             'Either access key based credentials or role based credentials '
             'should be specified, but not both'
@@ -209,7 +211,7 @@ class UnloadFromSelect(_ExecutableClause):
         (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
     iam_role_arns : str or list of strings, optional
-        Either a single arn or a list of arns of roles to assume when unloading.
+        Either a single arn or a list of arns of roles to assume when unloading
         Required unless you supply key based credentials (``access_key_id`` and
         ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
         separately.
@@ -221,7 +223,7 @@ class UnloadFromSelect(_ExecutableClause):
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
-         or role arns (``iam_role_arns``) directly.
+        or role arns (``iam_role_arns``) directly.
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
@@ -486,7 +488,7 @@ class CopyCommand(_ExecutableClause):
         (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
     iam_role_arns : str or list of strings, optional
-        Either a single arn or a list of arns of roles to assume when unloading.
+        Either a single arn or a list of arns of roles to assume when unloading
         Required unless you supply key based credentials (``access_key_id`` and
         ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
         separately.
@@ -915,7 +917,7 @@ class CreateLibraryCommand(_ExecutableClause):
         (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
     iam_role_arns : str or list of strings, optional
-        Either a single arn or a list of arns of roles to assume when unloading.
+        Either a single arn or a list of arns of roles to assume when unloading
         Required unless you supply key based credentials (``access_key_id`` and
         ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
         separately.

@@ -120,8 +120,12 @@ def test_iam_role_partition_validation():
 def test_iam_role_arns_list():
     """Tests the use of multiple iam role arns instead of access keys."""
 
-    iam_role_arns = ['arn:aws:iam::000123456789:role/redshiftrole', 'arn:aws:iam::000123456789:role/redshiftrole2']
-    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole,arn:aws:iam::000123456789:role/redshiftrole2'
+    iam_role_arns = [
+        'arn:aws:iam::000123456789:role/redshiftrole',
+        'arn:aws:iam::000123456789:role/redshiftrole2',
+    ]
+    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole,' \
+            'arn:aws:iam::000123456789:role/redshiftrole2'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
