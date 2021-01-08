@@ -1,4 +1,4 @@
-0.8.2 (unreleased)
+0.8.2 (2021-01-08)
 ------------------
 
 - Allow supplying multiple role ARNs in COPY and UNLOAD commands. This allows
