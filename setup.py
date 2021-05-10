@@ -20,8 +20,11 @@ setup(
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*',
     install_requires=[
         # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in
-        # version 0.9.2
-        'SQLAlchemy>=0.9.2,<2.0.0',
+        # version 0.9.2;
+        # this library is currently incompatible with SQAlchemy 1.4 due to
+        # breaking API changes;
+        # see https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/214
+        'SQLAlchemy>=0.9.2,<1.4.0',
         'packaging',
     ],
     extras_require={

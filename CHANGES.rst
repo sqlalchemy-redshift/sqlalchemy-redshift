@@ -22,6 +22,8 @@
 0.8.0 (2020-06-30)
 ------------------
 
+- Explicitly require ``SQLAlchemy<1.4.0`` as reflection code is currently incompatible
+  (`Pull #218 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/218>`_)
 - Add option to drop materialized view with CASCADE
   (`Pull #204 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/204>`_)
 - Fix invalid SQLAlchemy version comparison
