@@ -50,7 +50,11 @@ class DatabaseTool(object):
             conn.execute('CREATE DATABASE {db_name}'.format(db_name=db_name))
 
         dburl = copy.deepcopy(self.engine.url)
-        dburl.database = db_name
+        try:
+            # SQAlchemy 1.3 and below.
+            dburl.database = db_name
+        except AttributeError:
+            dburl = dburl.set(database=db_name)
 
         try:
             yield db.EngineDefinition(
