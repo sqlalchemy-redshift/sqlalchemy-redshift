@@ -8,7 +8,7 @@ import time
 
 try:
     from urllib import parse as urlparse
-except:
+except ImportError:
     import urlparse
 
 import requests
@@ -31,6 +31,7 @@ def database_name_generator():
             count=i,
         )
 
+
 database_name = functools.partial(next, database_name_generator())
 
 
@@ -50,7 +51,6 @@ class DatabaseTool(object):
             conn.execute('CREATE DATABASE {db_name}'.format(db_name=db_name))
 
         dburl = copy.deepcopy(self.engine.url)
-        dburl.database = db_name
 
         try:
             yield db.EngineDefinition(

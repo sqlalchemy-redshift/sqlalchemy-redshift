@@ -659,13 +659,16 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
-        if sa_version < Version('1.2.0'):
-            # SQLAlchemy 1.2.0 introduced the 'comment' param
-            del kw['comment']
         if sa_version >= Version('1.3.16'):
             # SQLAlchemy 1.3.16 introduced generated columns,
             # not supported in redshift
             kw['generated'] = ''
+
+        if sa_version < Version('1.4.0') and 'identity' in kw:
+            del kw['identity']
+        elif sa_version >= Version('1.4.0') and 'identity' not in kw:
+            kw['identity'] = None
+
         column_info = super(RedshiftDialect, self)._get_column_info(
             *args,
             **kw
@@ -744,7 +747,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     @reflection.cache
     def _get_all_column_info(self, connection, **kw):
         all_columns = defaultdict(list)
-        with connection.contextual_connect() as cc:
+        with connection.connect() as cc:
             result = cc.execute("""
             SELECT
               n.nspname as "schema",
@@ -918,17 +921,26 @@ def visit_delete_stmt(element, compiler, **kwargs):
     #   the tables in the using clause are sorted in the order in
     #   which they first appear in the where clause.
     delete_stmt_table = compiler.process(element.table, asfrom=True, **kwargs)
-    whereclause_tuple = element.get_children()
-    if whereclause_tuple:
-        usingclause_tables = []
-        whereclause = ' WHERE {clause}'.format(
-            clause=compiler.process(*whereclause_tuple, **kwargs)
-        )
 
+    if sa_version >= Version('1.4.0'):
+        if element.whereclause is not None:
+            clause = compiler.process(element.whereclause, **kwargs)
+            if clause:
+                whereclause = ' WHERE {clause}'.format(clause=clause)
+    else:
+        whereclause_tuple = element.get_children()
+        if whereclause_tuple:
+            whereclause = ' WHERE {clause}'.format(
+                clause=compiler.process(*whereclause_tuple, **kwargs)
+            )
+
+    if whereclause:
+        usingclause_tables = []
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
             table = compiler.process(col.table, asfrom=True, **kwargs)
-            if table != delete_stmt_table and table not in usingclause_tables:
+            if table != delete_stmt_table and \
+                    table not in usingclause_tables:
                 usingclause_tables.append(table)
         if usingclause_tables:
             usingclause = ' USING {clause}'.format(
