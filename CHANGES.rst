@@ -1,7 +1,7 @@
 0.8.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- SQLAlchemy 1.4.x support
 
 
 0.8.2 (2021-01-08)
