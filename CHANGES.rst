@@ -1,4 +1,84 @@
-0.7.4 (unreleased)
+0.8.4 (unreleased)
+------------------
+
+- Nothing changed yet.
+
+
+0.8.3 (2021-07-07)
+------------------
+
+- SQLAlchemy 1.4.x support
+  (`Pull #221 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/221>`_)
+
+
+0.8.2 (2021-01-08)
+------------------
+
+- Allow supplying multiple role ARNs in COPY and UNLOAD commands. This allows
+  the first role to assume other roles as explained
+  `here <https://docs.aws.amazon.com/redshift/latest/mgmt/authorizing-redshift-service.html#authorizing-redshift-service-chaining-roles>`_.
+
+
+0.8.1 (2020-07-15)
+------------------
+
+- Support AWS partitions for role-based access control in COPY and UNLOAD
+  commands. This allows these commands to be used, e.g. in GovCloud.
+
+
+0.8.0 (2020-06-30)
+------------------
+
+- Add option to drop materialized view with CASCADE
+  (`Pull #204 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/204>`_)
+- Fix invalid SQLAlchemy version comparison
+  (`Pull #206 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/206>`_)
+
+
+0.7.9 (2020-05-29)
+------------------
+
+- Fix for supporting SQLAlchemy 1.3.11+
+  (`Issue #195 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/195>`_)
+
+0.7.8 (2020-05-27)
+------------------
+
+- Added support for materialized views
+  (`Issue #202 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/202>`_)
+- Fix reflection of unique constraints
+  (`Issue #199 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/199>`_)
+- Support for altering column comments in Alembic migrations
+  (`Issue #191 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/191>`_)
+
+0.7.7 (2020-02-02)
+------------------
+
+- Import Iterable from collections.abc for Python 3.9 compatibility
+  (`Issue #189 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/189>`_)
+- Add support for Parquet format in ``UNLOAD`` command
+  (`Issue #187 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/187>`_)
+
+
+0.7.6 (2020-01-17)
+------------------
+
+- Fix unhashable type error for sortkey reflection in SQLAlchemy >= 1.3.11
+  (`Issue #180 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/180>`_)
+- Expose supported types for import from the dialect
+  (`Issue #181 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/181>`_)
+- Reflect column comments
+  (`Issue #186 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/186>`_)
+
+
+0.7.5 (2019-10-09)
+------------------
+
+- Extend psycopg2 package version check to also support psycopg2-binary and psycopg2cffi
+  (`Issue #178 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/178>`_)
+
+
+0.7.4 (2019-10-08)
 ------------------
 
 - Drop hard dependency on psycopg2 but require package to be present on runtime
@@ -15,8 +95,8 @@
   (`Issue #162 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/162>`_)
 - Add support for the ``CSV`` format to `UnloadFromSelect`.
   (`Issue #169 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/169>`_)
-- Remove use of deprecated contextual_connect method.
-  (`Issue #174 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/174>`_)
+- Update the list of reserved words (adds "az64" and "language")
+  (`Issue #176 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/176>`_)
 
 .. _CREATE LIBRARY: https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_LIBRARY.html
 .. _ALTER TABLE APPEND: https://docs.aws.amazon.com/redshift/latest/dg/r_ALTER_TABLE_APPEND.html

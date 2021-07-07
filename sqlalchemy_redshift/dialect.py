@@ -1,11 +1,12 @@
 import re
 from collections import defaultdict, namedtuple
 
+from packaging.version import Version
 import pkg_resources
 import sqlalchemy as sa
-from sqlalchemy import Column, exc, inspect
+from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql.base import (
-    PGCompiler, PGDDLCompiler, PGIdentifierPreparer
+    PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
 )
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
@@ -13,29 +14,61 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
     BinaryExpression, BooleanClauseList, Delete
 )
-from sqlalchemy.types import VARCHAR, NullType
+from sqlalchemy.types import (
+    VARCHAR, NullType, SMALLINT, INTEGER, BIGINT,
+    DECIMAL, REAL, BOOLEAN, CHAR, DATE, TIMESTAMP)
+from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 
 from .commands import (
     CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
-    CreateLibraryCommand, AlterTableAppendCommand,
+    CreateLibraryCommand, AlterTableAppendCommand, RefreshMaterializedView
 )
-from .compat import string_types
+from .ddl import (
+    CreateMaterializedView, DropMaterializedView, get_table_attributes
+)
+
+sa_version = Version(sa.__version__)
 
 try:
-    from alembic.ddl import postgresql
+    import alembic
 except ImportError:
     pass
 else:
+    from alembic.ddl import postgresql
+
     from alembic.ddl.base import RenameTable
     compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
+
+    if Version(alembic.__version__) >= Version('1.0.6'):
+        from alembic.ddl.base import ColumnComment
+        compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
 
-__all__ = [
+# "Each dialect provides the full set of typenames supported by that backend
+# with its __all__ collection
+# https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+__all__ = (
+    'SMALLINT',
+    'INTEGER',
+    'BIGINT',
+    'DECIMAL',
+    'REAL',
+    'BOOLEAN',
+    'CHAR',
+    'DATE',
+    'TIMESTAMP',
+    'VARCHAR',
+    'DOUBLE_PRECISION',
+    'TIMESTAMPTZ',
+
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
-]
+    'RefreshMaterializedView',
+
+    'CreateMaterializedView', 'DropMaterializedView'
+)
 
 
 # Regex for parsing and identity constraint out of adsrc, e.g.:
@@ -109,10 +142,10 @@ PRIMARY_KEY_RE = re.compile(r"""
 # for the code used to generate this set.
 RESERVED_WORDS = set([
     "aes128", "aes256", "all", "allowoverwrite", "analyse", "analyze",
-    "and", "any", "array", "as", "asc", "authorization", "backup",
-    "between", "binary", "blanksasnull", "both", "bytedict", "bzip2",
-    "case", "cast", "check", "collate", "column", "constraint", "create",
-    "credentials", "cross", "current_date", "current_time",
+    "and", "any", "array", "as", "asc", "authorization", "az64",
+    "backup", "between", "binary", "blanksasnull", "both", "bytedict",
+    "bzip2", "case", "cast", "check", "collate", "column", "constraint",
+    "create", "credentials", "cross", "current_date", "current_time",
     "current_timestamp", "current_user", "current_user_id", "default",
     "deferrable", "deflate", "defrag", "delta", "delta32k", "desc",
     "disable", "distinct", "do", "else", "emptyasnull", "enable",
@@ -120,9 +153,9 @@ RESERVED_WORDS = set([
     "false", "for", "foreign", "freeze", "from", "full", "globaldict256",
     "globaldict64k", "grant", "group", "gzip", "having", "identity",
     "ignore", "ilike", "in", "initially", "inner", "intersect", "into",
-    "is", "isnull", "join", "leading", "left", "like", "limit",
-    "localtime", "localtimestamp", "lun", "luns", "lzo", "lzop", "minus",
-    "mostly13", "mostly32", "mostly8", "natural", "new", "not",
+    "is", "isnull", "join", "language", "leading", "left", "like",
+    "limit", "localtime", "localtimestamp", "lun", "luns", "lzo", "lzop",
+    "minus", "mostly13", "mostly32", "mostly8", "natural", "new", "not",
     "notnull", "null", "nulls", "off", "offline", "offset", "oid", "old",
     "on", "only", "open", "or", "order", "outer", "overlaps", "parallel",
     "partition", "percent", "permissions", "placing", "primary", "raw",
@@ -133,6 +166,24 @@ RESERVED_WORDS = set([
     "true", "truncatecolumns", "union", "unique", "user", "using",
     "verbose", "wallet", "when", "where", "with", "without",
 ])
+
+
+class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
+    """
+    Redshift defines a TIMTESTAMPTZ column type as an alias
+    of TIMESTAMP WITH TIME ZONE.
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+
+    __visit_name__ = 'TIMESTAMPTZ'
+
+    def __init__(self):
+        super(TIMESTAMPTZ, self).__init__(timezone=True)
 
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
@@ -249,6 +300,8 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
+    The TIMESTAMPTZ column type is also supported in the DDL.
+
     For SQLAlchemy versions < 1.3.0, passing Redshift dialect options
     as keyword arguments is not supported on the column level.
     Instead, a column info dictionary can be used:
@@ -285,42 +338,10 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     """
 
     def post_create_table(self, table):
-        text = ""
+        kwargs = ["diststyle", "distkey", "sortkey", "interleaved_sortkey"]
         info = table.dialect_options['redshift']
-
-        diststyle = info.get('diststyle')
-        if diststyle:
-            diststyle = diststyle.upper()
-            if diststyle not in ('EVEN', 'KEY', 'ALL'):
-                raise exc.CompileError(
-                    u"diststyle {0} is invalid".format(diststyle)
-                )
-            text += " DISTSTYLE " + diststyle
-
-        distkey = info.get('distkey')
-        if distkey:
-            text += " DISTKEY ({0})".format(self.preparer.quote(distkey))
-
-        sortkey = info.get('sortkey')
-        interleaved_sortkey = info.get('interleaved_sortkey')
-        if sortkey and interleaved_sortkey:
-            raise exc.ArgumentError(
-                "Parameters sortkey and interleaved_sortkey are "
-                "mutually exclusive; you may not specify both."
-            )
-        if sortkey or interleaved_sortkey:
-            if isinstance(sortkey, string_types):
-                keys = [sortkey]
-            else:
-                keys = sortkey or interleaved_sortkey
-            keys = [key.name if isinstance(key, Column) else key
-                    for key in keys]
-            if interleaved_sortkey:
-                text += " INTERLEAVED"
-            sortkey_string = ", ".join(self.preparer.quote(key)
-                                       for key in keys)
-            text += " SORTKEY ({0})".format(sortkey_string)
-        return text
+        info = {key: info.get(key) for key in kwargs}
+        return get_table_attributes(self.preparer, **info)
 
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
@@ -344,7 +365,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     def _fetch_redshift_column_attributes(self, column):
         text = ""
-        if sa.__version__ >= '1.3.0':
+        if sa_version >= Version('1.3.0'):
             info = column.dialect_options['redshift']
         else:
             if not hasattr(column, 'info'):
@@ -369,6 +390,12 @@ class RedshiftDDLCompiler(PGDDLCompiler):
         return text
 
 
+class RedshiftTypeCompiler(PGTypeCompiler):
+
+    def visit_TIMESTAMPTZ(self, type_, **kw):
+        return "TIMESTAMPTZ"
+
+
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
@@ -388,6 +415,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
     preparer = RedshiftIdentifierPreparer
+    type_compiler = RedshiftTypeCompiler
     construct_arguments = [
         (sa.schema.Index, {
             "using": False,
@@ -432,7 +460,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             column_info = self._get_column_info(
                 name=col.name, format_type=col.format_type,
                 default=col.default, notnull=col.notnull, domains=domains,
-                enums=[], schema=col.schema, encode=col.encode)
+                enums=[], schema=col.schema, encode=col.encode,
+                comment=col.comment)
             columns.append(column_info)
         return columns
 
@@ -554,7 +583,7 @@ class RedshiftDialect(PGDialect_psycopg2):
             uniques[con.conname]["cols"][con.attnum] = con.attname
 
         return [
-            {'name': None,
+            {'name': name,
              'column_names': [uc["cols"][i] for i in uc["key"]]}
             for name, uc in uniques.items()
         ]
@@ -580,7 +609,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         sortkey_cols = sorted([col for col in columns if col.sortkey],
                               key=keyfunc)
         interleaved = any([int(col.sortkey) < 0 for col in sortkey_cols])
-        sortkey = [col.name for col in sortkey_cols]
+        sortkey = tuple(col.name for col in sortkey_cols)
         interleaved_sortkey = None
         if interleaved:
             interleaved_sortkey = sortkey
@@ -630,11 +659,16 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
         encode = kw.pop('encode', None)
-        if sa.__version__ >= '1.2.0':
-            # SQLAlchemy 1.2.0 introduced a required 'comment' param
-            kw['comment'] = kw.get('comment', None)
-        else:
-            kw.pop('comment', None)
+        if sa_version >= Version('1.3.16'):
+            # SQLAlchemy 1.3.16 introduced generated columns,
+            # not supported in redshift
+            kw['generated'] = ''
+
+        if sa_version < Version('1.4.0') and 'identity' in kw:
+            del kw['identity']
+        elif sa_version >= Version('1.4.0') and 'identity' not in kw:
+            kw['identity'] = None
+
         column_info = super(RedshiftDialect, self)._get_column_info(
             *args,
             **kw
@@ -724,7 +758,10 @@ class RedshiftDialect(PGDialect_psycopg2):
               att.attisdistkey as "distkey",
               att.attsortkeyord as "sortkey",
               att.attnotnull as "notnull",
-              adsrc, attnum,
+              pg_catalog.col_description(att.attrelid, att.attnum)
+                as "comment",
+              adsrc,
+              attnum,
               pg_catalog.format_type(att.atttypid, att.atttypmod),
               pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
               n.oid as "schema_oid",
@@ -749,6 +786,7 @@ class RedshiftDialect(PGDialect_psycopg2):
               null as "distkey",
               0 as "sortkey",
               null as "notnull",
+              null as "comment",
               null as "adsrc",
               null as "attnum",
               col_type as "format_type",
@@ -883,17 +921,26 @@ def visit_delete_stmt(element, compiler, **kwargs):
     #   the tables in the using clause are sorted in the order in
     #   which they first appear in the where clause.
     delete_stmt_table = compiler.process(element.table, asfrom=True, **kwargs)
-    whereclause_tuple = element.get_children()
-    if whereclause_tuple:
-        usingclause_tables = []
-        whereclause = ' WHERE {clause}'.format(
-            clause=compiler.process(*whereclause_tuple, **kwargs)
-        )
 
+    if sa_version >= Version('1.4.0'):
+        if element.whereclause is not None:
+            clause = compiler.process(element.whereclause, **kwargs)
+            if clause:
+                whereclause = ' WHERE {clause}'.format(clause=clause)
+    else:
+        whereclause_tuple = element.get_children()
+        if whereclause_tuple:
+            whereclause = ' WHERE {clause}'.format(
+                clause=compiler.process(*whereclause_tuple, **kwargs)
+            )
+
+    if whereclause:
+        usingclause_tables = []
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
             table = compiler.process(col.table, asfrom=True, **kwargs)
-            if table != delete_stmt_table and table not in usingclause_tables:
+            if table != delete_stmt_table and \
+                    table not in usingclause_tables:
                 usingclause_tables.append(table)
         if usingclause_tables:
             usingclause = ' USING {clause}'.format(

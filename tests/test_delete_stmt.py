@@ -32,8 +32,11 @@ This same query needs to be written like this in Redshift:
 """
 
 import sqlalchemy as sa
+from packaging.version import Version
 
 from rs_sqla_test_utils.utils import clean, compile_query
+
+sa_version = Version(sa.__version__)
 
 
 meta = sa.MetaData()
@@ -116,10 +119,14 @@ def test_delete_stmt_simplewhereclause2():
     del_stmt = sa.delete(customers).where(
         customers.c.email.endswith('test.com')
     )
-    expected = """
-        DELETE FROM customers
-        WHERE customers.email
-        LIKE '%%' || 'test.com'"""
+    if sa_version >= Version('1.4.0'):
+        expected = """
+            DELETE FROM customers
+            WHERE (customers.email LIKE '%%' || 'test.com')"""
+    else:
+        expected = """
+            DELETE FROM customers
+            WHERE customers.email LIKE '%%' || 'test.com'"""
     assert clean(compile_query(del_stmt)) == clean(expected)
 
 

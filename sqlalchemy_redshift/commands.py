@@ -1,8 +1,11 @@
-import collections
 import enum
 import numbers
 import re
 import warnings
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
@@ -23,16 +26,22 @@ from sqlalchemy.sql import expression as sa_expression
 ACCESS_KEY_ID_RE = re.compile('[A-Z0-9]{20}')
 SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
 TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
+AWS_PARTITIONS = frozenset({'aws', 'aws-cn', 'aws-us-gov'})
 AWS_ACCOUNT_ID_RE = re.compile('[0-9]{12}')
-IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@-_]{1,64}')
+IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@\-_]{1,64}')
+IAM_ROLE_ARN_RE = re.compile('arn:(aws|aws-cn|aws-us-gov):iam::'
+                             '[0-9]{12}:role/[A-Za-z0-9+=,.@\-_]{1,64}')
 
 
 def _process_aws_credentials(access_key_id=None, secret_access_key=None,
-                             session_token=None, aws_account_id=None,
-                             iam_role_name=None):
+                             session_token=None, aws_partition='aws',
+                             aws_account_id=None, iam_role_name=None,
+                             iam_role_arns=None):
+    uses_iam_role = aws_account_id is not None and iam_role_name is not None
+    uses_iam_roles = iam_role_arns is not None
+    uses_key = access_key_id is not None and secret_access_key is not None
 
-    if (access_key_id is not None and secret_access_key is not None and
-            aws_account_id is not None and iam_role_name is not None):
+    if uses_iam_role + uses_iam_roles + uses_key > 1:
         raise TypeError(
             'Either access key based credentials or role based credentials '
             'should be specified, but not both'
@@ -41,6 +50,8 @@ def _process_aws_credentials(access_key_id=None, secret_access_key=None,
     credentials = None
 
     if aws_account_id is not None and iam_role_name is not None:
+        if aws_partition not in AWS_PARTITIONS:
+            raise ValueError('invalid AWS partition')
         if not AWS_ACCOUNT_ID_RE.match(aws_account_id):
             raise ValueError(
                 'invalid AWS account ID; does not match {pattern}'.format(
@@ -54,10 +65,26 @@ def _process_aws_credentials(access_key_id=None, secret_access_key=None,
                 )
             )
 
-        credentials = 'aws_iam_role=arn:aws:iam::{0}:role/{1}'.format(
+        credentials = 'aws_iam_role=arn:{0}:iam::{1}:role/{2}'.format(
+            aws_partition,
             aws_account_id,
             iam_role_name,
         )
+
+    if iam_role_arns is not None:
+        if isinstance(iam_role_arns, str):
+            iam_role_arns = [iam_role_arns]
+        if not isinstance(iam_role_arns, list):
+            raise ValueError('iam_role_arns must be a list')
+        for arn in iam_role_arns:
+            if not IAM_ROLE_ARN_RE.match(arn):
+                raise ValueError(
+                    'invalid AWS account ID; does not match {pattern}'.format(
+                        pattern=IAM_ROLE_ARN_RE.pattern,
+                    )
+                )
+
+        credentials = 'aws_iam_role=' + ','.join(iam_role_arns)
 
     if access_key_id is not None and secret_access_key is not None:
         if not ACCESS_KEY_ID_RE.match(access_key_id):
@@ -178,17 +205,29 @@ class UnloadFromSelect(_ExecutableClause):
         file if the `manifest` option is used
     access_key_id: str, optional
         Access Key. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     secret_access_key: str, optional
         Secret Access Key ID. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
+    iam_role_arns : str or list of strings, optional
+        Either a single arn or a list of arns of roles to assume when unloading
+        Required unless you supply key based credentials (``access_key_id`` and
+        ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
+        separately.
+    aws_partition: str, optional
+        AWS partition to use with role-based credentials. Defaults to
+        ``'aws'``. Not applicable when using key based credentials
+        (``access_key_id`` and ``secret_access_key``) or role arns
+        (``iam_role_arns``) directly.
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     manifest: bool, optional
         Boolean value denoting whether data_location is a manifest file.
     delimiter: File delimiter, optional
@@ -232,12 +271,12 @@ class UnloadFromSelect(_ExecutableClause):
 
     def __init__(self, select, unload_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
-                 aws_account_id=None, iam_role_name=None,
+                 aws_partition='aws', aws_account_id=None, iam_role_name=None,
                  manifest=False, delimiter=None, fixed_width=None,
                  encrypted=False, gzip=False, add_quotes=False, null=None,
                  escape=False, allow_overwrite=False, parallel=True,
                  header=False, region=None, max_file_size=None,
-                 format=None):
+                 format=None, iam_role_arns=None):
 
         if delimiter is not None and len(delimiter) != 1:
             raise ValueError(
@@ -253,8 +292,10 @@ class UnloadFromSelect(_ExecutableClause):
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             session_token=session_token,
+            aws_partition=aws_partition,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
+            iam_role_arns=iam_role_arns,
         )
 
         self.select = select
@@ -307,8 +348,20 @@ def visit_unload_from_select(element, compiler, **kw):
         if el.delimiter is not None or el.fixed_width is not None:
             raise ValueError(
                 'CSV format cannot be used with delimiter or fixed_width')
+    elif el.format == Format.parquet:
+        format_ = 'FORMAT AS {}'.format(el.format.value)
+        if any((
+            el.delimiter, el.fixed_width, el.add_quotes, el.escape, el.null,
+            el.header, el.gzip
+        )):
+            raise ValueError(
+                "Parquet format can't be used with `delimiter`, `fixed_width`,"
+                ' `add_quotes`, `escape`, `null`, `header`, or `gzip`.'
+            )
     else:
-        raise ValueError('Only CSV format is currently supported')
+        raise ValueError(
+            'Only CSV and Parquet formats are currently supported.'
+        )
 
     qs = template.format(
         manifest='MANIFEST' if el.manifest else '',
@@ -429,17 +482,29 @@ class CopyCommand(_ExecutableClause):
         the `manifest` option is used
     access_key_id: str, optional
         Access Key. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     secret_access_key: str, optional
         Secret Access Key ID. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
+    iam_role_arns : str or list of strings, optional
+        Either a single arn or a list of arns of roles to assume when unloading
+        Required unless you supply key based credentials (``access_key_id`` and
+        ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
+        separately.
+    aws_partition: str, optional
+        AWS partition to use with role-based credentials. Defaults to
+        ``'aws'``. Not applicable when using key based credentials
+        (``access_key_id`` and ``secret_access_key``) or role arns
+        (``iam_role_arns``) directly.
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+         or role arns (``iam_role_arns``) directly.
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     format : Format, optional
         Indicates the type of file to copy from
     quote : str, optional
@@ -547,7 +612,7 @@ class CopyCommand(_ExecutableClause):
 
     def __init__(self, to, data_location, access_key_id=None,
                  secret_access_key=None, session_token=None,
-                 aws_account_id=None, iam_role_name=None,
+                 aws_partition='aws', aws_account_id=None, iam_role_name=None,
                  format=None, quote=None,
                  path_file='auto', delimiter=None, fixed_width=None,
                  compression=None, accept_any_date=False,
@@ -559,14 +624,16 @@ class CopyCommand(_ExecutableClause):
                  roundec=False, time_format=None, trim_blanks=False,
                  truncate_columns=False, comp_rows=None, comp_update=None,
                  max_error=None, no_load=False, stat_update=None,
-                 manifest=False, region=None):
+                 manifest=False, region=None, iam_role_arns=None):
 
         credentials = _process_aws_credentials(
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             session_token=session_token,
+            aws_partition=aws_partition,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
+            iam_role_arns=iam_role_arns,
         )
 
         if delimiter is not None and len(delimiter) != 1:
@@ -581,7 +648,7 @@ class CopyCommand(_ExecutableClause):
 
         table = None
         columns = []
-        if isinstance(to, collections.Iterable):
+        if isinstance(to, Iterable):
             for column in to:
                 if table is not None and table != column.table:
                     raise ValueError(
@@ -844,17 +911,29 @@ class CreateLibraryCommand(_ExecutableClause):
         S3 location.
     access_key_id: str, optional
         Access Key. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     secret_access_key: str, optional
         Secret Access Key ID. Required unless you supply role-based credentials
-        (``aws_account_id`` and ``iam_role_name``)
+        (``aws_account_id`` and ``iam_role_name`` or ``iam_role_arns``)
     session_token : str, optional
+    iam_role_arns : str or list of strings, optional
+        Either a single arn or a list of arns of roles to assume when unloading
+        Required unless you supply key based credentials (``access_key_id`` and
+        ``secret_access_key``) or (``aws_account_id`` and ``iam_role_name``)
+        separately.
+    aws_partition: str, optional
+        AWS partition to use with role-based credentials. Defaults to
+        ``'aws'``. Not applicable when using key based credentials
+        (``access_key_id`` and ``secret_access_key``) or role arns
+        (``iam_role_arns``) directly.
     aws_account_id: str, optional
         AWS account ID for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+         or role arns (``iam_role_arns``) directly.
     iam_role_name: str, optional
         IAM role name for role-based credentials. Required unless you supply
         key based credentials (``access_key_id`` and ``secret_access_key``)
+        or role arns (``iam_role_arns``) directly.
     replace: bool, optional, default False
         Controls the presence of ``OR REPLACE`` in the compiled statement. See
         the command documentation for details.
@@ -865,7 +944,7 @@ class CreateLibraryCommand(_ExecutableClause):
     def __init__(self, library_name, location, access_key_id=None,
                  secret_access_key=None, session_token=None,
                  aws_account_id=None, iam_role_name=None, replace=False,
-                 region=None):
+                 region=None, iam_role_arns=None):
         self.library_name = library_name
         self.location = location
         self.credentials = _process_aws_credentials(
@@ -874,6 +953,7 @@ class CreateLibraryCommand(_ExecutableClause):
             session_token=session_token,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
+            iam_role_arns=iam_role_arns,
         )
         self.replace = replace
         self.region = region
@@ -916,3 +996,45 @@ def visit_create_library_command(element, compiler, **kw):
                          or_replace='OR REPLACE' if element.replace else '',
                          region='REGION :region' if element.region else '')
     return compiler.process(sa.text(query).bindparams(*bindparams), **kw)
+
+
+class RefreshMaterializedView(_ExecutableClause):
+    """
+    Prepares a Redshift REFRESH MATERIALIZED VIEW statement.
+    SEE:
+    docs.aws.amazon.com/redshift/latest/dg/materialized-view-refresh-sql-command
+
+    This reruns the query underlying the view to ensure the materialized data
+    is up to date.
+
+    >>> import sqlalchemy as sa
+    >>> from sqlalchemy_redshift.dialect import RefreshMaterializedView
+    >>> engine = sa.create_engine('redshift+psycopg2://example')
+    >>> refresh = RefreshMaterializedView('materialized_view_of_users')
+    >>> print(refresh.compile(engine))
+    <BLANKLINE>
+    REFRESH MATERIALIZED VIEW materialized_view_of_users
+    <BLANKLINE>
+    <BLANKLINE>
+
+    This can be included in any execute() statement.
+    """
+    def __init__(self, name):
+        """
+        Builds the Executable/ClauseElement that represents the refresh command
+
+        Parameters
+        ----------
+        name: str, required
+            The name of the view to refresh
+        """
+        self.name = name
+
+
+@sa_compiler.compiles(RefreshMaterializedView)
+def compile_refresh_materialized_view(element, compiler, **kw):
+    """
+    Formats and returns the refresh statement for materialized views.
+    """
+    text = "REFRESH MATERIALIZED VIEW {name}"
+    return text.format(name=element.name)
