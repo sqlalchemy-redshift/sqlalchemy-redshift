@@ -1,4 +1,4 @@
-0.8.3 (unreleased)
+0.8.3 (2021-07-07)
 ------------------
 
 - SQLAlchemy 1.4.x support
