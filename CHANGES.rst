@@ -2,6 +2,7 @@
 ------------------
 
 - SQLAlchemy 1.4.x support
+  (`Pull #221 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/221>`_)
 
 
 0.8.2 (2021-01-08)
