@@ -698,9 +698,9 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get('info_cache')
         all_columns = self._get_table_column_info(connection,
-                                                table_name,
-                                                schema,
-                                                info_cache=info_cache)
+                                                  table_name,
+                                                  schema,
+                                                  info_cache=info_cache)
         key = RelationKey(table_name, schema, connection)
         if key not in all_columns.keys():
             key = key.unquoted()
@@ -751,63 +751,66 @@ class RedshiftDialect(PGDialect_psycopg2):
         schema_clause = "AND schema = :schema" if schema else ""
         all_columns = defaultdict(list)
         with connection.connect() as cc:
-            result = cc.execute("""
-            SELECT
-              n.nspname as "schema",
-              c.relname as "table_name",
-              att.attname as "name",
-              format_encoding(att.attencodingtype::integer) as "encode",
-              format_type(att.atttypid, att.atttypmod) as "type",
-              att.attisdistkey as "distkey",
-              att.attsortkeyord as "sortkey",
-              att.attnotnull as "notnull",
-              pg_catalog.col_description(att.attrelid, att.attnum)
-                as "comment",
-              adsrc,
-              attnum,
-              pg_catalog.format_type(att.atttypid, att.atttypmod),
-              pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
-              n.oid as "schema_oid",
-              c.oid as "table_oid"
-            FROM pg_catalog.pg_class c
-            LEFT JOIN pg_catalog.pg_namespace n
-              ON n.oid = c.relnamespace
-            JOIN pg_catalog.pg_attribute att
-              ON att.attrelid = c.oid
-            LEFT JOIN pg_catalog.pg_attrdef ad
-              ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
-            WHERE n.nspname !~ '^pg_'
-              AND att.attnum > 0
-              AND NOT att.attisdropped
-              AND table_name = :table_name
-              {schema}
-            UNION
-            SELECT
-              view_schema as "schema",
-              view_name as "table_name",
-              col_name as "name",
-              null as "encode",
-              col_type as "type",
-              null as "distkey",
-              0 as "sortkey",
-              null as "notnull",
-              null as "comment",
-              null as "adsrc",
-              null as "attnum",
-              col_type as "format_type",
-              null as "default",
-              null as "schema_oid",
-              null as "table_oid"
-            FROM pg_get_late_binding_view_cols() cols(
-              view_schema name,
-              view_name name,
-              col_name name,
-              col_type varchar,
-              col_num int)
-            WHERE table_name = :table_name
+            result = cc.execute(
+                """
+                SELECT
+                n.nspname as "schema",
+                c.relname as "table_name",
+                att.attname as "name",
+                format_encoding(att.attencodingtype::integer) as "encode",
+                format_type(att.atttypid, att.atttypmod) as "type",
+                att.attisdistkey as "distkey",
+                att.attsortkeyord as "sortkey",
+                att.attnotnull as "notnull",
+                pg_catalog.col_description(att.attrelid, att.attnum)
+                    as "comment",
+                adsrc,
+                attnum,
+                pg_catalog.format_type(att.atttypid, att.atttypmod),
+                pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
+                n.oid as "schema_oid",
+                c.oid as "table_oid"
+                FROM pg_catalog.pg_class c
+                LEFT JOIN pg_catalog.pg_namespace n
+                ON n.oid = c.relnamespace
+                JOIN pg_catalog.pg_attribute att
+                ON att.attrelid = c.oid
+                LEFT JOIN pg_catalog.pg_attrdef ad
+                ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
+                WHERE n.nspname !~ '^pg_'
+                AND att.attnum > 0
+                AND NOT att.attisdropped
+                AND table_name = :table_name
                 {schema}
-            ORDER BY "schema", "table_name", "attnum";
-            """.format(schema=schema_clause), {'table_name': table_name, 'schema': schema})
+                UNION
+                SELECT
+                view_schema as "schema",
+                view_name as "table_name",
+                col_name as "name",
+                null as "encode",
+                col_type as "type",
+                null as "distkey",
+                0 as "sortkey",
+                null as "notnull",
+                null as "comment",
+                null as "adsrc",
+                null as "attnum",
+                col_type as "format_type",
+                null as "default",
+                null as "schema_oid",
+                null as "table_oid"
+                FROM pg_get_late_binding_view_cols() cols(
+                view_schema name,
+                view_name name,
+                col_name name,
+                col_type varchar,
+                col_num int)
+                WHERE table_name = :table_name
+                    {schema}
+                ORDER BY "schema", "table_name", "attnum";
+                """.format(schema=schema_clause),
+                {'table_name': table_name, 'schema': schema}
+            )
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
