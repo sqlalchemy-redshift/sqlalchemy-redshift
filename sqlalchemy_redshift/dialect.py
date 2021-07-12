@@ -697,7 +697,9 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get('info_cache')
-        all_columns = self._get_all_column_info(connection,
+        all_columns = self._get_table_column_info(connection,
+                                                table_name,
+                                                schema,
                                                 info_cache=info_cache)
         key = RelationKey(table_name, schema, connection)
         if key not in all_columns.keys():
@@ -745,7 +747,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         return relations
 
     @reflection.cache
-    def _get_all_column_info(self, connection, **kw):
+    def _get_table_column_info(self, connection, table_name, schema=None, **kw):
+        schema_clause = "AND schema = :schema" if schema else ""
         all_columns = defaultdict(list)
         with connection.connect() as cc:
             result = cc.execute("""
@@ -776,6 +779,8 @@ class RedshiftDialect(PGDialect_psycopg2):
             WHERE n.nspname !~ '^pg_'
               AND att.attnum > 0
               AND NOT att.attisdropped
+              AND table_name = :table_name
+              {schema}
             UNION
             SELECT
               view_schema as "schema",
@@ -799,8 +804,10 @@ class RedshiftDialect(PGDialect_psycopg2):
               col_name name,
               col_type varchar,
               col_num int)
+            WHERE table_name = :table_name
+                {schema}
             ORDER BY "schema", "table_name", "attnum";
-            """)
+            """.format(schema=schema_clause), {'table_name': table_name, 'schema': schema})
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
