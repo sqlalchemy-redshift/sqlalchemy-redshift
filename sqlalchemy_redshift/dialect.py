@@ -747,12 +747,14 @@ class RedshiftDialect(PGDialect_psycopg2):
             relations[key] = rel
         return relations
 
+    # We fetch column info an entire schema at a time to improve performance when
+    # reflecting schema for multiple tables at once.
     @reflection.cache
     def _get_schema_column_info(
         self, connection, schema=None, **kw
     ):
         where_schema = "WHERE schema = :schema" if schema else ""
-        and_schema = "AND schema = :schema" if schema else ""
+        and_schema = "AND view_schema = :schema" if schema else ""
         all_columns = defaultdict(list)
         with connection.connect() as cc:
             result = cc.execute(
