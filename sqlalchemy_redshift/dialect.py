@@ -811,7 +811,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                     {schema}
                 ORDER BY "schema", "table_name", "attnum";
                 """.format(schema=schema_clause),
-                {'table_name': table_name, 'schema': schema}
+                **{'table_name': table_name, 'schema': schema}
             )
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
