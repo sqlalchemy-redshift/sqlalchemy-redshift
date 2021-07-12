@@ -747,7 +747,9 @@ class RedshiftDialect(PGDialect_psycopg2):
         return relations
 
     @reflection.cache
-    def _get_table_column_info(self, connection, table_name, schema=None, **kw):
+    def _get_table_column_info(
+        self, connection, table_name, schema=None, **kw
+    ):
         schema_clause = "AND schema = :schema" if schema else ""
         all_columns = defaultdict(list)
         with connection.connect() as cc:
