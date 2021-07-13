@@ -753,8 +753,9 @@ class RedshiftDialect(PGDialect_psycopg2):
     def _get_schema_column_info(
         self, connection, schema=None, **kw
     ):
-        where_schema = "WHERE schema = :schema" if schema else ""
-        and_schema = "AND view_schema = :schema" if schema else ""
+        schema_clause = (
+            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+        )
         all_columns = defaultdict(list)
         with connection.connect() as cc:
             result = cc.execute(
@@ -786,7 +787,7 @@ class RedshiftDialect(PGDialect_psycopg2):
                 WHERE n.nspname !~ '^pg_'
                     AND att.attnum > 0
                     AND NOT att.attisdropped
-                    {and_schema}
+                    {schema_clause}
                 UNION
                 SELECT
                     view_schema as "schema",
@@ -810,10 +811,9 @@ class RedshiftDialect(PGDialect_psycopg2):
                     col_name name,
                     col_type varchar,
                     col_num int)
-                {where_schema}
+                WHERE 1 {schema_clause}
                 ORDER BY "schema", "table_name", "attnum";
-                """.format(where_schema=where_schema, and_schema=and_schema),
-                **{'schema': schema}
+                """.format(schema_clause=schema_clause)
             )
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
