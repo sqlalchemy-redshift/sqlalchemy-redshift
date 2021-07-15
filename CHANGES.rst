@@ -1,4 +1,4 @@
-0.8.4 (unreleased)
+0.8.4 (2021-07-15)
 ------------------
 
 - Improve reflection performance by fetching/caching metadata per schema
