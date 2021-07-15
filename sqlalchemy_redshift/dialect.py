@@ -697,12 +697,15 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get('info_cache')
-        all_columns = self._get_all_column_info(connection,
-                                                info_cache=info_cache)
+        all_schema_columns = self._get_schema_column_info(
+            connection,
+            schema,
+            info_cache=info_cache
+        )
         key = RelationKey(table_name, schema, connection)
-        if key not in all_columns.keys():
+        if key not in all_schema_columns.keys():
             key = key.unquoted()
-        return all_columns[key]
+        return all_schema_columns[key]
 
     def _get_redshift_constraints(self, connection, table_name,
                                   schema=None, **kw):
@@ -744,8 +747,15 @@ class RedshiftDialect(PGDialect_psycopg2):
             relations[key] = rel
         return relations
 
+    # We fetch column info an entire schema at a time to improve performance
+    # when reflecting schema for multiple tables at once.
     @reflection.cache
-    def _get_all_column_info(self, connection, **kw):
+    def _get_schema_column_info(
+        self, connection, schema=None, **kw
+    ):
+        schema_clause = (
+            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+        )
         all_columns = defaultdict(list)
         with connection.connect() as cc:
             result = cc.execute("""
@@ -776,6 +786,7 @@ class RedshiftDialect(PGDialect_psycopg2):
             WHERE n.nspname !~ '^pg_'
               AND att.attnum > 0
               AND NOT att.attisdropped
+              {schema_clause}
             UNION
             SELECT
               view_schema as "schema",
@@ -799,8 +810,10 @@ class RedshiftDialect(PGDialect_psycopg2):
               col_name name,
               col_type varchar,
               col_num int)
+            WHERE 1 {schema_clause}
             ORDER BY "schema", "table_name", "attnum";
-            """)
+            """.format(schema_clause=schema_clause)
+            )
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
