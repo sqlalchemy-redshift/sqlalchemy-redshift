@@ -1,7 +1,9 @@
 0.8.4 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Improve reflection performance by fetching/caching metadata per schema
+  rather than for the entire database
+  (`Pull #223 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/223>`_)
 
 
 0.8.3 (2021-07-07)
