@@ -1,21 +1,27 @@
+import pytest
 from sqlalchemy_redshift.dialect import RelationKey
 
+raw_names = [
+    (
+        "table",
+        '"schema"'
+    ),
+    (
+        '"table"',
+        "schema"
+    ),
+    (
+        '"table"',
+        '"schema"'
+    ),
+    (
+        "table",
+        "schema"
+    )
+]
 
-def test_unquoted_with_quoted_schema():
-    key = RelationKey("table", '"schema"')
-    assert key.unquoted() == "schema.table"
 
-
-def test_unquoted_with_quoted_table():
-    key = RelationKey('"table"', "schema")
-    assert key.unquoted() == "schema.table"
-
-
-def test_unquoted_with_both_quoted():
-    key = RelationKey('"table"', '"schema"')
-    assert key.unquoted() == "schema.table"
-
-
-def test_unquoted_with_neither_quoted():
-    key = RelationKey("table", "schema")
-    assert key.unquoted() == "schema.table"
+@pytest.mark.parametrize("raw_table, raw_schema", raw_names)
+def test_unquoted(raw_table, raw_schema):
+    key = RelationKey(raw_table, raw_schema)
+    assert key.unquoted().__str__() == "schema.table"
