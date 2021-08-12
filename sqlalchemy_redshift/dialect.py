@@ -62,6 +62,7 @@ __all__ = (
     'VARCHAR',
     'DOUBLE_PRECISION',
     'TIMESTAMPTZ',
+    'TIMETZ',
 
     'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
@@ -186,6 +187,24 @@ class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
         super(TIMESTAMPTZ, self).__init__(timezone=True)
 
 
+class TIMETZ(sa.dialects.postgresql.TIME):
+    """
+    Redshift defines a TIMTETZ column type as an alias
+    of TIME WITH TIME ZONE.
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+
+    __visit_name__ = 'TIMETZ'
+
+    def __init__(self):
+        super(TIMETZ, self).__init__(timezone=True)
+
+
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
     """
     Structured tuple of table/view name and schema name.
@@ -300,7 +319,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     <BLANKLINE>
 
-    The TIMESTAMPTZ column type is also supported in the DDL.
+    The TIMESTAMPTZ and TIMETZ column types are also supported in the DDL.
 
     For SQLAlchemy versions < 1.3.0, passing Redshift dialect options
     as keyword arguments is not supported on the column level.
@@ -394,6 +413,9 @@ class RedshiftTypeCompiler(PGTypeCompiler):
 
     def visit_TIMESTAMPTZ(self, type_, **kw):
         return "TIMESTAMPTZ"
+
+    def visit_TIMETZ(self, type_, **kw):
+        return "TIMETZ"
 
 
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
