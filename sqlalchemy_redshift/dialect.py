@@ -66,7 +66,10 @@ __all__ = (
     'TIMESTAMPTZ',
     'TIMETZ',
 
-    'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
+    'Pg8000RedshiftDialect', 'PypostgresqlRedshiftDialect', 'PsycopgRedshiftDialect',
+    'PsycopgCFFIRedshiftDialect', 'ZxjdbcRedshiftDialect'
+    
+    'CopyCommand', 'UnloadFromSelect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
     'RefreshMaterializedView',
 
@@ -471,7 +474,7 @@ class RedshiftDialectMixin(object):
     ]
 
     def __init__(self, *args, **kw):
-        super(RedshiftDialect, self).__init__(*args, **kw)
+        super(RedshiftDialectMixin, self).__init__(*args, **kw)
         # Cache domains, as these will be static;
         # Redshift does not support user-created domains.
         self._domains = None
@@ -670,7 +673,7 @@ class RedshiftDialectMixin(object):
                 'redshift-ca-bundle.crt'
             ),
         }
-        cargs, cparams = super(RedshiftDialect, self).create_connect_args(
+        cargs, cparams = super(RedshiftDialectMixin, self).create_connect_args(
             *args, **kwargs
         )
         default_args.update(cparams)
@@ -946,7 +949,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     problem illustration:
 
     >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
-    >>> from sqlalchemy_redshift.dialect import RedshiftDialect
+    >>> from sqlalchemy_redshift.dialect import PsycopgRedshiftDialect
     >>> meta = MetaData()
     >>> table1 = Table(
     ... 'table_1',
@@ -961,7 +964,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     ... )
     ...
     >>> del_stmt = delete(table1).where(table1.c.pk==table2.c.pk)
-    >>> str(del_stmt.compile(dialect=RedshiftDialect()))
+    >>> str(del_stmt.compile(dialect=PsycopgRedshiftDialect()))
     'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
     >>> str(del_stmt)
     'DELETE FROM table_1 , table_2 WHERE table_1.pk = table_2.pk'
@@ -971,7 +974,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     >>> del_stmt3 = delete(table1).where(table1.c.pk > 1000)
     >>> str(del_stmt3)
     'DELETE FROM table_1 WHERE table_1.pk > :pk_1'
-    >>> str(del_stmt3.compile(dialect=RedshiftDialect()))
+    >>> str(del_stmt3.compile(dialect=PsycopgRedshiftDialect()))
     'DELETE FROM table_1 WHERE table_1.pk >  %(pk_1)s'
     """
 
