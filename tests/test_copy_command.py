@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 
 from sqlalchemy_redshift import dialect
-from rs_sqla_test_utils.utils import clean, compile_query
+from tests.rs_sqla_test_utils.utils import clean, compile_query
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
 secret_access_key = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'

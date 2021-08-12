@@ -11,8 +11,8 @@ from sqlalchemy_redshift.dialect import RedshiftDDLCompiler
 class TestDDLCompiler(object):
 
     @pytest.fixture
-    def compiler(self, redshift_dialect):
-        compiler = RedshiftDDLCompiler(redshift_dialect, None)
+    def compiler(self, stub_redshift_dialect):
+        compiler = RedshiftDDLCompiler(stub_redshift_dialect, None)
         return compiler
 
     def _compare_strings(self, expected, actual):

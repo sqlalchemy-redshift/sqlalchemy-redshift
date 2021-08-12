@@ -1,14 +1,16 @@
 import sqlalchemy as sa
 from pkg_resources import resource_filename
-
+import pytest
+from tests.conftest import redshift_dialect_flavors
 
 CERT_PATH = resource_filename("sqlalchemy_redshift", "redshift-ca-bundle.crt")
 
 
-def test_ssl_args(stub_redshift_engine):
-    engine = stub_redshift_engine
-    dialect = stub_redshift_engine.dialect
-    url = stub_redshift_engine.url
+@pytest.mark.parametrize("dialect_name", redshift_dialect_flavors)
+def test_ssl_args(dialect_name):
+    engine = sa.create_engine('{}://test'.format(dialect_name))
+    dialect = engine.dialect
+    url = engine.url
 
     cargs, cparams = dialect.create_connect_args(url)
 

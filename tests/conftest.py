@@ -16,8 +16,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.engine.url import URL
 
-
-from rs_sqla_test_utils import db
+from tests.rs_sqla_test_utils import db
 
 
 _unicode = type(u'')
@@ -86,9 +85,15 @@ class DatabaseTool(object):
                 engine.dispose()
 
 
-@pytest.yield_fixture(scope='session', params=[
-    'redshift', 'redshift+psycopg2',
-])
+redshift_dialect_flavors = [
+    'redshift',
+    #'redshift+pg8000',
+    'redshift+psycopg2',
+    'redshift+psycopg2cffi',
+]
+
+
+@pytest.yield_fixture(scope='session', params=redshift_dialect_flavors)
 def _redshift_database_tool(request):
     from rs_sqla_test_utils import models
     if 'PGPASSWORD' not in os.environ:
@@ -130,20 +135,12 @@ def _redshift_engine_and_definition(_redshift_database_tool):
         yield database
 
 
-@pytest.fixture(scope='function', params=[
-    'redshift', 'redshift+pg8000', 'redshift+psycopg2',
-    'redshift+psycopg2cffi',
-])
+@pytest.fixture(scope='function')
 def redshift_engine(_redshift_engine_and_definition):
     """
     A redshift engine for a freshly migrated database.
     """
     return _redshift_engine_and_definition['engine']
-
-
-@pytest.fixture
-def redshift_dialect(redshift_engine):
-    return redshift_engine.dialect
 
 
 @pytest.fixture(scope='function')
@@ -183,9 +180,7 @@ def redshift_session(_session_scoped_redshift_engine):
         conn.close()
 
 
-@pytest.fixture(scope='session', params=[
-    'redshift', 'redshift+psycopg2',
-])
+@pytest.fixture(scope='session', params=redshift_dialect_flavors)
 def stub_redshift_engine(request):
     return sa.create_engine(URL(drivername=request.param))
 

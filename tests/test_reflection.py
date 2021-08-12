@@ -5,7 +5,7 @@ from sqlalchemy.exc import NoSuchTableError
 
 from sqlalchemy_redshift import dialect
 
-from rs_sqla_test_utils import models, utils
+from tests.rs_sqla_test_utils import models, utils
 
 
 def table_to_ddl(table, _dialect):
@@ -171,12 +171,13 @@ def test_definition(model, ddl, stub_redshift_dialect):
 
 
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
-def test_reflection(redshift_session, model, ddl, stub_redshift_dialect):
+def test_reflection(redshift_session, model, ddl):
+    dialect = redshift_session.bind.dialect
     metadata = MetaData(bind=redshift_session.bind)
     schema = model.__table__.schema
     table = Table(model.__tablename__, metadata,
                   schema=schema, autoload=True)
-    introspected_ddl = table_to_ddl(table, stub_redshift_dialect)
+    introspected_ddl = table_to_ddl(table, dialect)
     assert utils.clean(introspected_ddl) == utils.clean(ddl)
 
 

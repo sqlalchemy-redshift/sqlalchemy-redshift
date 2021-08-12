@@ -2,7 +2,7 @@ import pytest
 
 from sqlalchemy import Table, Integer, String, MetaData, Column, select
 from sqlalchemy_redshift import dialect
-from rs_sqla_test_utils.utils import clean, compile_query
+from tests.rs_sqla_test_utils.utils import clean, compile_query
 
 
 @pytest.fixture

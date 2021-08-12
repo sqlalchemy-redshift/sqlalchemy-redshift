@@ -11,7 +11,7 @@ from redshift_sqlalchemy import dialect
 
 @pytest.mark.parametrize('name, expected_dialect', [
     ('redshift', psycopg2.dialect),
-    ('redshift+pg8000', pg8000.dialect),
+    # ('redshift+pg8000', pg8000.dialect),
     ('redshift+psycopg2', psycopg2.dialect),
     ('redshift+psycopg2cffi', psycopg2cffi.dialect),
     # ('redshift+pypostgresql', pypostgresql.dialect),

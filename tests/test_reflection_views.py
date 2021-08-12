@@ -1,7 +1,7 @@
 from sqlalchemy import MetaData, Table, inspect
 from sqlalchemy.schema import CreateTable
 
-from rs_sqla_test_utils.utils import clean, compile_query
+from tests.rs_sqla_test_utils.utils import clean, compile_query
 
 
 def table_to_ddl(engine, table):

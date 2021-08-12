@@ -1,4 +1,4 @@
-from rs_sqla_test_utils import models
+from tests.rs_sqla_test_utils import models
 
 
 def test_simple_query(redshift_session):

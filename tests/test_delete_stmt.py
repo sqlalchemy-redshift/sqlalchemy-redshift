@@ -34,7 +34,7 @@ This same query needs to be written like this in Redshift:
 import sqlalchemy as sa
 from packaging.version import Version
 
-from rs_sqla_test_utils.utils import clean, compile_query
+from tests.rs_sqla_test_utils.utils import clean, compile_query
 
 sa_version = Version(sa.__version__)
 
