@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql.base import (
     PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
 )
 from sqlalchemy.dialects.postgresql import (
-    pg8000, psycopg2, psycopg2cffi, pypostgresql, zxjdbc,
+    psycopg2, psycopg2cffi
 )
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
@@ -892,18 +892,6 @@ class PsycopgRedshiftDialect(RedshiftDialectMixin, psycopg2.dialect):
 
 
 class PsycopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
-    pass
-
-
-class Pg8000RedshiftDialect(RedshiftDialectMixin, pg8000.dialect):
-    pass
-
-
-class PypostgresqlRedshiftDialect(RedshiftDialectMixin, pypostgresql.dialect):
-    pass
-
-
-class ZxjdbcRedshiftDialect(RedshiftDialectMixin, zxjdbc.dialect):
     pass
 
 
