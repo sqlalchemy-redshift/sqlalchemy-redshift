@@ -1,7 +1,6 @@
 __author__ = 'haleemur'
 
 import re
-from sqlalchemy_redshift import dialect
 
 
 def clean(query):
@@ -10,8 +9,8 @@ def clean(query):
     return re.sub(r'\s+', ' ', query).strip()
 
 
-def compile_query(q):
+def compile_query(q, _dialect):
     return str(q.compile(
-        dialect=dialect.RedshiftDialect(),
+        dialect=_dialect,
         compile_kwargs={'literal_binds': True})
     )

@@ -8,9 +8,9 @@ from sqlalchemy_redshift import dialect
 from rs_sqla_test_utils import models, utils
 
 
-def table_to_ddl(table):
+def table_to_ddl(table, _dialect):
     return str(CreateTable(table).compile(
-        dialect=dialect.RedshiftDialect()
+        dialect=_dialect
     ))
 
 
@@ -165,18 +165,18 @@ models_and_ddls = [
 
 
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
-def test_definition(model, ddl):
-    model_ddl = table_to_ddl(model.__table__)
+def test_definition(model, ddl, stub_redshift_dialect):
+    model_ddl = table_to_ddl(model.__table__, stub_redshift_dialect)
     assert utils.clean(model_ddl) == utils.clean(ddl)
 
 
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
-def test_reflection(redshift_session, model, ddl):
+def test_reflection(redshift_session, model, ddl, stub_redshift_dialect):
     metadata = MetaData(bind=redshift_session.bind)
     schema = model.__table__.schema
     table = Table(model.__tablename__, metadata,
                   schema=schema, autoload=True)
-    introspected_ddl = table_to_ddl(table)
+    introspected_ddl = table_to_ddl(table, stub_redshift_dialect)
     assert utils.clean(introspected_ddl) == utils.clean(ddl)
 
 

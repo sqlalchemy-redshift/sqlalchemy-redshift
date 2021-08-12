@@ -5,10 +5,10 @@ from pkg_resources import resource_filename
 CERT_PATH = resource_filename("sqlalchemy_redshift", "redshift-ca-bundle.crt")
 
 
-def test_ssl_args():
-    engine = sa.create_engine('redshift+psycopg2://test')
-    dialect = engine.dialect
-    url = engine.url
+def test_ssl_args(stub_redshift_engine):
+    engine = stub_redshift_engine
+    dialect = stub_redshift_engine.dialect
+    url = stub_redshift_engine.url
 
     cargs, cparams = dialect.create_connect_args(url)
 

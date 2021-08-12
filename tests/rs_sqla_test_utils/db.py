@@ -22,10 +22,10 @@ class EngineDefinition(object):
         )
 
 
-def redshift_engine_definition(cluster):
+def redshift_engine_definition(cluster, dialect):
     return EngineDefinition(
         db_connect_url=sa_url.URL(
-            drivername='redshift+psycopg2',
+            drivername=dialect,
             username='travis',
             password=os.environ['PGPASSWORD'],
             host=cluster['Address'],

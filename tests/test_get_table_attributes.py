@@ -5,8 +5,8 @@ from sqlalchemy_redshift import ddl, dialect
 
 
 @pytest.fixture
-def preparer():
-    compiler = dialect.RedshiftDDLCompiler(dialect.RedshiftDialect(), None)
+def preparer(stub_redshift_dialect):
+    compiler = dialect.RedshiftDDLCompiler(stub_redshift_dialect, None)
     return compiler.preparer
 
 

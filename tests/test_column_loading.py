@@ -18,8 +18,8 @@ class TestColumnReflection(TestCase):
         Varchar columns with no length should be considered NullType columns
         """
         for dialect in [
-            PsycopgRedshiftDialect, PsycopgCFFIRedshiftDialect, Pg8000RedshiftDialect,
-            PypostgresqlRedshiftDialect, ZxjdbcRedshiftDialect
+            PsycopgRedshiftDialect(), PsycopgCFFIRedshiftDialect(), Pg8000RedshiftDialect(),
+            #PypostgresqlRedshiftDialect(), ZxjdbcRedshiftDialect()
         ]:
 
             null_info = dialect._get_column_info(
