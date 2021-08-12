@@ -5,8 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.types import NullType, VARCHAR
 
 from sqlalchemy_redshift.dialect import (
-    PsycopgRedshiftDialect, PsycopgCFFIRedshiftDialect, Pg8000RedshiftDialect,
-    PypostgresqlRedshiftDialect, ZxjdbcRedshiftDialect
+    PsycopgRedshiftDialect, PsycopgCFFIRedshiftDialect
 )
 
 sa_version = Version(sa.__version__)
@@ -18,8 +17,7 @@ class TestColumnReflection(TestCase):
         Varchar columns with no length should be considered NullType columns
         """
         for dialect in [
-            PsycopgRedshiftDialect(), PsycopgCFFIRedshiftDialect(), Pg8000RedshiftDialect(),
-            #PypostgresqlRedshiftDialect(), ZxjdbcRedshiftDialect()
+            PsycopgRedshiftDialect(), PsycopgCFFIRedshiftDialect()
         ]:
 
             null_info = dialect._get_column_info(
