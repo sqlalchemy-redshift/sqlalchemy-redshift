@@ -1,7 +1,8 @@
 0.8.5 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Fix RelationKey unquoted issue
+  (`Pull #228 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/228>`_)
 
 
 0.8.4 (2021-07-15)
