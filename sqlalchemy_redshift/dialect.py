@@ -208,6 +208,15 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
         else:
             return self.schema + "." + self.name
 
+    @staticmethod
+    def _unquote(part):
+        if (
+                part is not None and part.startswith('"') and
+                part.endswith('"')
+        ):
+            return part[1:-1]
+        return part
+
     def unquoted(self):
         """
         Return *key* with one level of double quotes removed.
@@ -216,10 +225,10 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
         even though the name must be quoted elsewhere.
         In particular, this happens for tables named as a keyword.
         """
-        key = str(self)
-        if key.startswith('"') and key.endswith('"'):
-            return key[1:-1]
-        return key
+        return RelationKey(
+            RelationKey._unquote(self.name),
+            RelationKey._unquote(self.schema)
+        )
 
 
 class RedshiftCompiler(PGCompiler):
