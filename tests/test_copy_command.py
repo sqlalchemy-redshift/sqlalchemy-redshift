@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 
 from sqlalchemy_redshift import dialect
-from tests.rs_sqla_test_utils.utils import clean, compile_query
+from rs_sqla_test_utils.utils import clean, compile_query
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
 secret_access_key = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'
@@ -51,7 +51,8 @@ def test_basic_copy_case(stub_redshift_dialect):
         blanks_as_null=True,
         region='eu-west-3',
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_iam_role(stub_redshift_dialect):
@@ -75,7 +76,8 @@ def test_iam_role(stub_redshift_dialect):
         aws_account_id=aws_account_id,
         iam_role_name=iam_role_name,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_iam_role_partition(stub_redshift_dialect):
@@ -102,7 +104,8 @@ def test_iam_role_partition(stub_redshift_dialect):
         aws_account_id=aws_account_id,
         iam_role_name=iam_role_name,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_iam_role_partition_validation():
@@ -141,7 +144,8 @@ def test_iam_role_arns_list(stub_redshift_dialect):
         data_location='s3://mybucket/data/listing/',
         iam_role_arns=iam_role_arns,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_iam_role_arns_single(stub_redshift_dialect):
@@ -160,7 +164,8 @@ def test_iam_role_arns_single(stub_redshift_dialect):
         data_location='s3://mybucket/data/listing/',
         iam_role_arns=iam_role_arns,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_format(stub_redshift_dialect):
@@ -186,7 +191,8 @@ def test_format(stub_redshift_dialect):
         empty_as_null=True,
         blanks_as_null=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 @pytest.mark.parametrize('format_type', (
@@ -206,7 +212,8 @@ def test_format__columnar(format_type, stub_redshift_dialect):
         secret_access_key=secret_access_key,
         format=format_type,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_invalid_format():
@@ -256,7 +263,8 @@ def test_compression(stub_redshift_dialect):
         empty_as_null=True,
         blanks_as_null=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_invalid_compression():
@@ -295,7 +303,8 @@ def test_ascii_nul_as_redshift_null(stub_redshift_dialect):
         empty_as_null=True,
         blanks_as_null=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_json_upload_with_manifest_ordered_columns(stub_redshift_dialect):
@@ -320,7 +329,8 @@ def test_json_upload_with_manifest_ordered_columns(stub_redshift_dialect):
         time_format='auto',
         accept_any_date=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_stat_update_maxerror_and_escape(stub_redshift_dialect):
@@ -342,7 +352,8 @@ def test_stat_update_maxerror_and_escape(stub_redshift_dialect):
         stat_update=True,
         escape=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_different_tables():

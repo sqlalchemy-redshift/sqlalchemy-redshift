@@ -66,9 +66,8 @@ __all__ = (
     'TIMESTAMPTZ',
     'TIMETZ',
 
-    'Pg8000RedshiftDialect', 'PypostgresqlRedshiftDialect', 'PsycopgRedshiftDialect',
-    'PsycopgCFFIRedshiftDialect', 'ZxjdbcRedshiftDialect'
-    
+    'Psycopg2RedshiftDialect', 'Psycopg2CFFIRedshiftDialect',
+
     'CopyCommand', 'UnloadFromSelect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
     'RefreshMaterializedView',
@@ -659,26 +658,6 @@ class RedshiftDialectMixin(object):
             'redshift_interleaved_sortkey': interleaved_sortkey,
         }
 
-    def create_connect_args(self, *args, **kwargs):
-        """
-        Build DB-API compatible connection arguments.
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
-        """
-        default_args = {
-            'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                __name__,
-                'redshift-ca-bundle.crt'
-            ),
-        }
-        cargs, cparams = super(RedshiftDialectMixin, self).create_connect_args(
-            *args, **kwargs
-        )
-        default_args.update(cparams)
-        return cargs, default_args
-
     def _get_table_or_view_names(self, relkind, connection, schema=None, **kw):
         default_schema = inspect(connection).default_schema_name
         if not schema:
@@ -887,11 +866,46 @@ class RedshiftDialectMixin(object):
         return all_constraints
 
 
-class PsycopgRedshiftDialect(RedshiftDialectMixin, psycopg2.dialect):
+class PsycopgRedshiftDialectMixin(RedshiftDialectMixin):
+    """
+    Define Psycopg specific behavior.
+
+    Most public methods are overrides of the underlying interfaces defined in
+    :class:`~sqlalchemy.engine.interfaces.Dialect` and
+    :class:`~sqlalchemy.engine.Inspector`.
+    """
+    def create_connect_args(self, *args, **kwargs):
+        """
+        Build DB-API compatible connection arguments.
+
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
+        """
+        default_args = {
+            'sslmode': 'verify-full',
+            'sslrootcert': pkg_resources.resource_filename(
+                __name__,
+                'redshift-ca-bundle.crt'
+            ),
+        }
+        cargs, cparams = (
+            super(PsycopgRedshiftDialectMixin, self).create_connect_args(
+                *args, **kwargs
+            )
+        )
+        default_args.update(cparams)
+        return cargs, default_args
+
+
+class Psycopg2RedshiftDialect(
+    PsycopgRedshiftDialectMixin, psycopg2.dialect
+):
     pass
 
 
-class PsycopgCFFIRedshiftDialect(RedshiftDialectMixin, psycopg2cffi.dialect):
+class Psycopg2CFFIRedshiftDialect(
+    PsycopgRedshiftDialectMixin, psycopg2cffi.dialect
+):
     pass
 
 
@@ -937,7 +951,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     problem illustration:
 
     >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
-    >>> from sqlalchemy_redshift.dialect import PsycopgRedshiftDialect
+    >>> from sqlalchemy_redshift.dialect import Psycopg2RedshiftDialect
     >>> meta = MetaData()
     >>> table1 = Table(
     ... 'table_1',
@@ -952,7 +966,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     ... )
     ...
     >>> del_stmt = delete(table1).where(table1.c.pk==table2.c.pk)
-    >>> str(del_stmt.compile(dialect=PsycopgRedshiftDialect()))
+    >>> str(del_stmt.compile(dialect=Psycopg2RedshiftDialect()))
     'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
     >>> str(del_stmt)
     'DELETE FROM table_1 , table_2 WHERE table_1.pk = table_2.pk'
@@ -962,7 +976,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     >>> del_stmt3 = delete(table1).where(table1.c.pk > 1000)
     >>> str(del_stmt3)
     'DELETE FROM table_1 WHERE table_1.pk > :pk_1'
-    >>> str(del_stmt3.compile(dialect=PsycopgRedshiftDialect()))
+    >>> str(del_stmt3.compile(dialect=Psycopg2RedshiftDialect()))
     'DELETE FROM table_1 WHERE table_1.pk >  %(pk_1)s'
     """
 

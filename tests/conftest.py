@@ -16,7 +16,8 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.engine.url import URL
 
-from tests.rs_sqla_test_utils import db
+
+from rs_sqla_test_utils import db
 
 
 _unicode = type(u'')
@@ -87,10 +88,14 @@ class DatabaseTool(object):
 
 redshift_dialect_flavors = [
     'redshift',
-    #'redshift+pg8000',
     'redshift+psycopg2',
     'redshift+psycopg2cffi',
 ]
+
+
+@pytest.yield_fixture(scope='session', params=redshift_dialect_flavors)
+def redshift_dialect_flavor(request):
+    return request.param
 
 
 @pytest.yield_fixture(scope='session', params=redshift_dialect_flavors)

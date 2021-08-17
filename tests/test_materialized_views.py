@@ -2,7 +2,7 @@ import pytest
 
 from sqlalchemy import Table, Integer, String, MetaData, Column, select
 from sqlalchemy_redshift import dialect
-from tests.rs_sqla_test_utils.utils import clean, compile_query
+from rs_sqla_test_utils.utils import clean, compile_query
 
 
 @pytest.fixture
@@ -23,7 +23,8 @@ def test_basic_materialized_view(selectable, stub_redshift_dialect):
         "test_view",
         selectable
     )
-    assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_no_backup_materialized_view(selectable, stub_redshift_dialect):
@@ -37,7 +38,8 @@ def test_no_backup_materialized_view(selectable, stub_redshift_dialect):
         selectable,
         backup=False
     )
-    assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_diststyle_materialized_view(selectable, stub_redshift_dialect):
@@ -51,7 +53,8 @@ def test_diststyle_materialized_view(selectable, stub_redshift_dialect):
         selectable,
         diststyle='ALL'
     )
-    assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_distkey_materialized_view(selectable, stub_redshift_dialect):
@@ -66,7 +69,8 @@ def test_distkey_materialized_view(selectable, stub_redshift_dialect):
             selectable,
             distkey=key
         )
-        assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+        assert clean(expected_result) == \
+            clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_sortkey_materialized_view(selectable, stub_redshift_dialect):
@@ -81,10 +85,13 @@ def test_sortkey_materialized_view(selectable, stub_redshift_dialect):
             selectable,
             sortkey=key
         )
-        assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+        assert clean(expected_result) == \
+            clean(compile_query(view, stub_redshift_dialect))
 
 
-def test_interleaved_sortkey_materialized_view(selectable, stub_redshift_dialect):
+def test_interleaved_sortkey_materialized_view(
+        selectable, stub_redshift_dialect
+):
     expected_result = """
     CREATE MATERIALIZED VIEW test_view
     INTERLEAVED SORTKEY (id)
@@ -96,28 +103,33 @@ def test_interleaved_sortkey_materialized_view(selectable, stub_redshift_dialect
             selectable,
             interleaved_sortkey=key
         )
-        assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+        assert clean(expected_result) == \
+            clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_drop_materialized_view(stub_redshift_dialect):
     expected_result = "DROP MATERIALIZED VIEW test_view"
     view = dialect.DropMaterializedView("test_view")
-    assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_drop_materialized_view_if_exists(stub_redshift_dialect):
     expected_result = "DROP MATERIALIZED VIEW IF EXISTS test_view"
     view = dialect.DropMaterializedView("test_view", if_exists=True)
-    assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_drop_materialized_view_cascade(stub_redshift_dialect):
     expected_result = "DROP MATERIALIZED VIEW test_view CASCADE"
     view = dialect.DropMaterializedView("test_view", cascade=True)
-    assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(view, stub_redshift_dialect))
 
 
 def test_refresh_materialized_view(stub_redshift_dialect):
     expected_result = "REFRESH MATERIALIZED VIEW test_view"
     view = dialect.RefreshMaterializedView("test_view")
-    assert clean(expected_result) == clean(compile_query(view, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(view, stub_redshift_dialect))

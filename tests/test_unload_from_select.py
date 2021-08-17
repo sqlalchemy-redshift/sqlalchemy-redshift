@@ -3,7 +3,7 @@ import sqlalchemy as sa
 
 from sqlalchemy_redshift import dialect
 
-from tests.rs_sqla_test_utils.utils import clean, compile_query
+from rs_sqla_test_utils.utils import clean, compile_query
 
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
@@ -42,7 +42,8 @@ def test_basic_unload_case(stub_redshift_dialect):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_iam_role(stub_redshift_dialect):
@@ -68,7 +69,8 @@ def test_iam_role(stub_redshift_dialect):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_iam_role_partition(stub_redshift_dialect):
@@ -97,7 +99,8 @@ def test_iam_role_partition(stub_redshift_dialect):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_iam_role_partition_validation():
@@ -139,7 +142,8 @@ def test_iam_role_arns_list(stub_redshift_dialect):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_iam_role_arns_single(stub_redshift_dialect):
@@ -160,7 +164,8 @@ def test_iam_role_arns_single(stub_redshift_dialect):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_all_redshift_options(stub_redshift_dialect):
@@ -203,7 +208,8 @@ def test_all_redshift_options(stub_redshift_dialect):
         MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_all_redshift_options_with_header(stub_redshift_dialect):
@@ -246,7 +252,8 @@ def test_all_redshift_options_with_header(stub_redshift_dialect):
         MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_csv_format__basic(stub_redshift_dialect):
@@ -267,7 +274,8 @@ def test_csv_format__basic(stub_redshift_dialect):
             FORMAT AS CSV
         """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 @pytest.mark.parametrize('delimiter,fixed_width', (
@@ -275,7 +283,9 @@ def test_csv_format__basic(stub_redshift_dialect):
     (None, 'id:8,name:32'),
     (';', 'id:8,name:32'),
 ))
-def test_csv_format__bad_options_crash(delimiter, fixed_width, stub_redshift_dialect):
+def test_csv_format__bad_options_crash(
+        delimiter, fixed_width, stub_redshift_dialect
+):
     """Test that UnloadFromSelect crashes if you try to use DELIMITER and/or
     FIXEDWIDTH with the CSV format.
     """
@@ -310,7 +320,8 @@ def test_parquet_format__basic(stub_redshift_dialect):
         FORMAT AS PARQUET
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 @pytest.mark.parametrize('kwargs', (

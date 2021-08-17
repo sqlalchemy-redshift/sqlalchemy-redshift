@@ -1,5 +1,5 @@
 from sqlalchemy_redshift import dialect
-from tests.rs_sqla_test_utils.utils import clean, compile_query
+from rs_sqla_test_utils.utils import clean, compile_query
 
 # These are fake credentials for the tests.
 ACCESS_KEY_ID = 'IO1IWSZL5YRFM3BEW256'
@@ -29,7 +29,8 @@ def test_basic(stub_redshift_dialect):
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY)
-    assert clean(expected_result) == clean(compile_query(cmd, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))
 
 
 def test_or_replace(stub_redshift_dialect):
@@ -46,7 +47,8 @@ def test_or_replace(stub_redshift_dialect):
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, replace=True)
-    assert clean(expected_result) == clean(compile_query(cmd, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))
 
 
 def test_region(stub_redshift_dialect):
@@ -65,7 +67,8 @@ def test_region(stub_redshift_dialect):
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, region=region)
-    assert clean(expected_result) == clean(compile_query(cmd, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))
 
 
 def test_everything(stub_redshift_dialect):
@@ -84,4 +87,5 @@ def test_everything(stub_redshift_dialect):
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, replace=True, region=region)
-    assert clean(expected_result) == clean(compile_query(cmd, stub_redshift_dialect))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))

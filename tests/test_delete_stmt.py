@@ -34,7 +34,7 @@ This same query needs to be written like this in Redshift:
 import sqlalchemy as sa
 from packaging.version import Version
 
-from tests.rs_sqla_test_utils.utils import clean, compile_query
+from rs_sqla_test_utils.utils import clean, compile_query
 
 sa_version = Version(sa.__version__)
 
@@ -102,7 +102,8 @@ hammy_spam = sa.Table(
 
 def test_delete_stmt_nowhereclause(stub_redshift_dialect):
     del_stmt = sa.delete(customers)
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == 'DELETE FROM customers'
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        'DELETE FROM customers'
 
 
 def test_delete_stmt_simplewhereclause1(stub_redshift_dialect):
@@ -112,7 +113,8 @@ def test_delete_stmt_simplewhereclause1(stub_redshift_dialect):
     expected = """
         DELETE FROM customers
         WHERE customers.email = 'test@test.test'"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_simplewhereclause2(stub_redshift_dialect):
@@ -127,7 +129,8 @@ def test_delete_stmt_simplewhereclause2(stub_redshift_dialect):
         expected = """
             DELETE FROM customers
             WHERE customers.email LIKE '%%' || 'test.com'"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_joinedwhereclause1(stub_redshift_dialect):
@@ -138,7 +141,8 @@ def test_delete_stmt_joinedwhereclause1(stub_redshift_dialect):
         DELETE FROM orders
         USING customers
         WHERE orders.customer_id = customers.id"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_joinedwhereclause2(stub_redshift_dialect):
@@ -161,7 +165,8 @@ def test_delete_stmt_joinedwhereclause2(stub_redshift_dialect):
       AND (customers.email LIKE '%%' || 'test.com')
       AND items.name = 'test product'"""
 
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
@@ -187,7 +192,8 @@ def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
       WHERE (customers.email LIKE '%%' || 'test.com'))
       AND orders.id = items.order_id
       AND items.name = 'test product'"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_subquery(stub_redshift_dialect):
@@ -206,7 +212,8 @@ def test_delete_stmt_subquery(stub_redshift_dialect):
         (SELECT customers.id
         FROM customers
         WHERE (customers.email LIKE '%%' || 'test.com'))"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_on_subquerycomma(stub_redshift_dialect):
@@ -224,7 +231,8 @@ def test_delete_stmt_on_subquerycomma(stub_redshift_dialect):
         WHERE ham.id IN
         (SELECT "ham, spam".ham_id
         FROM "ham, spam")"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_on_comma(stub_redshift_dialect):
@@ -232,7 +240,8 @@ def test_delete_on_comma(stub_redshift_dialect):
     expected = """
         DELETE FROM ham USING "ham, spam"
         WHERE ham.id = "ham, spam".ham_id"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_on_alias(stub_redshift_dialect):
@@ -244,7 +253,8 @@ def test_delete_stmt_on_alias(stub_redshift_dialect):
         DELETE FROM products
         USING products AS products_1
         WHERE products.parent_id = products_1.id"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
 
 
 def test_delete_stmt_with_comma_subquery_alias_join(stub_redshift_dialect):
@@ -280,4 +290,5 @@ def test_delete_stmt_with_comma_subquery_alias_join(stub_redshift_dialect):
         AND products.parent_id = products_1.id
         AND products_1.id != "ham, spam".ham_id"""
 
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
+        clean(expected)
