@@ -208,8 +208,8 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
         else:
             return self.schema + "." + self.name
 
-    @classmethod
-    def _unquote(cls, part):
+    @staticmethod
+    def _unquote(part):
         if (
                 part is not None and part.startswith('"') and
                 part.endswith('"')
