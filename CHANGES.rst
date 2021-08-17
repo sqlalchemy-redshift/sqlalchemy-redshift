@@ -1,6 +1,7 @@
 0.8.5 (unreleased)
 ------------------
-
+- Support TIMETZ datatype
+  (`Pull #229 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/229>`_)
 - Fix RelationKey unquoted issue
   (`Pull #228 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/228>`_)
 
