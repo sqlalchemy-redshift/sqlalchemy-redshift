@@ -1,3 +1,4 @@
+import pytest
 import sqlalchemy_redshift.dialect
 import sqlalchemy
 
@@ -32,11 +33,53 @@ def test_defined_types():
     assert sqlalchemy_redshift.dialect.TIMESTAMPTZ \
         is not sqlalchemy.sql.sqltypes.TIMESTAMP
 
+    assert sqlalchemy_redshift.dialect.TIMETZ \
+        is not sqlalchemy.sql.sqltypes.TIME
 
-def test_custom_type():
-    timestamptz = sqlalchemy_redshift.dialect.TIMESTAMPTZ()
-    assert isinstance(timestamptz, sqlalchemy.sql.sqltypes.TIMESTAMP)
+custom_type_inheritance = [
+    (
+        sqlalchemy_redshift.dialect.TIMESTAMP,
+        sqlalchemy.sql.sqltypes.TIMESTAMP
+    ),
+    (
+        sqlalchemy_redshift.dialect.TIMETZ,
+        sqlalchemy.sql.sqltypes.TIME
+    ),
+]
 
+
+@pytest.mark.parametrize("custom_type, super_type", custom_type_inheritance)
+def test_custom_types_extend_super_type(custom_type, super_type):
+    custom_type_inst = custom_type()
+    assert isinstance(custom_type_inst, super_type)
+
+
+column_and_ddl = [
+    (
+        sqlalchemy_redshift.dialect.TIMESTAMPTZ,
+        (
+            u"\nCREATE TABLE t1 ("
+            u"\n\tid INTEGER NOT NULL, "
+            u"\n\tname VARCHAR, "
+            u"\n\ttest_col TIMESTAMPTZ, "
+            u"\n\tPRIMARY KEY (id)\n)\n\n"
+        )
+    ),
+    (
+        sqlalchemy_redshift.dialect.TIMETZ,
+        (
+            u"\nCREATE TABLE t1 ("
+            u"\n\tid INTEGER NOT NULL, "
+            u"\n\tname VARCHAR, "
+            u"\n\ttest_col TIMETZ, "
+            u"\n\tPRIMARY KEY (id)\n)\n\n"
+        )
+    ),
+]
+
+
+@pytest.mark.parametrize("custom_datatype, expected", column_and_ddl)
+def test_custom_types_ddl_generation(custom_datatype, expected):
     compiler = sqlalchemy_redshift.dialect.RedshiftDDLCompiler(
         sqlalchemy_redshift.dialect.RedshiftDialect(), None
     )
@@ -45,18 +88,9 @@ def test_custom_type():
         sqlalchemy.MetaData(),
         sqlalchemy.Column('id', sqlalchemy.INTEGER, primary_key=True),
         sqlalchemy.Column('name', sqlalchemy.String),
-        sqlalchemy.Column(
-            'created_at', sqlalchemy_redshift.dialect.TIMESTAMPTZ
-        )
+        sqlalchemy.Column('test_col', custom_datatype)
     )
 
     create_table = sqlalchemy.schema.CreateTable(table)
     actual = compiler.process(create_table)
-    expected = (
-        u"\nCREATE TABLE t1 ("
-        u"\n\tid INTEGER NOT NULL, "
-        u"\n\tname VARCHAR, "
-        u"\n\tcreated_at TIMESTAMPTZ, "
-        u"\n\tPRIMARY KEY (id)\n)\n\n"
-    )
     assert expected == actual
