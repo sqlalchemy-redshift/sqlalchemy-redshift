@@ -79,7 +79,9 @@ column_and_ddl = [
 
 
 @pytest.mark.parametrize("custom_datatype, expected", column_and_ddl)
-def test_custom_types_ddl_generation(custom_datatype, expected):
+def test_custom_types_ddl_generation(
+        custom_datatype, expected, stub_redshift_dialect
+):
     compiler = sqlalchemy_redshift.dialect.RedshiftDDLCompiler(
         stub_redshift_dialect, None
     )
