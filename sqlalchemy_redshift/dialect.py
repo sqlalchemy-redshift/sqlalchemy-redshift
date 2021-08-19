@@ -1,31 +1,46 @@
 import re
 from collections import defaultdict, namedtuple
 
-from packaging.version import Version
 import pkg_resources
 import sqlalchemy as sa
+from packaging.version import Version
 from sqlalchemy import inspect
+from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 from sqlalchemy.dialects.postgresql.base import (
-    PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
+    PGCompiler,
+    PGDDLCompiler,
+    PGIdentifierPreparer,
+    PGTypeCompiler,
 )
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import (
-    BinaryExpression, BooleanClauseList, Delete
-)
+from sqlalchemy.sql.expression import BinaryExpression, BooleanClauseList, Delete
 from sqlalchemy.types import (
-    VARCHAR, NullType, SMALLINT, INTEGER, BIGINT,
-    DECIMAL, REAL, BOOLEAN, CHAR, DATE, TIMESTAMP)
-from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
+    BIGINT,
+    BOOLEAN,
+    CHAR,
+    DATE,
+    DECIMAL,
+    INTEGER,
+    REAL,
+    SMALLINT,
+    TIMESTAMP,
+    VARCHAR,
+    NullType,
+)
 
 from .commands import (
-    CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
-    CreateLibraryCommand, AlterTableAppendCommand, RefreshMaterializedView
+    AlterTableAppendCommand,
+    Compression,
+    CopyCommand,
+    CreateLibraryCommand,
+    Encoding,
+    Format,
+    RefreshMaterializedView,
+    UnloadFromSelect,
 )
-from .ddl import (
-    CreateMaterializedView, DropMaterializedView, get_table_attributes
-)
+from .ddl import CreateMaterializedView, DropMaterializedView, get_table_attributes
 
 sa_version = Version(sa.__version__)
 
@@ -35,46 +50,54 @@ except ImportError:
     pass
 else:
     from alembic.ddl import postgresql
-
     from alembic.ddl.base import RenameTable
-    compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
 
-    if Version(alembic.__version__) >= Version('1.0.6'):
+    compiles(RenameTable, "redshift")(postgresql.visit_rename_table)
+
+    if Version(alembic.__version__) >= Version("1.0.6"):
         from alembic.ddl.base import ColumnComment
-        compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
+
+        compiles(ColumnComment, "redshift")(postgresql.visit_column_comment)
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
-        __dialect__ = 'redshift'
+        __dialect__ = "redshift"
+
 
 # "Each dialect provides the full set of typenames supported by that backend
 # with its __all__ collection
 # https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
 __all__ = (
-    'SMALLINT',
-    'INTEGER',
-    'BIGINT',
-    'DECIMAL',
-    'REAL',
-    'BOOLEAN',
-    'CHAR',
-    'DATE',
-    'TIMESTAMP',
-    'VARCHAR',
-    'DOUBLE_PRECISION',
-    'TIMESTAMPTZ',
-    'TIMETZ',
-
-    'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
-    'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
-    'RefreshMaterializedView',
-
-    'CreateMaterializedView', 'DropMaterializedView'
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "DECIMAL",
+    "REAL",
+    "BOOLEAN",
+    "CHAR",
+    "DATE",
+    "TIMESTAMP",
+    "VARCHAR",
+    "DOUBLE_PRECISION",
+    "TIMESTAMPTZ",
+    "TIMETZ",
+    "CopyCommand",
+    "UnloadFromSelect",
+    "RedshiftDialect",
+    "Compression",
+    "Encoding",
+    "Format",
+    "CreateLibraryCommand",
+    "AlterTableAppendCommand",
+    "RefreshMaterializedView",
+    "CreateMaterializedView",
+    "DropMaterializedView",
 )
 
 
 # Regex for parsing and identity constraint out of adsrc, e.g.:
 #   "identity"(445178, 0, '1,1'::text)
-IDENTITY_RE = re.compile(r"""
+IDENTITY_RE = re.compile(
+    r"""
     "identity" \(
       (?P<current>-?\d+)
       ,\s
@@ -83,20 +106,26 @@ IDENTITY_RE = re.compile(r"""
       '(?P<seed>-?\d+),(?P<step>-?\d+)'
       .*
     \)
-""", re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
 # Regex for SQL identifiers (valid table and column names)
-SQL_IDENTIFIER_RE = re.compile(r"""
+SQL_IDENTIFIER_RE = re.compile(
+    r"""
    [_a-zA-Z][\w$]*  # SQL standard identifier
    |                # or
    (?:"[^"]+")+     # SQL delimited (quoted) identifier
-""", re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
 # Regex for foreign key constraints, e.g.:
 #   FOREIGN KEY(col1) REFERENCES othertable (col2)
 # See https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
 # for a definition of valid SQL identifiers.
-FOREIGN_KEY_RE = re.compile(r"""
+FOREIGN_KEY_RE = re.compile(
+    r"""
   ^FOREIGN\ KEY \s* \(   # FOREIGN KEY, arbitrary whitespace, literal '('
     (?P<columns>         # Start a group to capture the referring columns
       (?:                # Start a non-capturing group
@@ -120,11 +149,14 @@ FOREIGN_KEY_RE = re.compile(r"""
       )+                 # Close the non-capturing group; require at least one
     )                    # Close the 'columns' group
   \s* \)                 # Arbitrary whitespace and literal ')'
-""", re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
 # Regex for primary key constraints, e.g.:
 #   PRIMARY KEY (col1, col2)
-PRIMARY_KEY_RE = re.compile(r"""
+PRIMARY_KEY_RE = re.compile(
+    r"""
   ^PRIMARY \s* KEY \s* \(  # FOREIGN KEY, arbitrary whitespace, literal '('
     (?P<columns>         # Start a group to capture column names
       (?:
@@ -136,37 +168,168 @@ PRIMARY_KEY_RE = re.compile(r"""
       )+                  # Close the non-capturing group; require at least one
     )
   \s* \) \s*                # Arbitrary whitespace and literal ')'
-""", re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
 # Reserved words as extracted from Redshift docs.
 # See pull_reserved_words.sh at the top level of this repository
 # for the code used to generate this set.
-RESERVED_WORDS = set([
-    "aes128", "aes256", "all", "allowoverwrite", "analyse", "analyze",
-    "and", "any", "array", "as", "asc", "authorization", "az64",
-    "backup", "between", "binary", "blanksasnull", "both", "bytedict",
-    "bzip2", "case", "cast", "check", "collate", "column", "constraint",
-    "create", "credentials", "cross", "current_date", "current_time",
-    "current_timestamp", "current_user", "current_user_id", "default",
-    "deferrable", "deflate", "defrag", "delta", "delta32k", "desc",
-    "disable", "distinct", "do", "else", "emptyasnull", "enable",
-    "encode", "encrypt", "encryption", "end", "except", "explicit",
-    "false", "for", "foreign", "freeze", "from", "full", "globaldict256",
-    "globaldict64k", "grant", "group", "gzip", "having", "identity",
-    "ignore", "ilike", "in", "initially", "inner", "intersect", "into",
-    "is", "isnull", "join", "language", "leading", "left", "like",
-    "limit", "localtime", "localtimestamp", "lun", "luns", "lzo", "lzop",
-    "minus", "mostly13", "mostly32", "mostly8", "natural", "new", "not",
-    "notnull", "null", "nulls", "off", "offline", "offset", "oid", "old",
-    "on", "only", "open", "or", "order", "outer", "overlaps", "parallel",
-    "partition", "percent", "permissions", "placing", "primary", "raw",
-    "readratio", "recover", "references", "respect", "rejectlog",
-    "resort", "restore", "right", "select", "session_user", "similar",
-    "snapshot", "some", "sysdate", "system", "table", "tag", "tdes",
-    "text255", "text32k", "then", "timestamp", "to", "top", "trailing",
-    "true", "truncatecolumns", "union", "unique", "user", "using",
-    "verbose", "wallet", "when", "where", "with", "without",
-])
+RESERVED_WORDS = {
+    "aes128",
+    "aes256",
+    "all",
+    "allowoverwrite",
+    "analyse",
+    "analyze",
+    "and",
+    "any",
+    "array",
+    "as",
+    "asc",
+    "authorization",
+    "az64",
+    "backup",
+    "between",
+    "binary",
+    "blanksasnull",
+    "both",
+    "bytedict",
+    "bzip2",
+    "case",
+    "cast",
+    "check",
+    "collate",
+    "column",
+    "constraint",
+    "create",
+    "credentials",
+    "cross",
+    "current_date",
+    "current_time",
+    "current_timestamp",
+    "current_user",
+    "current_user_id",
+    "default",
+    "deferrable",
+    "deflate",
+    "defrag",
+    "delta",
+    "delta32k",
+    "desc",
+    "disable",
+    "distinct",
+    "do",
+    "else",
+    "emptyasnull",
+    "enable",
+    "encode",
+    "encrypt",
+    "encryption",
+    "end",
+    "except",
+    "explicit",
+    "false",
+    "for",
+    "foreign",
+    "freeze",
+    "from",
+    "full",
+    "globaldict256",
+    "globaldict64k",
+    "grant",
+    "group",
+    "gzip",
+    "having",
+    "identity",
+    "ignore",
+    "ilike",
+    "in",
+    "initially",
+    "inner",
+    "intersect",
+    "into",
+    "is",
+    "isnull",
+    "join",
+    "language",
+    "leading",
+    "left",
+    "like",
+    "limit",
+    "localtime",
+    "localtimestamp",
+    "lun",
+    "luns",
+    "lzo",
+    "lzop",
+    "minus",
+    "mostly13",
+    "mostly32",
+    "mostly8",
+    "natural",
+    "new",
+    "not",
+    "notnull",
+    "null",
+    "nulls",
+    "off",
+    "offline",
+    "offset",
+    "oid",
+    "old",
+    "on",
+    "only",
+    "open",
+    "or",
+    "order",
+    "outer",
+    "overlaps",
+    "parallel",
+    "partition",
+    "percent",
+    "permissions",
+    "placing",
+    "primary",
+    "raw",
+    "readratio",
+    "recover",
+    "references",
+    "respect",
+    "rejectlog",
+    "resort",
+    "restore",
+    "right",
+    "select",
+    "session_user",
+    "similar",
+    "snapshot",
+    "some",
+    "sysdate",
+    "system",
+    "table",
+    "tag",
+    "tdes",
+    "text255",
+    "text32k",
+    "then",
+    "timestamp",
+    "to",
+    "top",
+    "trailing",
+    "true",
+    "truncatecolumns",
+    "union",
+    "unique",
+    "user",
+    "using",
+    "verbose",
+    "wallet",
+    "when",
+    "where",
+    "with",
+    "without",
+}
 
 
 class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
@@ -181,10 +344,10 @@ class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
     https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
     """
 
-    __visit_name__ = 'TIMESTAMPTZ'
+    __visit_name__ = "TIMESTAMPTZ"
 
     def __init__(self):
-        super(TIMESTAMPTZ, self).__init__(timezone=True)
+        super().__init__(timezone=True)
 
 
 class TIMETZ(sa.dialects.postgresql.TIME):
@@ -199,16 +362,17 @@ class TIMETZ(sa.dialects.postgresql.TIME):
     https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
     """
 
-    __visit_name__ = 'TIMETZ'
+    __visit_name__ = "TIMETZ"
 
     def __init__(self):
-        super(TIMETZ, self).__init__(timezone=True)
+        super().__init__(timezone=True)
 
 
-class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
+class RelationKey(namedtuple("RelationKey", ("name", "schema"))):
     """
     Structured tuple of table/view name and schema name.
     """
+
     __slots__ = ()
 
     def __new__(cls, name, schema=None, connection=None):
@@ -219,7 +383,7 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
             raise ValueError("Must specify either schema or connection")
         if schema is None:
             schema = inspect(connection).default_schema_name
-        return super(RelationKey, cls).__new__(cls, name, schema)
+        return super().__new__(cls, name, schema)
 
     def __str__(self):
         if self.schema is None:
@@ -229,10 +393,7 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
 
     @staticmethod
     def _unquote(part):
-        if (
-                part is not None and part.startswith('"') and
-                part.endswith('"')
-        ):
+        if part is not None and part.startswith('"') and part.endswith('"'):
             return part[1:-1]
         return part
 
@@ -245,13 +406,11 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
         In particular, this happens for tables named as a keyword.
         """
         return RelationKey(
-            RelationKey._unquote(self.name),
-            RelationKey._unquote(self.schema)
+            RelationKey._unquote(self.name), RelationKey._unquote(self.schema)
         )
 
 
 class RedshiftCompiler(PGCompiler):
-
     def visit_now_func(self, fn, **kw):
         return "SYSDATE"
 
@@ -367,7 +526,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     def post_create_table(self, table):
         kwargs = ["diststyle", "distkey", "sortkey", "interleaved_sortkey"]
-        info = table.dialect_options['redshift']
+        info = table.dialect_options["redshift"]
         info = {key: info.get(key) for key in kwargs}
         return get_table_attributes(self.preparer, **info)
 
@@ -393,33 +552,32 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     def _fetch_redshift_column_attributes(self, column):
         text = ""
-        if sa_version >= Version('1.3.0'):
-            info = column.dialect_options['redshift']
+        if sa_version >= Version("1.3.0"):
+            info = column.dialect_options["redshift"]
         else:
-            if not hasattr(column, 'info'):
+            if not hasattr(column, "info"):
                 return text
             info = column.info
 
-        identity = info.get('identity')
+        identity = info.get("identity")
         if identity:
-            text += " IDENTITY({0},{1})".format(identity[0], identity[1])
+            text += f" IDENTITY({identity[0]},{identity[1]})"
 
-        encode = info.get('encode')
+        encode = info.get("encode")
         if encode:
             text += " ENCODE " + encode
 
-        distkey = info.get('distkey')
+        distkey = info.get("distkey")
         if distkey:
             text += " DISTKEY"
 
-        sortkey = info.get('sortkey')
+        sortkey = info.get("sortkey")
         if sortkey:
             text += " SORTKEY"
         return text
 
 
 class RedshiftTypeCompiler(PGTypeCompiler):
-
     def visit_TIMESTAMPTZ(self, type_, **kw):
         return "TIMESTAMPTZ"
 
@@ -440,7 +598,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     :class:`~sqlalchemy.engine.Inspector`.
     """
 
-    name = 'redshift'
+    name = "redshift"
     max_identifier_length = 127
 
     statement_compiler = RedshiftCompiler
@@ -448,28 +606,30 @@ class RedshiftDialect(PGDialect_psycopg2):
     preparer = RedshiftIdentifierPreparer
     type_compiler = RedshiftTypeCompiler
     construct_arguments = [
-        (sa.schema.Index, {
-            "using": False,
-            "where": None,
-            "ops": {}
-        }),
-        (sa.schema.Table, {
-            "ignore_search_path": False,
-            "diststyle": None,
-            "distkey": None,
-            "sortkey": None,
-            "interleaved_sortkey": None,
-        }),
-        (sa.schema.Column, {
-            "encode": None,
-            "distkey": None,
-            "sortkey": None,
-            "identity": None,
-        }),
+        (sa.schema.Index, {"using": False, "where": None, "ops": {}}),
+        (
+            sa.schema.Table,
+            {
+                "ignore_search_path": False,
+                "diststyle": None,
+                "distkey": None,
+                "sortkey": None,
+                "interleaved_sortkey": None,
+            },
+        ),
+        (
+            sa.schema.Column,
+            {
+                "encode": None,
+                "distkey": None,
+                "sortkey": None,
+                "identity": None,
+            },
+        ),
     ]
 
     def __init__(self, *args, **kw):
-        super(RedshiftDialect, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         # Cache domains, as these will be static;
         # Redshift does not support user-created domains.
         self._domains = None
@@ -489,10 +649,16 @@ class RedshiftDialect(PGDialect_psycopg2):
         columns = []
         for col in cols:
             column_info = self._get_column_info(
-                name=col.name, format_type=col.format_type,
-                default=col.default, notnull=col.notnull, domains=domains,
-                enums=[], schema=col.schema, encode=col.encode,
-                comment=col.comment)
+                name=col.name,
+                format_type=col.format_type,
+                default=col.default,
+                notnull=col.notnull,
+                domains=domains,
+                enums=[],
+                schema=col.schema,
+                encode=col.encode,
+                comment=col.comment,
+            )
             columns.append(column_info)
         return columns
 
@@ -504,18 +670,19 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
-        constraints = self._get_redshift_constraints(connection, table_name,
-                                                     schema, **kw)
-        pk_constraints = [c for c in constraints if c.contype == 'p']
+        constraints = self._get_redshift_constraints(
+            connection, table_name, schema, **kw
+        )
+        pk_constraints = [c for c in constraints if c.contype == "p"]
         if not pk_constraints:
-            return {'constrained_columns': [], 'name': ''}
+            return {"constrained_columns": [], "name": ""}
         pk_constraint = pk_constraints[0]
         m = PRIMARY_KEY_RE.match(pk_constraint.condef)
-        colstring = m.group('columns')
+        colstring = m.group("columns")
         constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
         return {
-            'constrained_columns': constrained_columns,
-            'name': pk_constraint.conname,
+            "constrained_columns": constrained_columns,
+            "name": pk_constraint.conname,
         }
 
     @reflection.cache
@@ -526,28 +693,29 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
-        constraints = self._get_redshift_constraints(connection, table_name,
-                                                     schema, **kw)
-        fk_constraints = [c for c in constraints if c.contype == 'f']
+        constraints = self._get_redshift_constraints(
+            connection, table_name, schema, **kw
+        )
+        fk_constraints = [c for c in constraints if c.contype == "f"]
         uniques = defaultdict(lambda: defaultdict(dict))
         for con in fk_constraints:
             uniques[con.conname]["key"] = con.conkey
             uniques[con.conname]["condef"] = con.condef
         fkeys = []
         for conname, attrs in uniques.items():
-            m = FOREIGN_KEY_RE.match(attrs['condef'])
-            colstring = m.group('referred_columns')
+            m = FOREIGN_KEY_RE.match(attrs["condef"])
+            colstring = m.group("referred_columns")
             referred_columns = SQL_IDENTIFIER_RE.findall(colstring)
-            referred_table = m.group('referred_table')
-            referred_schema = m.group('referred_schema')
-            colstring = m.group('columns')
+            referred_table = m.group("referred_table")
+            referred_schema = m.group("referred_schema")
+            colstring = m.group("columns")
             constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
             fkey_d = {
-                'name': conname,
-                'constrained_columns': constrained_columns,
-                'referred_schema': referred_schema,
-                'referred_table': referred_table,
-                'referred_columns': referred_columns,
+                "name": conname,
+                "constrained_columns": constrained_columns,
+                "referred_schema": referred_schema,
+                "referred_table": referred_table,
+                "referred_columns": referred_columns,
             }
             fkeys.append(fkey_d)
         return fkeys
@@ -560,7 +728,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_table_names`.
         """
-        return self._get_table_or_view_names('r', connection, schema, **kw)
+        return self._get_table_or_view_names("r", connection, schema, **kw)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
@@ -570,7 +738,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
         """
-        return self._get_table_or_view_names('v', connection, schema, **kw)
+        return self._get_table_or_view_names("v", connection, schema, **kw)
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
@@ -597,25 +765,24 @@ class RedshiftDialect(PGDialect_psycopg2):
         return []
 
     @reflection.cache
-    def get_unique_constraints(self, connection, table_name,
-                               schema=None, **kw):
+    def get_unique_constraints(self, connection, table_name, schema=None, **kw):
         """
         Return information about unique constraints in `table_name`.
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_unique_constraints`.
         """
-        constraints = self._get_redshift_constraints(connection,
-                                                     table_name, schema, **kw)
-        constraints = [c for c in constraints if c.contype == 'u']
+        constraints = self._get_redshift_constraints(
+            connection, table_name, schema, **kw
+        )
+        constraints = [c for c in constraints if c.contype == "u"]
         uniques = defaultdict(lambda: defaultdict(dict))
         for con in constraints:
             uniques[con.conname]["key"] = con.conkey
             uniques[con.conname]["cols"][con.attnum] = con.attname
 
         return [
-            {'name': name,
-             'column_names': [uc["cols"][i] for i in uc["key"]]}
+            {"name": name, "column_names": [uc["cols"][i] for i in uc["key"]]}
             for name, uc in uniques.items()
         ]
 
@@ -628,17 +795,16 @@ class RedshiftDialect(PGDialect_psycopg2):
         Overrides interface
         :meth:`~sqlalchemy.engine.Inspector.get_table_options`.
         """
+
         def keyfunc(column):
             num = int(column.sortkey)
             # If sortkey is interleaved, column numbers alternate
             # negative values, so take abs.
             return abs(num)
-        table = self._get_redshift_relation(connection, table_name,
-                                            schema, **kw)
-        columns = self._get_redshift_columns(connection, table_name,
-                                             schema, **kw)
-        sortkey_cols = sorted([col for col in columns if col.sortkey],
-                              key=keyfunc)
+
+        table = self._get_redshift_relation(connection, table_name, schema, **kw)
+        columns = self._get_redshift_columns(connection, table_name, schema, **kw)
+        sortkey_cols = sorted((col for col in columns if col.sortkey), key=keyfunc)
         interleaved = any([int(col.sortkey) < 0 for col in sortkey_cols])
         sortkey = tuple(col.name for col in sortkey_cols)
         interleaved_sortkey = None
@@ -648,10 +814,10 @@ class RedshiftDialect(PGDialect_psycopg2):
         distkeys = [col.name for col in columns if col.distkey]
         distkey = distkeys[0] if distkeys else None
         return {
-            'redshift_diststyle': table.diststyle,
-            'redshift_distkey': distkey,
-            'redshift_sortkey': sortkey,
-            'redshift_interleaved_sortkey': interleaved_sortkey,
+            "redshift_diststyle": table.diststyle,
+            "redshift_distkey": distkey,
+            "redshift_sortkey": sortkey,
+            "redshift_interleaved_sortkey": interleaved_sortkey,
         }
 
     def create_connect_args(self, *args, **kwargs):
@@ -662,15 +828,12 @@ class RedshiftDialect(PGDialect_psycopg2):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
         """
         default_args = {
-            'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                __name__,
-                'redshift-ca-bundle.crt'
+            "sslmode": "verify-full",
+            "sslrootcert": pkg_resources.resource_filename(
+                __name__, "redshift-ca-bundle.crt"
             ),
         }
-        cargs, cparams = super(RedshiftDialect, self).create_connect_args(
-            *args, **kwargs
-        )
+        cargs, cparams = super().create_connect_args(*args, **kwargs)
         default_args.update(cparams)
         return cargs, default_args
 
@@ -678,9 +841,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         default_schema = inspect(connection).default_schema_name
         if not schema:
             schema = default_schema
-        info_cache = kw.get('info_cache')
-        all_relations = self._get_all_relation_info(connection,
-                                                    info_cache=info_cache)
+        info_cache = kw.get("info_cache")
+        all_relations = self._get_all_relation_info(connection, info_cache=info_cache)
         relation_names = []
         for key, relation in all_relations.items():
             if key.schema == schema and relation.relkind == relkind:
@@ -689,35 +851,30 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     def _get_column_info(self, *args, **kwargs):
         kw = kwargs.copy()
-        encode = kw.pop('encode', None)
-        if sa_version >= Version('1.3.16'):
+        encode = kw.pop("encode", None)
+        if sa_version >= Version("1.3.16"):
             # SQLAlchemy 1.3.16 introduced generated columns,
             # not supported in redshift
-            kw['generated'] = ''
+            kw["generated"] = ""
 
-        if sa_version < Version('1.4.0') and 'identity' in kw:
-            del kw['identity']
-        elif sa_version >= Version('1.4.0') and 'identity' not in kw:
-            kw['identity'] = None
+        if sa_version < Version("1.4.0") and "identity" in kw:
+            del kw["identity"]
+        elif sa_version >= Version("1.4.0") and "identity" not in kw:
+            kw["identity"] = None
 
-        column_info = super(RedshiftDialect, self)._get_column_info(
-            *args,
-            **kw
-        )
-        if isinstance(column_info['type'], VARCHAR):
-            if column_info['type'].length is None:
-                column_info['type'] = NullType()
-        if 'info' not in column_info:
-            column_info['info'] = {}
-        if encode and encode != 'none':
-            column_info['info']['encode'] = encode
+        column_info = super()._get_column_info(*args, **kw)
+        if isinstance(column_info["type"], VARCHAR):
+            if column_info["type"].length is None:
+                column_info["type"] = NullType()
+        if "info" not in column_info:
+            column_info["info"] = {}
+        if encode and encode != "none":
+            column_info["info"]["encode"] = encode
         return column_info
 
-    def _get_redshift_relation(self, connection, table_name,
-                               schema=None, **kw):
-        info_cache = kw.get('info_cache')
-        all_relations = self._get_all_relation_info(connection,
-                                                    info_cache=info_cache)
+    def _get_redshift_relation(self, connection, table_name, schema=None, **kw):
+        info_cache = kw.get("info_cache")
+        all_relations = self._get_all_relation_info(connection, info_cache=info_cache)
         key = RelationKey(table_name, schema, connection)
         if key not in all_relations.keys():
             key = key.unquoted()
@@ -727,22 +884,20 @@ class RedshiftDialect(PGDialect_psycopg2):
             raise sa.exc.NoSuchTableError(key)
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
-        info_cache = kw.get('info_cache')
+        info_cache = kw.get("info_cache")
         all_schema_columns = self._get_schema_column_info(
-            connection,
-            schema,
-            info_cache=info_cache
+            connection, schema, info_cache=info_cache
         )
         key = RelationKey(table_name, schema, connection)
         if key not in all_schema_columns.keys():
             key = key.unquoted()
         return all_schema_columns[key]
 
-    def _get_redshift_constraints(self, connection, table_name,
-                                  schema=None, **kw):
-        info_cache = kw.get('info_cache')
-        all_constraints = self._get_all_constraint_info(connection,
-                                                        info_cache=info_cache)
+    def _get_redshift_constraints(self, connection, table_name, schema=None, **kw):
+        info_cache = kw.get("info_cache")
+        all_constraints = self._get_all_constraint_info(
+            connection, info_cache=info_cache
+        )
         key = RelationKey(table_name, schema, connection)
         if key not in all_constraints.keys():
             key = key.unquoted()
@@ -750,7 +905,8 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     @reflection.cache
     def _get_all_relation_info(self, connection, **kw):
-        result = connection.execute("""
+        result = connection.execute(
+            """
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -771,7 +927,8 @@ class RedshiftDialect(PGDialect_psycopg2):
         WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
           AND n.nspname !~ '^pg_'
         ORDER BY c.relkind, n.oid, n.nspname;
-        """)
+        """
+        )
         relations = {}
         for rel in result:
             key = RelationKey(rel.relname, rel.schema, connection)
@@ -781,15 +938,12 @@ class RedshiftDialect(PGDialect_psycopg2):
     # We fetch column info an entire schema at a time to improve performance
     # when reflecting schema for multiple tables at once.
     @reflection.cache
-    def _get_schema_column_info(
-        self, connection, schema=None, **kw
-    ):
-        schema_clause = (
-            "AND schema = '{schema}'".format(schema=schema) if schema else ""
-        )
+    def _get_schema_column_info(self, connection, schema=None, **kw):
+        schema_clause = f"AND schema = '{schema}'" if schema else ""
         all_columns = defaultdict(list)
         with connection.connect() as cc:
-            result = cc.execute("""
+            result = cc.execute(
+                """
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -843,7 +997,9 @@ class RedshiftDialect(PGDialect_psycopg2):
               col_num int)
             WHERE 1 {schema_clause}
             ORDER BY "schema", "table_name", "attnum";
-            """.format(schema_clause=schema_clause)
+            """.format(
+                    schema_clause=schema_clause
+                )
             )
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
@@ -853,7 +1009,8 @@ class RedshiftDialect(PGDialect_psycopg2):
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
-        result = connection.execute("""
+        result = connection.execute(
+            """
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
@@ -874,7 +1031,8 @@ class RedshiftDialect(PGDialect_psycopg2):
           ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
         WHERE n.nspname !~ '^pg_'
         ORDER BY n.nspname, c.relname
-        """)
+        """
+        )
         all_constraints = defaultdict(list)
         for con in result:
             key = RelationKey(con.table_name, con.schema, connection)
@@ -892,13 +1050,12 @@ def gen_columns_from_children(root):
     if isinstance(root, (Delete, BinaryExpression, BooleanClauseList)):
         for child in root.get_children():
             yc = gen_columns_from_children(child)
-            for it in yc:
-                yield it
+            yield from yc
     elif isinstance(root, sa.Column):
         yield root
 
 
-@compiles(Delete, 'redshift')
+@compiles(Delete, "redshift")
 def visit_delete_stmt(element, compiler, **kwargs):
     """
     Adds redshift-dialect specific compilation rule for the
@@ -954,8 +1111,8 @@ def visit_delete_stmt(element, compiler, **kwargs):
     """
 
     # Set empty strings for the default where clause and using clause
-    whereclause = ''
-    usingclause = ''
+    whereclause = ""
+    usingclause = ""
 
     # determine if the delete query needs a ``USING`` injected
     # by inspecting the whereclause's children & their children...
@@ -966,15 +1123,15 @@ def visit_delete_stmt(element, compiler, **kwargs):
     #   which they first appear in the where clause.
     delete_stmt_table = compiler.process(element.table, asfrom=True, **kwargs)
 
-    if sa_version >= Version('1.4.0'):
+    if sa_version >= Version("1.4.0"):
         if element.whereclause is not None:
             clause = compiler.process(element.whereclause, **kwargs)
             if clause:
-                whereclause = ' WHERE {clause}'.format(clause=clause)
+                whereclause = f" WHERE {clause}"
     else:
         whereclause_tuple = element.get_children()
         if whereclause_tuple:
-            whereclause = ' WHERE {clause}'.format(
+            whereclause = " WHERE {clause}".format(
                 clause=compiler.process(*whereclause_tuple, **kwargs)
             )
 
@@ -983,15 +1140,11 @@ def visit_delete_stmt(element, compiler, **kwargs):
         whereclause_columns = gen_columns_from_children(element)
         for col in whereclause_columns:
             table = compiler.process(col.table, asfrom=True, **kwargs)
-            if table != delete_stmt_table and \
-                    table not in usingclause_tables:
+            if table != delete_stmt_table and table not in usingclause_tables:
                 usingclause_tables.append(table)
         if usingclause_tables:
-            usingclause = ' USING {clause}'.format(
-                clause=', '.join(usingclause_tables)
-            )
+            usingclause = " USING {clause}".format(clause=", ".join(usingclause_tables))
 
-    return 'DELETE FROM {table}{using}{where}'.format(
-        table=delete_stmt_table,
-        using=usingclause,
-        where=whereclause)
+    return "DELETE FROM {table}{using}{where}".format(
+        table=delete_stmt_table, using=usingclause, where=whereclause
+    )

@@ -1,16 +1,18 @@
 import pytest
-
-from sqlalchemy import Table, Integer, String, MetaData, Column, select
-from sqlalchemy_redshift import dialect
 from rs_sqla_test_utils.utils import clean, compile_query
+from sqlalchemy import Column, Integer, MetaData, String, Table, select
+
+from sqlalchemy_redshift import dialect
 
 
 @pytest.fixture
 def selectable():
-    table = Table('t1',
-                  MetaData(),
-                  Column('id', Integer, primary_key=True),
-                  Column('name', String))
+    table = Table(
+        "t1",
+        MetaData(),
+        Column("id", Integer, primary_key=True),
+        Column("name", String),
+    )
     return select([table.c.id, table.c.name], from_obj=table)
 
 
@@ -19,10 +21,7 @@ def test_basic_materialized_view(selectable):
     CREATE MATERIALIZED VIEW test_view
     AS SELECT t1.id, t1.name FROM t1
     """
-    view = dialect.CreateMaterializedView(
-        "test_view",
-        selectable
-    )
+    view = dialect.CreateMaterializedView("test_view", selectable)
     assert clean(expected_result) == clean(compile_query(view))
 
 
@@ -32,11 +31,7 @@ def test_no_backup_materialized_view(selectable):
     BACKUP NO
     AS SELECT t1.id, t1.name FROM t1
     """
-    view = dialect.CreateMaterializedView(
-        "test_view",
-        selectable,
-        backup=False
-    )
+    view = dialect.CreateMaterializedView("test_view", selectable, backup=False)
     assert clean(expected_result) == clean(compile_query(view))
 
 
@@ -46,11 +41,7 @@ def test_diststyle_materialized_view(selectable):
     DISTSTYLE ALL
     AS SELECT t1.id, t1.name FROM t1
     """
-    view = dialect.CreateMaterializedView(
-        "test_view",
-        selectable,
-        diststyle='ALL'
-    )
+    view = dialect.CreateMaterializedView("test_view", selectable, diststyle="ALL")
     assert clean(expected_result) == clean(compile_query(view))
 
 
@@ -61,11 +52,7 @@ def test_distkey_materialized_view(selectable):
     AS SELECT t1.id, t1.name FROM t1
     """
     for key in ("id", selectable.c.id):
-        view = dialect.CreateMaterializedView(
-            "test_view",
-            selectable,
-            distkey=key
-        )
+        view = dialect.CreateMaterializedView("test_view", selectable, distkey=key)
         assert clean(expected_result) == clean(compile_query(view))
 
 
@@ -76,11 +63,7 @@ def test_sortkey_materialized_view(selectable):
     AS SELECT t1.id, t1.name FROM t1
     """
     for key in ("id", selectable.c.id):
-        view = dialect.CreateMaterializedView(
-            "test_view",
-            selectable,
-            sortkey=key
-        )
+        view = dialect.CreateMaterializedView("test_view", selectable, sortkey=key)
         assert clean(expected_result) == clean(compile_query(view))
 
 
@@ -92,9 +75,7 @@ def test_interleaved_sortkey_materialized_view(selectable):
     """
     for key in ("id", selectable.c.id):
         view = dialect.CreateMaterializedView(
-            "test_view",
-            selectable,
-            interleaved_sortkey=key
+            "test_view", selectable, interleaved_sortkey=key
         )
         assert clean(expected_result) == clean(compile_query(view))
 
