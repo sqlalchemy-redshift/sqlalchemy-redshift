@@ -1,8 +1,8 @@
 from unittest import TestCase
 
-from packaging.version import Version
 import sqlalchemy as sa
-from sqlalchemy.types import NullType, VARCHAR
+from packaging.version import Version
+from sqlalchemy.types import VARCHAR, NullType
 
 from sqlalchemy_redshift.dialect import RedshiftDialect
 
@@ -17,29 +17,29 @@ class TestColumnReflection(TestCase):
         dialect = RedshiftDialect()
 
         null_info = dialect._get_column_info(
-            name='Null Column',
-            format_type='character varying',
+            name="Null Column",
+            format_type="character varying",
             default=None,
             notnull=False,
             domains={},
             enums=[],
-            schema='default',
-            encode='',
-            comment='test column',
-            identity=None
+            schema="default",
+            encode="",
+            comment="test column",
+            identity=None,
         )
-        assert isinstance(null_info['type'], NullType)
+        assert isinstance(null_info["type"], NullType)
 
         varchar_info = dialect._get_column_info(
-            name='character column',
-            format_type='character varying(30)',
+            name="character column",
+            format_type="character varying(30)",
             default=None,
             notnull=False,
             domains={},
             enums=[],
-            schema='default',
-            encode='',
-            comment='test column',
-            identity=None
+            schema="default",
+            encode="",
+            comment="test column",
+            identity=None,
         )
-        assert isinstance(varchar_info['type'], VARCHAR)
+        assert isinstance(varchar_info["type"], VARCHAR)

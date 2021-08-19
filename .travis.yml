@@ -2,8 +2,6 @@ dist: xenial
 sudo: false
 language: python
 python:
-  - "2.7"
-  - "3.5"
   - "3.6"
   - "3.7"
   - "3.8"
@@ -15,7 +13,7 @@ env:
 
 matrix:
   include:
-    - python: "3.6"
+    - python: "3.9"
       env: TOXENV=lint
 
 install: pip install tox tox-travis

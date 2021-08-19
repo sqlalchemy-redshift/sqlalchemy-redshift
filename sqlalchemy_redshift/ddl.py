@@ -9,11 +9,9 @@ def _check_if_key_exists(key):
     return isinstance(key, sa.Column) or key
 
 
-def get_table_attributes(preparer,
-                         diststyle=None,
-                         distkey=None,
-                         sortkey=None,
-                         interleaved_sortkey=None):
+def get_table_attributes(
+    preparer, diststyle=None, distkey=None, sortkey=None, interleaved_sortkey=None
+):
     """
     Parse the table attributes into an acceptable string for Redshift,
     checking for valid combinations of distribution options.
@@ -58,24 +56,22 @@ def get_table_attributes(preparer,
     has_distkey = _check_if_key_exists(distkey)
     if diststyle:
         diststyle = diststyle.upper()
-        if diststyle not in ('EVEN', 'KEY', 'ALL'):
+        if diststyle not in ("EVEN", "KEY", "ALL"):
+            raise sa.exc.ArgumentError(f"diststyle {diststyle} is invalid")
+        if diststyle != "KEY" and has_distkey:
             raise sa.exc.ArgumentError(
-                u"diststyle {0} is invalid".format(diststyle)
+                "DISTSTYLE EVEN/ALL is not compatible with a DISTKEY."
             )
-        if diststyle != 'KEY' and has_distkey:
+        if diststyle == "KEY" and not has_distkey:
             raise sa.exc.ArgumentError(
-                u"DISTSTYLE EVEN/ALL is not compatible with a DISTKEY."
-            )
-        if diststyle == 'KEY' and not has_distkey:
-            raise sa.exc.ArgumentError(
-                u"DISTKEY specification is required for DISTSTYLE KEY"
+                "DISTKEY specification is required for DISTSTYLE KEY"
             )
         text += " DISTSTYLE " + diststyle
 
     if has_distkey:
         if isinstance(distkey, sa.Column):
             distkey = distkey.name
-        text += " DISTKEY ({0})".format(preparer.quote(distkey))
+        text += f" DISTKEY ({preparer.quote(distkey)})"
 
     has_sortkey = _check_if_key_exists(sortkey)
     has_interleaved = _check_if_key_exists(interleaved_sortkey)
@@ -89,13 +85,11 @@ def get_table_attributes(preparer,
         keys = sortkey if has_sortkey else interleaved_sortkey
         if isinstance(keys, (string_types, sa.Column)):
             keys = [keys]
-        keys = [key.name if isinstance(key, sa.Column) else key
-                for key in keys]
+        keys = [key.name if isinstance(key, sa.Column) else key for key in keys]
         if has_interleaved:
             text += " INTERLEAVED"
-        sortkey_string = ", ".join(preparer.quote(key)
-                                   for key in keys)
-        text += " SORTKEY ({0})".format(sortkey_string)
+        sortkey_string = ", ".join(preparer.quote(key) for key in keys)
+        text += f" SORTKEY ({sortkey_string})"
     return text
 
 
@@ -140,8 +134,17 @@ class CreateMaterializedView(DDLElement):
     The CreateMaterializedView is a DDLElement, so it can be executed via any
     execute() command, be it from an Engine, Session, or Connection.
     """
-    def __init__(self, name, selectable, backup=True, diststyle=None,
-                 distkey=None, sortkey=None, interleaved_sortkey=None):
+
+    def __init__(
+        self,
+        name,
+        selectable,
+        backup=True,
+        diststyle=None,
+        distkey=None,
+        sortkey=None,
+        interleaved_sortkey=None,
+    ):
         """
         Parameters
         ----------
@@ -192,21 +195,19 @@ def compile_create_materialized_view(element, compiler, **kw):
         diststyle=element.diststyle,
         distkey=element.distkey,
         sortkey=element.sortkey,
-        interleaved_sortkey=element.interleaved_sortkey
+        interleaved_sortkey=element.interleaved_sortkey,
     )
     # Defaults to yes, so omit default cas3
     backup = "" if element.backup else "BACKUP NO "
-    selectable = compiler.sql_compiler.process(element.selectable,
-                                               literal_binds=True)
+    selectable = compiler.sql_compiler.process(element.selectable, literal_binds=True)
     text = text.format(
         name=element.name,
         backup=backup,
         table_attributes=table_attributes,
-        selectable=selectable
+        selectable=selectable,
     )
     # Clean it up to have no leading spaces
-    text = "\n".join([line.strip() for line in text.split("\n")
-                      if line.strip()])
+    text = "\n".join([line.strip() for line in text.split("\n") if line.strip()])
     return text
 
 
@@ -233,6 +234,7 @@ class DropMaterializedView(DDLElement):
 
     This can be included in any execute() statement.
     """
+
     def __init__(self, name, if_exists=False, cascade=False):
         """
         Build the DropMaterializedView DDLElement.

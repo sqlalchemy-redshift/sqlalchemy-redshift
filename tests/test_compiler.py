@@ -1,4 +1,5 @@
 from sqlalchemy import func, select
+
 from sqlalchemy_redshift.dialect import RedshiftDialect
 
 

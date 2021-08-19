@@ -1,50 +1,38 @@
 import pytest
-import sqlalchemy_redshift.dialect
 import sqlalchemy
+
+import sqlalchemy_redshift.dialect
 
 
 def test_defined_types():
     # These types are the officially supported Redshift types as of 20191121
     # AWS Redshift Docs Reference:
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
-    assert sqlalchemy_redshift.dialect.VARCHAR \
-        is sqlalchemy.sql.sqltypes.VARCHAR
-    assert sqlalchemy_redshift.dialect.NullType \
-        is sqlalchemy.sql.sqltypes.NullType
-    assert sqlalchemy_redshift.dialect.SMALLINT \
-        is sqlalchemy.sql.sqltypes.SMALLINT
-    assert sqlalchemy_redshift.dialect.INTEGER \
-        is sqlalchemy.sql.sqltypes.INTEGER
-    assert sqlalchemy_redshift.dialect.BIGINT \
-        is sqlalchemy.sql.sqltypes.BIGINT
-    assert sqlalchemy_redshift.dialect.DECIMAL \
-        is sqlalchemy.sql.sqltypes.DECIMAL
-    assert sqlalchemy_redshift.dialect.REAL \
-        is sqlalchemy.sql.sqltypes.REAL
-    assert sqlalchemy_redshift.dialect.CHAR \
-        is sqlalchemy.sql.sqltypes.CHAR
-    assert sqlalchemy_redshift.dialect.DATE \
-        is sqlalchemy.sql.sqltypes.DATE
-    assert sqlalchemy_redshift.dialect.TIMESTAMP \
-        is sqlalchemy.sql.sqltypes.TIMESTAMP
-    assert sqlalchemy_redshift.dialect.DOUBLE_PRECISION \
+    assert sqlalchemy_redshift.dialect.VARCHAR is sqlalchemy.sql.sqltypes.VARCHAR
+    assert sqlalchemy_redshift.dialect.NullType is sqlalchemy.sql.sqltypes.NullType
+    assert sqlalchemy_redshift.dialect.SMALLINT is sqlalchemy.sql.sqltypes.SMALLINT
+    assert sqlalchemy_redshift.dialect.INTEGER is sqlalchemy.sql.sqltypes.INTEGER
+    assert sqlalchemy_redshift.dialect.BIGINT is sqlalchemy.sql.sqltypes.BIGINT
+    assert sqlalchemy_redshift.dialect.DECIMAL is sqlalchemy.sql.sqltypes.DECIMAL
+    assert sqlalchemy_redshift.dialect.REAL is sqlalchemy.sql.sqltypes.REAL
+    assert sqlalchemy_redshift.dialect.CHAR is sqlalchemy.sql.sqltypes.CHAR
+    assert sqlalchemy_redshift.dialect.DATE is sqlalchemy.sql.sqltypes.DATE
+    assert sqlalchemy_redshift.dialect.TIMESTAMP is sqlalchemy.sql.sqltypes.TIMESTAMP
+    assert (
+        sqlalchemy_redshift.dialect.DOUBLE_PRECISION
         is sqlalchemy.dialects.postgresql.DOUBLE_PRECISION
+    )
 
-    assert sqlalchemy_redshift.dialect.TIMESTAMPTZ \
-        is not sqlalchemy.sql.sqltypes.TIMESTAMP
+    assert (
+        sqlalchemy_redshift.dialect.TIMESTAMPTZ is not sqlalchemy.sql.sqltypes.TIMESTAMP
+    )
 
-    assert sqlalchemy_redshift.dialect.TIMETZ \
-        is not sqlalchemy.sql.sqltypes.TIME
+    assert sqlalchemy_redshift.dialect.TIMETZ is not sqlalchemy.sql.sqltypes.TIME
+
 
 custom_type_inheritance = [
-    (
-        sqlalchemy_redshift.dialect.TIMESTAMP,
-        sqlalchemy.sql.sqltypes.TIMESTAMP
-    ),
-    (
-        sqlalchemy_redshift.dialect.TIMETZ,
-        sqlalchemy.sql.sqltypes.TIME
-    ),
+    (sqlalchemy_redshift.dialect.TIMESTAMP, sqlalchemy.sql.sqltypes.TIMESTAMP),
+    (sqlalchemy_redshift.dialect.TIMETZ, sqlalchemy.sql.sqltypes.TIME),
 ]
 
 
@@ -58,22 +46,22 @@ column_and_ddl = [
     (
         sqlalchemy_redshift.dialect.TIMESTAMPTZ,
         (
-            u"\nCREATE TABLE t1 ("
-            u"\n\tid INTEGER NOT NULL, "
-            u"\n\tname VARCHAR, "
-            u"\n\ttest_col TIMESTAMPTZ, "
-            u"\n\tPRIMARY KEY (id)\n)\n\n"
-        )
+            "\nCREATE TABLE t1 ("
+            "\n\tid INTEGER NOT NULL, "
+            "\n\tname VARCHAR, "
+            "\n\ttest_col TIMESTAMPTZ, "
+            "\n\tPRIMARY KEY (id)\n)\n\n"
+        ),
     ),
     (
         sqlalchemy_redshift.dialect.TIMETZ,
         (
-            u"\nCREATE TABLE t1 ("
-            u"\n\tid INTEGER NOT NULL, "
-            u"\n\tname VARCHAR, "
-            u"\n\ttest_col TIMETZ, "
-            u"\n\tPRIMARY KEY (id)\n)\n\n"
-        )
+            "\nCREATE TABLE t1 ("
+            "\n\tid INTEGER NOT NULL, "
+            "\n\tname VARCHAR, "
+            "\n\ttest_col TIMETZ, "
+            "\n\tPRIMARY KEY (id)\n)\n\n"
+        ),
     ),
 ]
 
@@ -84,11 +72,11 @@ def test_custom_types_ddl_generation(custom_datatype, expected):
         sqlalchemy_redshift.dialect.RedshiftDialect(), None
     )
     table = sqlalchemy.Table(
-        't1',
+        "t1",
         sqlalchemy.MetaData(),
-        sqlalchemy.Column('id', sqlalchemy.INTEGER, primary_key=True),
-        sqlalchemy.Column('name', sqlalchemy.String),
-        sqlalchemy.Column('test_col', custom_datatype)
+        sqlalchemy.Column("id", sqlalchemy.INTEGER, primary_key=True),
+        sqlalchemy.Column("name", sqlalchemy.String),
+        sqlalchemy.Column("test_col", custom_datatype),
     )
 
     create_table = sqlalchemy.schema.CreateTable(table)
