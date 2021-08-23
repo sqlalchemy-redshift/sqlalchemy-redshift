@@ -1,4 +1,4 @@
-0.8.5 (unreleased)
+0.8.5 (2021-08-23)
 ------------------
 - Support TIMETZ datatype
   (`Pull #229 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/229>`_)
