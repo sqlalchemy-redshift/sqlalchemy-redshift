@@ -1,12 +1,12 @@
 0.8.6 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Create RedshiftDialectMixin class. Add Psycopg2CFFIRedshiftDialect
+  (`Pull #231 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/231>`_)
 
 
 0.8.5 (2021-08-23)
 ------------------
-- Create RedshiftDialectMixin class. Add Psycopg2CFFIRedshiftDialect
 - Support TIMETZ datatype
   (`Pull #229 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/229>`_)
 - Fix RelationKey unquoted issue
