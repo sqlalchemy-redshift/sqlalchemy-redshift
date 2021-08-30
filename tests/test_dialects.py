@@ -46,3 +46,7 @@ def test_dialect_registered_correct_class(name, expected_dialect):
     ))
 
     assert isinstance(engine.dialect, expected_dialect)
+
+
+def test_redshift_dialect_synonym_of_redshift_dialect_psycopg2():
+    assert isinstance(dialect.RedshiftDialect(), dialect.RedshiftDialect_psycopg2)

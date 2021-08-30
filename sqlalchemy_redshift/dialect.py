@@ -66,7 +66,8 @@ __all__ = (
     'TIMESTAMPTZ',
     'TIMETZ',
 
-    'RedshiftDialect_psycopg2', 'RedshiftDialect_psycopg2cffi',
+    'RedshiftDialect', 'RedshiftDialect_psycopg2',
+    'RedshiftDialect_psycopg2cffi',
 
     'CopyCommand', 'UnloadFromSelect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
@@ -901,6 +902,10 @@ class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, psycopg2.dialect
 ):
     pass
+
+
+# Add RedshiftDialect synonym for backwards compatibility.
+RedshiftDialect = RedshiftDialect_psycopg2
 
 
 class RedshiftDialect_psycopg2cffi(
