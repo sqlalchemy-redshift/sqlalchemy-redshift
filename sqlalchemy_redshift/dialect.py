@@ -868,7 +868,7 @@ class RedshiftDialectMixin(object):
 
 class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
     """
-    Define Psycopg specific behavior.
+    Define behavior specific to ``psycopg2``.
 
     Most public methods are overrides of the underlying interfaces defined in
     :class:`~sqlalchemy.engine.interfaces.Dialect` and
