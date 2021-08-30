@@ -1,7 +1,7 @@
 0.8.6 (unreleased)
 ------------------
 
-- Create RedshiftDialectMixin class. Add Psycopg2CFFIRedshiftDialect
+- Create RedshiftDialectMixin class. Add RedshiftDialect_psycopg2cffi.
   (`Pull #231 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/231>`_)
 
 
