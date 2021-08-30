@@ -66,7 +66,7 @@ __all__ = (
     'TIMESTAMPTZ',
     'TIMETZ',
 
-    'Psycopg2RedshiftDialect', 'Psycopg2CFFIRedshiftDialect',
+    'RedshiftDialect_psycopg2', 'RedshiftDialect_psycopg2cffi',
 
     'CopyCommand', 'UnloadFromSelect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
@@ -897,13 +897,13 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         return cargs, default_args
 
 
-class Psycopg2RedshiftDialect(
+class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, psycopg2.dialect
 ):
     pass
 
 
-class Psycopg2CFFIRedshiftDialect(
+class RedshiftDialect_psycopg2cffi(
     Psycopg2RedshiftDialectMixin, psycopg2cffi.dialect
 ):
     pass
@@ -951,7 +951,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     problem illustration:
 
     >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
-    >>> from sqlalchemy_redshift.dialect import Psycopg2RedshiftDialect
+    >>> from sqlalchemy_redshift.dialect import RedshiftDialect_psycopg2
     >>> meta = MetaData()
     >>> table1 = Table(
     ... 'table_1',
@@ -966,7 +966,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     ... )
     ...
     >>> del_stmt = delete(table1).where(table1.c.pk==table2.c.pk)
-    >>> str(del_stmt.compile(dialect=Psycopg2RedshiftDialect()))
+    >>> str(del_stmt.compile(dialect=RedshiftDialect_psycopg2()))
     'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
     >>> str(del_stmt)
     'DELETE FROM table_1 , table_2 WHERE table_1.pk = table_2.pk'
@@ -976,7 +976,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     >>> del_stmt3 = delete(table1).where(table1.c.pk > 1000)
     >>> str(del_stmt3)
     'DELETE FROM table_1 WHERE table_1.pk > :pk_1'
-    >>> str(del_stmt3.compile(dialect=Psycopg2RedshiftDialect()))
+    >>> str(del_stmt3.compile(dialect=RedshiftDialect_psycopg2()))
     'DELETE FROM table_1 WHERE table_1.pk >  %(pk_1)s'
     """
 

@@ -23,13 +23,13 @@ from sqlalchemy.dialects import registry
 
 registry.register(
     "redshift", "sqlalchemy_redshift.dialect",
-    "Psycopg2RedshiftDialect"
+    "RedshiftDialect_psycopg2"
 )
 registry.register(
     "redshift.psycopg2", "sqlalchemy_redshift.dialect",
-    "Psycopg2RedshiftDialect"
+    "RedshiftDialect_psycopg2"
 )
 registry.register(
     'redshift+psycopg2cffi', 'sqlalchemy_redshift.dialect',
-    'Psycopg2CFFIRedshiftDialect',
+    'RedshiftDialect_psycopg2cffi',
 )
