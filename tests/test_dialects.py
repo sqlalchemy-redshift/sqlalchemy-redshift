@@ -23,9 +23,9 @@ def test_dialect_inherits_from_sqlalchemy_dialect(name, expected_dialect):
 
 
 @pytest.mark.parametrize('name, expected_dialect', [
-    ('redshift', dialect.PsycopgRedshiftDialectMixin),
-    ('redshift+psycopg2', dialect.PsycopgRedshiftDialectMixin),
-    ('redshift+psycopg2cffi', dialect.PsycopgRedshiftDialectMixin),
+    ('redshift', dialect.Psycopg2RedshiftDialectMixin),
+    ('redshift+psycopg2', dialect.Psycopg2RedshiftDialectMixin),
+    ('redshift+psycopg2cffi', dialect.Psycopg2RedshiftDialectMixin),
 ])
 def test_dialect_inherits_from_redshift_mixin(name, expected_dialect):
     engine = sa.create_engine(URL(

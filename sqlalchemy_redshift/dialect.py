@@ -866,7 +866,7 @@ class RedshiftDialectMixin(object):
         return all_constraints
 
 
-class PsycopgRedshiftDialectMixin(RedshiftDialectMixin):
+class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
     """
     Define Psycopg specific behavior.
 
@@ -889,7 +889,7 @@ class PsycopgRedshiftDialectMixin(RedshiftDialectMixin):
             ),
         }
         cargs, cparams = (
-            super(PsycopgRedshiftDialectMixin, self).create_connect_args(
+            super(Psycopg2RedshiftDialectMixin, self).create_connect_args(
                 *args, **kwargs
             )
         )
@@ -898,13 +898,13 @@ class PsycopgRedshiftDialectMixin(RedshiftDialectMixin):
 
 
 class Psycopg2RedshiftDialect(
-    PsycopgRedshiftDialectMixin, psycopg2.dialect
+    Psycopg2RedshiftDialectMixin, psycopg2.dialect
 ):
     pass
 
 
 class Psycopg2CFFIRedshiftDialect(
-    PsycopgRedshiftDialectMixin, psycopg2cffi.dialect
+    Psycopg2RedshiftDialectMixin, psycopg2cffi.dialect
 ):
     pass
 
