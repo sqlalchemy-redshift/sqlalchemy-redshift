@@ -8,9 +8,8 @@ from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql.base import (
     PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
 )
-from sqlalchemy.dialects.postgresql import (
-    psycopg2, psycopg2cffi
-)
+from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -899,7 +898,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
 
 
 class RedshiftDialect_psycopg2(
-    Psycopg2RedshiftDialectMixin, psycopg2.dialect
+    Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
 ):
     pass
 
@@ -909,7 +908,7 @@ RedshiftDialect = RedshiftDialect_psycopg2
 
 
 class RedshiftDialect_psycopg2cffi(
-    Psycopg2RedshiftDialectMixin, psycopg2cffi.dialect
+    Psycopg2RedshiftDialectMixin, PGDialect_psycopg2cffi
 ):
     pass
 
