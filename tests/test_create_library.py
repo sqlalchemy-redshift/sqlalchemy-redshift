@@ -15,7 +15,7 @@ CREDS = (
 )
 
 
-def test_basic():
+def test_basic(stub_redshift_dialect):
     name = 'asdfghjkl'
     where = 'https://www.example.com/libraries/extension.zip'
 
@@ -29,10 +29,11 @@ def test_basic():
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY)
-    assert clean(expected_result) == clean(compile_query(cmd))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))
 
 
-def test_or_replace():
+def test_or_replace(stub_redshift_dialect):
     name = 'SomeLibrary'
     where = 's3://bucket/path/to/archive.zip'
 
@@ -46,10 +47,11 @@ def test_or_replace():
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, replace=True)
-    assert clean(expected_result) == clean(compile_query(cmd))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))
 
 
-def test_region():
+def test_region(stub_redshift_dialect):
     name = 'SomeLibrary'
     where = 's3://bucket/path/to/archive.zip'
     region = 'sa-east-1'
@@ -65,10 +67,11 @@ def test_region():
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, region=region)
-    assert clean(expected_result) == clean(compile_query(cmd))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))
 
 
-def test_everything():
+def test_everything(stub_redshift_dialect):
     name = 'SomeLibrary'
     where = 's3://bucket/path/to/archive.zip'
     region = 'sa-east-1'
@@ -84,4 +87,5 @@ def test_everything():
     cmd = dialect.CreateLibraryCommand(
         name, where, access_key_id=ACCESS_KEY_ID,
         secret_access_key=SECRET_ACCESS_KEY, replace=True, region=region)
-    assert clean(expected_result) == clean(compile_query(cmd))
+    assert clean(expected_result) == \
+        clean(compile_query(cmd, stub_redshift_dialect))

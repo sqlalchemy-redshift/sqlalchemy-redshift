@@ -1,8 +1,7 @@
-from sqlalchemy_redshift.dialect import RedshiftDialect
 
 
 def test_pk_name(redshift_session):
-    dialect = RedshiftDialect()
+    dialect = redshift_session.bind.dialect
     pk = dialect.get_pk_constraint(
         redshift_session.connection(),
         "reflection_named_pk_constraint"
@@ -12,7 +11,7 @@ def test_pk_name(redshift_session):
 
 
 def test_fk_name(redshift_session):
-    dialect = RedshiftDialect()
+    dialect = redshift_session.bind.dialect
     fks = dialect.get_foreign_keys(
         redshift_session.connection(),
         "reflection_named_fk_constraint"

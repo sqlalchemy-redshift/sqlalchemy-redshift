@@ -11,11 +11,12 @@ from rs_sqla_test_utils.utils import clean, compile_query
     ({'fill_target': True}, 'ALTER TABLE trg APPEND FROM src FILLTARGET'),
     ({'ignore_extra': True}, 'ALTER TABLE trg APPEND FROM src IGNOREEXTRA'),
 ))
-def test_append__basic(kwargs, expected_query):
+def test_append__basic(kwargs, expected_query, stub_redshift_dialect):
     source = sa.Table('src', sa.MetaData(), sa.Column('value', sa.Integer))
     target = sa.Table('trg', sa.MetaData(), sa.Column('value', sa.Integer))
     command = dialect.AlterTableAppendCommand(source, target, **kwargs)
-    assert clean(compile_query(command)) == clean(expected_query)
+    assert clean(compile_query(command, stub_redshift_dialect)) == \
+        clean(expected_query)
 
 
 def test_append__ignoreextra_and_filltarget():

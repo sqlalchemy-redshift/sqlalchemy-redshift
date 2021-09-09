@@ -27,7 +27,7 @@ tbl = sa.Table(
 tbl2 = sa.Table('t1', sa.MetaData())
 
 
-def test_basic_copy_case():
+def test_basic_copy_case(stub_redshift_dialect):
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
@@ -51,10 +51,11 @@ def test_basic_copy_case():
         blanks_as_null=True,
         region='eu-west-3',
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_iam_role():
+def test_iam_role(stub_redshift_dialect):
     """Tests the use of iam role instead of access keys."""
 
     aws_account_id = '000123456789'
@@ -75,10 +76,11 @@ def test_iam_role():
         aws_account_id=aws_account_id,
         iam_role_name=iam_role_name,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_iam_role_partition():
+def test_iam_role_partition(stub_redshift_dialect):
     """Tests the use of iam role with a custom partition"""
 
     aws_partition = 'aws-us-gov'
@@ -102,7 +104,8 @@ def test_iam_role_partition():
         aws_account_id=aws_account_id,
         iam_role_name=iam_role_name,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_iam_role_partition_validation():
@@ -121,7 +124,7 @@ def test_iam_role_partition_validation():
         )
 
 
-def test_iam_role_arns_list():
+def test_iam_role_arns_list(stub_redshift_dialect):
     """Tests the use of multiple iam role arns instead of access keys."""
 
     iam_role_arns = [
@@ -141,10 +144,11 @@ def test_iam_role_arns_list():
         data_location='s3://mybucket/data/listing/',
         iam_role_arns=iam_role_arns,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_iam_role_arns_single():
+def test_iam_role_arns_single(stub_redshift_dialect):
     """Tests the use of a single iam role arn instead of access keys."""
 
     iam_role_arns = 'arn:aws:iam::000123456789:role/redshiftrole'
@@ -160,10 +164,11 @@ def test_iam_role_arns_single():
         data_location='s3://mybucket/data/listing/',
         iam_role_arns=iam_role_arns,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_format():
+def test_format(stub_redshift_dialect):
     expected_result = """
     COPY t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
@@ -186,14 +191,15 @@ def test_format():
         empty_as_null=True,
         blanks_as_null=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 @pytest.mark.parametrize('format_type', (
     dialect.Format.orc,
     dialect.Format.parquet,
 ))
-def test_format__columnar(format_type):
+def test_format__columnar(format_type, stub_redshift_dialect):
     expected_result = """
     COPY t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
@@ -206,7 +212,8 @@ def test_format__columnar(format_type):
         secret_access_key=secret_access_key,
         format=format_type,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_invalid_format():
@@ -221,7 +228,7 @@ def test_invalid_format():
         )
 
 
-def test_fixed_width_format_without_widths():
+def test_fixed_width_format_without_widths(stub_redshift_dialect):
     copy = dialect.CopyCommand(
         tbl,
         format=dialect.Format.fixed_width,
@@ -231,10 +238,10 @@ def test_fixed_width_format_without_widths():
     )
     with pytest.raises(sa_exc.CompileError,
                        match=r"^'fixed_width' argument required.*$"):
-        compile_query(copy)
+        compile_query(copy, stub_redshift_dialect)
 
 
-def test_compression():
+def test_compression(stub_redshift_dialect):
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
@@ -256,7 +263,8 @@ def test_compression():
         empty_as_null=True,
         blanks_as_null=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_invalid_compression():
@@ -270,7 +278,7 @@ def test_invalid_compression():
         )
 
 
-def test_ascii_nul_as_redshift_null():
+def test_ascii_nul_as_redshift_null(stub_redshift_dialect):
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
@@ -295,10 +303,11 @@ def test_ascii_nul_as_redshift_null():
         empty_as_null=True,
         blanks_as_null=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_json_upload_with_manifest_ordered_columns():
+def test_json_upload_with_manifest_ordered_columns(stub_redshift_dialect):
     expected_result = """
     COPY schema1.t1 (col1, col2) FROM 's3://mybucket/data/listing.manifest'
     WITH CREDENTIALS AS '%s'
@@ -320,10 +329,11 @@ def test_json_upload_with_manifest_ordered_columns():
         time_format='auto',
         accept_any_date=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_stat_update_maxerror_and_escape():
+def test_stat_update_maxerror_and_escape(stub_redshift_dialect):
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
     WITH CREDENTIALS AS '%s'
@@ -342,7 +352,8 @@ def test_stat_update_maxerror_and_escape():
         stat_update=True,
         escape=True,
     )
-    assert clean(expected_result) == clean(compile_query(copy))
+    assert clean(expected_result) == \
+        clean(compile_query(copy, stub_redshift_dialect))
 
 
 def test_different_tables():

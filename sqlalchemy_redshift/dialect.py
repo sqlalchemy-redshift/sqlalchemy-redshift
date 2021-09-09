@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql.base import (
     PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
 )
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -64,7 +65,10 @@ __all__ = (
     'TIMESTAMPTZ',
     'TIMETZ',
 
-    'CopyCommand', 'UnloadFromSelect', 'RedshiftDialect', 'Compression',
+    'RedshiftDialect', 'RedshiftDialect_psycopg2',
+    'RedshiftDialect_psycopg2cffi',
+
+    'CopyCommand', 'UnloadFromSelect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
     'RefreshMaterializedView',
 
@@ -431,7 +435,7 @@ class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
 
-class RedshiftDialect(PGDialect_psycopg2):
+class RedshiftDialectMixin(object):
     """
     Define Redshift-specific behavior.
 
@@ -469,7 +473,7 @@ class RedshiftDialect(PGDialect_psycopg2):
     ]
 
     def __init__(self, *args, **kw):
-        super(RedshiftDialect, self).__init__(*args, **kw)
+        super(RedshiftDialectMixin, self).__init__(*args, **kw)
         # Cache domains, as these will be static;
         # Redshift does not support user-created domains.
         self._domains = None
@@ -654,26 +658,6 @@ class RedshiftDialect(PGDialect_psycopg2):
             'redshift_interleaved_sortkey': interleaved_sortkey,
         }
 
-    def create_connect_args(self, *args, **kwargs):
-        """
-        Build DB-API compatible connection arguments.
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
-        """
-        default_args = {
-            'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                __name__,
-                'redshift-ca-bundle.crt'
-            ),
-        }
-        cargs, cparams = super(RedshiftDialect, self).create_connect_args(
-            *args, **kwargs
-        )
-        default_args.update(cparams)
-        return cargs, default_args
-
     def _get_table_or_view_names(self, relkind, connection, schema=None, **kw):
         default_schema = inspect(connection).default_schema_name
         if not schema:
@@ -700,7 +684,7 @@ class RedshiftDialect(PGDialect_psycopg2):
         elif sa_version >= Version('1.4.0') and 'identity' not in kw:
             kw['identity'] = None
 
-        column_info = super(RedshiftDialect, self)._get_column_info(
+        column_info = super(RedshiftDialectMixin, self)._get_column_info(
             *args,
             **kw
         )
@@ -882,6 +866,53 @@ class RedshiftDialect(PGDialect_psycopg2):
         return all_constraints
 
 
+class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
+    """
+    Define behavior specific to ``psycopg2``.
+
+    Most public methods are overrides of the underlying interfaces defined in
+    :class:`~sqlalchemy.engine.interfaces.Dialect` and
+    :class:`~sqlalchemy.engine.Inspector`.
+    """
+    def create_connect_args(self, *args, **kwargs):
+        """
+        Build DB-API compatible connection arguments.
+
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
+        """
+        default_args = {
+            'sslmode': 'verify-full',
+            'sslrootcert': pkg_resources.resource_filename(
+                __name__,
+                'redshift-ca-bundle.crt'
+            ),
+        }
+        cargs, cparams = (
+            super(Psycopg2RedshiftDialectMixin, self).create_connect_args(
+                *args, **kwargs
+            )
+        )
+        default_args.update(cparams)
+        return cargs, default_args
+
+
+class RedshiftDialect_psycopg2(
+    Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
+):
+    pass
+
+
+# Add RedshiftDialect synonym for backwards compatibility.
+RedshiftDialect = RedshiftDialect_psycopg2
+
+
+class RedshiftDialect_psycopg2cffi(
+    Psycopg2RedshiftDialectMixin, PGDialect_psycopg2cffi
+):
+    pass
+
+
 def gen_columns_from_children(root):
     """
     Generates columns that are being used in child elements of the delete query
@@ -924,7 +955,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     problem illustration:
 
     >>> from sqlalchemy import Table, Column, Integer, MetaData, delete
-    >>> from sqlalchemy_redshift.dialect import RedshiftDialect
+    >>> from sqlalchemy_redshift.dialect import RedshiftDialect_psycopg2
     >>> meta = MetaData()
     >>> table1 = Table(
     ... 'table_1',
@@ -939,7 +970,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     ... )
     ...
     >>> del_stmt = delete(table1).where(table1.c.pk==table2.c.pk)
-    >>> str(del_stmt.compile(dialect=RedshiftDialect()))
+    >>> str(del_stmt.compile(dialect=RedshiftDialect_psycopg2()))
     'DELETE FROM table_1 USING table_2 WHERE table_1.pk = table_2.pk'
     >>> str(del_stmt)
     'DELETE FROM table_1 , table_2 WHERE table_1.pk = table_2.pk'
@@ -949,7 +980,7 @@ def visit_delete_stmt(element, compiler, **kwargs):
     >>> del_stmt3 = delete(table1).where(table1.c.pk > 1000)
     >>> str(del_stmt3)
     'DELETE FROM table_1 WHERE table_1.pk > :pk_1'
-    >>> str(del_stmt3.compile(dialect=RedshiftDialect()))
+    >>> str(del_stmt3.compile(dialect=RedshiftDialect_psycopg2()))
     'DELETE FROM table_1 WHERE table_1.pk >  %(pk_1)s'
     """
 

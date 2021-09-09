@@ -26,7 +26,7 @@ table = sa.Table(
 )
 
 
-def test_basic_unload_case():
+def test_basic_unload_case(stub_redshift_dialect):
     """Tests that the simplest type of UnloadFromSelect works."""
 
     unload = dialect.UnloadFromSelect(
@@ -42,10 +42,11 @@ def test_basic_unload_case():
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
-def test_iam_role():
+def test_iam_role(stub_redshift_dialect):
     """Tests the use of iam role instead of access keys."""
 
     aws_account_id = '000123456789'
@@ -68,10 +69,11 @@ def test_iam_role():
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
-def test_iam_role_partition():
+def test_iam_role_partition(stub_redshift_dialect):
     """Tests the use of iam role with a custom partition"""
 
     aws_partition = 'aws-us-gov'
@@ -97,7 +99,8 @@ def test_iam_role_partition():
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 def test_iam_role_partition_validation():
@@ -117,7 +120,7 @@ def test_iam_role_partition_validation():
         )
 
 
-def test_iam_role_arns_list():
+def test_iam_role_arns_list(stub_redshift_dialect):
     """Tests the use of multiple iam role arns instead of access keys."""
 
     iam_role_arns = [
@@ -139,10 +142,11 @@ def test_iam_role_arns_list():
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
-def test_iam_role_arns_single():
+def test_iam_role_arns_single(stub_redshift_dialect):
     """Tests the use of a single iam role arn instead of access keys."""
 
     iam_role_arns = 'arn:aws:iam::000123456789:role/redshiftrole'
@@ -160,10 +164,11 @@ def test_iam_role_arns_single():
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
-def test_all_redshift_options():
+def test_all_redshift_options(stub_redshift_dialect):
     """Tests that UnloadFromSelect handles all options correctly."""
 
     unload = dialect.UnloadFromSelect(
@@ -203,10 +208,11 @@ def test_all_redshift_options():
         MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
-def test_all_redshift_options_with_header():
+def test_all_redshift_options_with_header(stub_redshift_dialect):
     """Tests that UnloadFromSelect handles all options correctly."""
 
     unload = dialect.UnloadFromSelect(
@@ -246,10 +252,11 @@ def test_all_redshift_options_with_header():
         MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
-def test_csv_format__basic():
+def test_csv_format__basic(stub_redshift_dialect):
     """Tests that UnloadFromSelect uses the format option correctly."""
 
     unload = dialect.UnloadFromSelect(
@@ -267,7 +274,8 @@ def test_csv_format__basic():
             FORMAT AS CSV
         """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 @pytest.mark.parametrize('delimiter,fixed_width', (
@@ -275,7 +283,9 @@ def test_csv_format__basic():
     (None, 'id:8,name:32'),
     (';', 'id:8,name:32'),
 ))
-def test_csv_format__bad_options_crash(delimiter, fixed_width):
+def test_csv_format__bad_options_crash(
+        delimiter, fixed_width, stub_redshift_dialect
+):
     """Test that UnloadFromSelect crashes if you try to use DELIMITER and/or
     FIXEDWIDTH with the CSV format.
     """
@@ -290,10 +300,10 @@ def test_csv_format__bad_options_crash(delimiter, fixed_width):
     )
 
     with pytest.raises(ValueError):
-        compile_query(unload)
+        compile_query(unload, stub_redshift_dialect)
 
 
-def test_parquet_format__basic():
+def test_parquet_format__basic(stub_redshift_dialect):
     """Basic successful test of unloading with the Parquet format."""
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
@@ -310,7 +320,8 @@ def test_parquet_format__basic():
         FORMAT AS PARQUET
     """.format(creds=creds)
 
-    assert clean(compile_query(unload)) == clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == \
+        clean(expected_result)
 
 
 @pytest.mark.parametrize('kwargs', (
@@ -321,7 +332,7 @@ def test_parquet_format__basic():
     {'null': '\\N'},
     {'header': True},
 ))
-def test_parquet_format__bad_options_crash(kwargs):
+def test_parquet_format__bad_options_crash(kwargs, stub_redshift_dialect):
     """Verify we crash if we use the Parquet format with a bad option."""
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
@@ -333,4 +344,4 @@ def test_parquet_format__bad_options_crash(kwargs):
     )
 
     with pytest.raises(ValueError):
-        compile_query(unload)
+        compile_query(unload, stub_redshift_dialect)

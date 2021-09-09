@@ -11,14 +11,14 @@ def test_configure_migration_context():
     assert isinstance(context.impl, dialect.RedshiftImpl)
 
 
-def test_rename_table():
-    compiler = dialect.RedshiftDDLCompiler(dialect.RedshiftDialect(), None)
+def test_rename_table(stub_redshift_dialect):
+    compiler = dialect.RedshiftDDLCompiler(stub_redshift_dialect, None)
     sql = compiler.process(RenameTable("old", "new", "schema"))
     assert sql == 'ALTER TABLE schema."old" RENAME TO "new"'
 
 
-def test_alter_column_comment():
-    compiler = dialect.RedshiftDDLCompiler(dialect.RedshiftDialect(), None)
+def test_alter_column_comment(stub_redshift_dialect):
+    compiler = dialect.RedshiftDDLCompiler(stub_redshift_dialect, None)
     sql = compiler.process(
         ColumnComment("table_name", "column_name", "my comment")
     )

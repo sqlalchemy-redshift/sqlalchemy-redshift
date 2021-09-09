@@ -14,6 +14,7 @@ except ImportError:
 import requests
 import pytest
 import sqlalchemy as sa
+from sqlalchemy.engine.url import URL
 
 
 from rs_sqla_test_utils import db
@@ -85,8 +86,20 @@ class DatabaseTool(object):
                 engine.dispose()
 
 
-@pytest.yield_fixture(scope='session')
-def _redshift_database_tool():
+redshift_dialect_flavors = [
+    'redshift',
+    'redshift+psycopg2',
+    'redshift+psycopg2cffi',
+]
+
+
+@pytest.yield_fixture(scope='session', params=redshift_dialect_flavors)
+def redshift_dialect_flavor(request):
+    return request.param
+
+
+@pytest.yield_fixture(scope='session', params=redshift_dialect_flavors)
+def _redshift_database_tool(request):
     from rs_sqla_test_utils import models
     if 'PGPASSWORD' not in os.environ:
         pytest.skip('This test will only work on Travis.')
@@ -105,7 +118,8 @@ def _redshift_database_tool():
     try:
         class RedshiftDatabaseTool(DatabaseTool):
             engine_definition = db.redshift_engine_definition(
-                config['cluster']
+                config['cluster'],
+                request.param
             )
 
             def migrate(self, engine):
@@ -169,3 +183,13 @@ def redshift_session(_session_scoped_redshift_engine):
         session.close()
         tx.rollback()
         conn.close()
+
+
+@pytest.fixture(scope='session', params=redshift_dialect_flavors)
+def stub_redshift_engine(request):
+    return sa.create_engine(URL(drivername=request.param))
+
+
+@pytest.fixture(scope='function')
+def stub_redshift_dialect(stub_redshift_engine):
+    return stub_redshift_engine.dialect
