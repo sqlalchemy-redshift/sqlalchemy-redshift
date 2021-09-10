@@ -18,6 +18,7 @@ from sqlalchemy.engine.url import URL
 
 
 from rs_sqla_test_utils import db
+from packaging.version import Version
 
 
 _unicode = type(u'')
@@ -46,9 +47,13 @@ class DatabaseTool(object):
 
     @contextlib.contextmanager
     def _database(self):
+        from sqlalchemy_redshift.dialect import RedshiftDialect_redshift_connector
+
         db_name = database_name()
         with self.engine.connect() as conn:
             conn.execute('COMMIT')  # Can't create databases in a transaction
+            if isinstance(conn.dialect, RedshiftDialect_redshift_connector):
+                conn.execution_options(isolation_level="AUTOCOMMIT")
             conn.execute('CREATE DATABASE {db_name}'.format(db_name=db_name))
 
         dburl = copy.deepcopy(self.engine.url)
@@ -65,6 +70,8 @@ class DatabaseTool(object):
         finally:
             with self.engine.connect() as conn:
                 conn.execute('COMMIT')  # Can't drop databases in a transaction
+                if isinstance(conn.dialect, RedshiftDialect_redshift_connector):
+                    conn.execution_options(isolation_level="AUTOCOMMIT")
                 conn.execute('DROP DATABASE {db_name}'.format(db_name=db_name))
 
     @contextlib.contextmanager
@@ -86,20 +93,93 @@ class DatabaseTool(object):
                 engine.dispose()
 
 
-redshift_dialect_flavors = [
-    'redshift',
-    'redshift+psycopg2',
-    'redshift+psycopg2cffi',
-]
+def pytest_addoption(parser):
+    """
+    Pytest option to define which dbdrivers to run the test suite with.
+
+    """
+    parser.addoption("--dbdriver", action="append")
 
 
-@pytest.yield_fixture(scope='session', params=redshift_dialect_flavors)
-def redshift_dialect_flavor(request):
-    return request.param
+def make_mock_engine(name):
+    """
+    Creates a mock sqlalchemy engine for testing dialect functionality
+
+    """
+    if Version(sa.__version__) >= Version('1.4.0'):
+        return sa.create_mock_engine(URL(
+            drivername=name
+        ), executor=None)
+    else:
+        return sa.create_engine(URL(
+            drivername=name,
+        ), strategy='mock', executor=None)
 
 
-@pytest.yield_fixture(scope='session', params=redshift_dialect_flavors)
-def _redshift_database_tool(request):
+class DriverParameterizedTests:
+    """
+    Helper class for generating fixture params using pytest config opts.
+
+    """
+    DEFAULT_DRIVERS = ['psycopg2', 'psycopg2cffi']
+    drivers = None
+    stub_redshift_engines = None
+    stub_redshift_dialects = None
+    redshift_dialect_flavors = None
+
+    @classmethod
+    def set_drivers(cls,  _drivers):
+        DriverParameterizedTests.drivers = _drivers
+        DriverParameterizedTests.make_fixtures()
+
+    @staticmethod
+    def _make_drivername(driver):
+        return 'redshift+{}'.format(driver)
+
+    @classmethod
+    def make_fixtures(cls):
+
+        driver_names = [
+            DriverParameterizedTests._make_drivername(x)
+            for x in DriverParameterizedTests.drivers
+        ]
+
+        DriverParameterizedTests.stub_redshift_engines = [
+                make_mock_engine(x)
+                for x in driver_names
+        ]
+
+        DriverParameterizedTests.stub_redshift_dialects = [
+            x.dialect for x in DriverParameterizedTests.stub_redshift_engines
+        ]
+
+        DriverParameterizedTests.redshift_dialect_flavors = driver_names
+
+
+def pytest_generate_tests(metafunc):
+    if DriverParameterizedTests.drivers is None:
+        dbdrivers = metafunc.config.getoption("--dbdriver", default=DriverParameterizedTests.DEFAULT_DRIVERS)
+        DriverParameterizedTests.set_drivers(dbdrivers)
+
+    if 'stub_redshift_engine' in metafunc.fixturenames:
+        metafunc.parametrize(
+            "stub_redshift_engine",
+            DriverParameterizedTests.stub_redshift_engines,
+            scope="session")
+    if 'stub_redshift_dialect' in metafunc.fixturenames:
+        metafunc.parametrize(
+            'stub_redshift_dialect',
+            DriverParameterizedTests.stub_redshift_dialects,
+            scope="session")
+    if 'redshift_dialect_flavor' in metafunc.fixturenames:
+        metafunc.parametrize(
+            'redshift_dialect_flavor',
+            DriverParameterizedTests.redshift_dialect_flavors,
+            scope="session")
+
+
+@pytest.yield_fixture(scope='session')
+def _redshift_database_tool(request, redshift_dialect_flavor):
     from rs_sqla_test_utils import models
     if 'PGPASSWORD' not in os.environ:
         pytest.skip('This test will only work on Travis.')
@@ -119,7 +199,7 @@ def _redshift_database_tool(request):
         class RedshiftDatabaseTool(DatabaseTool):
             engine_definition = db.redshift_engine_definition(
                 config['cluster'],
-                request.param
+                redshift_dialect_flavor
             )
 
             def migrate(self, engine):
@@ -183,13 +263,3 @@ def redshift_session(_session_scoped_redshift_engine):
         session.close()
         tx.rollback()
         conn.close()
-
-
-@pytest.fixture(scope='session', params=redshift_dialect_flavors)
-def stub_redshift_engine(request):
-    return sa.create_engine(URL(drivername=request.param))
-
-
-@pytest.fixture(scope='function')
-def stub_redshift_dialect(stub_redshift_engine):
-    return stub_redshift_engine.dialect
