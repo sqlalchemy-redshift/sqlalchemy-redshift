@@ -1,14 +1,5 @@
 from pkg_resources import DistributionNotFound, get_distribution, parse_version
 
-try:
-    import psycopg2  # noqa: F401
-except ImportError:
-    raise ImportError(
-        'No module named psycopg2. Please install either '
-        'psycopg2 or psycopg2-binary package for CPython '
-        'or psycopg2cffi for Pypy.'
-    )
-
 for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
     try:
         if get_distribution(package).parsed_version < parse_version('2.5'):
@@ -32,4 +23,9 @@ registry.register(
 registry.register(
     'redshift+psycopg2cffi', 'sqlalchemy_redshift.dialect',
     'RedshiftDialect_psycopg2cffi',
+)
+
+registry.register(
+    "redshift+redshift_connector", "sqlalchemy_redshift.dialect",
+    "RedshiftDialect_redshift_connector"
 )
