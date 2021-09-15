@@ -906,6 +906,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
                 'No module named {}'.format(cls.driver)
             )
 
+
 class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
 ):
