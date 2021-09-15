@@ -897,20 +897,19 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         default_args.update(cparams)
         return cargs, default_args
 
+    @classmethod
+    def dbapi(cls):
+        try:
+            return __import__(cls.driver)
+        except ImportError:
+            raise ImportError(
+                'No module named {}'.format(cls.driver)
+            )
 
 class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
 ):
-    @classmethod
-    def dbapi(cls):
-        try:
-            return __import__("psycopg2")
-        except ImportError:
-            raise ImportError(
-                'No module named psycopg2. Please install either '
-                'psycopg2 or psycopg2-binary package for CPython '
-                'or psycopg2cffi for Pypy.'
-            )
+    pass
 
 
 # Add RedshiftDialect synonym for backwards compatibility.
@@ -920,15 +919,7 @@ RedshiftDialect = RedshiftDialect_psycopg2
 class RedshiftDialect_psycopg2cffi(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2cffi
 ):
-    @classmethod
-    def dbapi(cls):
-        try:
-            return __import__("psycopg2cffi")
-        except ImportError:
-            raise ImportError(
-                'No module named psycopg2. Please install '
-                'psycopg2cffi for Pypy.'
-            )
+    pass
 
 
 class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
