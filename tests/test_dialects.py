@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import (
 from sqlalchemy.dialects.postgresql.base import PGDialect
 
 from redshift_sqlalchemy import dialect
-from tests.conftest import make_mock_engine
+from rs_sqla_test_utils.utils import make_mock_engine
 
 
 @pytest.mark.parametrize('name, expected_dialect', [
