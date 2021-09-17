@@ -28,6 +28,7 @@ from .commands import (
 from .ddl import (
     CreateMaterializedView, DropMaterializedView, get_table_attributes
 )
+import importlib
 
 sa_version = Version(sa.__version__)
 
@@ -900,7 +901,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
     @classmethod
     def dbapi(cls):
         try:
-            return __import__(cls.driver)
+            return importlib.import_module(cls.driver)
         except ImportError:
             raise ImportError(
                 'No module named {}'.format(cls.driver)
@@ -984,7 +985,7 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
     @classmethod
     def dbapi(cls):
         try:
-            return __import__("redshift_connector")
+            return importlib.import_module(cls.driver)
         except ImportError:
             raise ImportError(
                 'No module named redshift_connector. Please install '
