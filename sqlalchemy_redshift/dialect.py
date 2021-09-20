@@ -6,7 +6,8 @@ import pkg_resources
 import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql.base import (
-    PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler
+    PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler,
+    PGExecutionContext, PGDialect
 )
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
@@ -27,6 +28,7 @@ from .commands import (
 from .ddl import (
     CreateMaterializedView, DropMaterializedView, get_table_attributes
 )
+import importlib
 
 sa_version = Version(sa.__version__)
 
@@ -66,7 +68,7 @@ __all__ = (
     'TIMETZ',
 
     'RedshiftDialect', 'RedshiftDialect_psycopg2',
-    'RedshiftDialect_psycopg2cffi',
+    'RedshiftDialect_psycopg2cffi', 'RedshiftDialect_redshift_connector',
 
     'CopyCommand', 'UnloadFromSelect', 'Compression',
     'Encoding', 'Format', 'CreateLibraryCommand', 'AlterTableAppendCommand',
@@ -896,6 +898,15 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         default_args.update(cparams)
         return cargs, default_args
 
+    @classmethod
+    def dbapi(cls):
+        try:
+            return importlib.import_module(cls.driver)
+        except ImportError:
+            raise ImportError(
+                'No module named {}'.format(cls.driver)
+            )
+
 
 class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
@@ -911,6 +922,178 @@ class RedshiftDialect_psycopg2cffi(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2cffi
 ):
     pass
+
+
+class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
+
+    class RedshiftCompiler_redshift_connector(RedshiftCompiler, PGCompiler):
+        def limit_clause(self, select, **kw):
+            text = ""
+            if select._limit_clause is not None:
+                # an integer value for limit is retrieved
+                text += " \n LIMIT " + str(select._limit)
+            if select._offset_clause is not None:
+                if select._limit_clause is None:
+                    text += "\n LIMIT ALL"
+                # an integer value for offset is retrieved
+                text += " OFFSET " + str(select._offset)
+            return text
+
+        def visit_mod_binary(self, binary, operator, **kw):
+            return (
+                self.process(binary.left, **kw)
+                + " %% "
+                + self.process(binary.right, **kw)
+            )
+
+        def post_process_text(self, text):
+            from sqlalchemy import util
+            if "%%" in text:
+                util.warn(
+                    "The SQLAlchemy postgresql dialect "
+                    "now automatically escapes '%' in text() "
+                    "expressions to '%%'."
+                )
+            return text.replace("%", "%%")
+
+    class RedshiftExecutionContext_redshift_connector(PGExecutionContext):
+        def pre_exec(self):
+            if not self.compiled:
+                return
+
+    driver = 'redshift_connector'
+
+    supports_unicode_statements = True
+
+    supports_unicode_binds = True
+
+    default_paramstyle = "format"
+    supports_sane_multi_rowcount = True
+    statement_compiler = RedshiftCompiler_redshift_connector
+    execution_ctx_cls = RedshiftExecutionContext_redshift_connector
+    description_encoding = "use_encoding"
+
+    supports_statement_cache = True
+    use_setinputsizes = False  # not implemented in redshift_connector
+
+    def __init__(self, client_encoding=None, **kwargs):
+        super(
+            RedshiftDialect_redshift_connector, self
+        ).__init__(client_encoding=client_encoding, **kwargs)
+        self.client_encoding = client_encoding
+
+    @classmethod
+    def dbapi(cls):
+        try:
+            return importlib.import_module(cls.driver)
+        except ImportError:
+            raise ImportError(
+                'No module named redshift_connector. Please install '
+                'redshift_connector to use this sqlalchemy dialect.'
+            )
+
+    def set_client_encoding(self, connection, client_encoding):
+        """
+        Sets the client-side encoding using the provided connection object.
+        """
+        # adjust for ConnectionFairy possibly being present
+        if hasattr(connection, "connection"):
+            connection = connection.connection
+
+        cursor = connection.cursor()
+        cursor.execute("SET CLIENT_ENCODING TO '" + client_encoding + "'")
+        cursor.execute("COMMIT")
+        cursor.close()
+
+    def set_isolation_level(self, connection, level):
+        """
+        Sets the isolation level for the current transaction.
+
+        Additionally, autocommit can be enabled on the underlying
+        db-api connection object via argument level='AUTOCOMMIT'.
+
+        See Amazon Redshift documentation for information on supported
+        isolation levels.
+        https://docs.aws.amazon.com/redshift/latest/dg/r_BEGIN.html
+        """
+        level = level.replace("_", " ")
+
+        # adjust for ConnectionFairy possibly being present
+        if hasattr(connection, "connection"):
+            connection = connection.connection
+
+        if level == "AUTOCOMMIT":
+            connection.autocommit = True
+        else:
+            connection.autocommit = False
+            super(
+                RedshiftDialect_redshift_connector, self
+            ).set_isolation_level(connection, level)
+
+    def on_connect(self):
+        fns = []
+
+        def on_connect(conn):
+            from sqlalchemy.sql.elements import quoted_name
+            from sqlalchemy import util
+            conn.py_types[quoted_name] = conn.py_types[util.text_type]
+
+        fns.append(on_connect)
+
+        if self.client_encoding is not None:
+
+            def on_connect(conn):
+                self.set_client_encoding(conn, self.client_encoding)
+
+            fns.append(on_connect)
+
+        if self.isolation_level is not None:
+
+            def on_connect(conn):
+                self.set_isolation_level(conn, self.isolation_level)
+
+            fns.append(on_connect)
+
+        if len(fns) > 0:
+
+            def on_connect(conn):
+                for fn in fns:
+                    fn(conn)
+
+            return on_connect
+        else:
+            return None
+
+    def create_connect_args(self, *args, **kwargs):
+        """
+        Build DB-API compatible connection arguments.
+
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
+        """
+        default_args = {
+            'sslmode': 'verify-full',
+            'ssl': True,
+            'application_name': 'sqlalchemy-redshift'
+        }
+        cargs, cparams = super(RedshiftDialectMixin, self).create_connect_args(
+            *args, **kwargs
+        )
+        # set client_encoding so it is picked up by on_connect(), as
+        # redshift_connector does not have client_encoding connection parameter
+        self.client_encoding = cparams.pop(
+            'client_encoding', self.client_encoding
+        )
+
+        if 'port' in cparams:
+            cparams['port'] = int(cparams['port'])
+
+        if 'username' in cparams:
+            cparams['user'] = cparams['username']
+            del cparams['username']
+
+        default_args.update(cparams)
+        return cargs, default_args
 
 
 def gen_columns_from_children(root):
