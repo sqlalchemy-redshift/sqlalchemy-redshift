@@ -1,4 +1,4 @@
-0.8.6 (unreleased)
+0.8.6 (2021-09-22)
 ------------------
 
 - Add RedshiftDialect_redshift_connector
