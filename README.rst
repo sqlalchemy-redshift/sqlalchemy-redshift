@@ -16,12 +16,13 @@ The package is available on PyPI::
 
 .. warning::
 
-    This dialect requires psycopg2 library to work properly. It does not provide
-    it as required, but relies on you to select the psycopg2 distribution you need:
+    This dialect requires a database driver library to work properly. It does not provide
+    it as required, but relies on you to select the database driver distribution you need:
 
     * psycopg2 - standard distribution of psycopg2, requires compilation so few system dependencies are required for it
     * psycopg2-binary - already compiled distribution (no system dependencies are required)
     * psycopg2cffi - pypy compatible version
+    * redshift_connector - standard distribution of redshift_connector, pure Python and pypy compatible
 
     See `Psycopg2's binary install docs <http://initd.org/psycopg/docs/install.html#binary-install-from-pypi>`_
     for more context on choosing a distribution.
@@ -33,6 +34,8 @@ The DSN format is similar to that of regular Postgres::
     >>> import sqlalchemy as sa
     >>> sa.create_engine('redshift+psycopg2://username@host.amazonaws.com:5439/database')
     Engine(redshift+psycopg2://username@host.amazonaws.com:5439/database)
+    >>> sa.create_engine('redshift+redshift_connector://username@host.amazonaws.com:5439/database')
+    Engine(redshift+redshift_connector://username@host.amazonaws.com:5439/database)
 
 See the `RedshiftDDLCompiler documentation
 <https://sqlalchemy-redshift.readthedocs.org/en/latest/ddl-compiler.html>`_
