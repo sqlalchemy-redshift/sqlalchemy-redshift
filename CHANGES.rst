@@ -1,7 +1,8 @@
 0.8.7 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add redshift_connector example to docs
+  (_`Pull #233 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/233>`_)
 
 
 0.8.6 (2021-09-22)
