@@ -29,6 +29,7 @@ from .ddl import (
     CreateMaterializedView, DropMaterializedView, get_table_attributes
 )
 import importlib
+import json
 
 sa_version = Version(sa.__version__)
 
@@ -64,6 +65,8 @@ __all__ = (
     'TIMESTAMP',
     'VARCHAR',
     'DOUBLE_PRECISION',
+    'GEOMETRY',
+    'SUPER',
     'TIMESTAMPTZ',
     'TIMETZ',
 
@@ -209,6 +212,53 @@ class TIMETZ(sa.dialects.postgresql.TIME):
 
     def __init__(self):
         super(TIMETZ, self).__init__(timezone=True)
+
+
+class GEOMETRY(sa.dialects.postgresql.TEXT):
+    """
+    Redshift defines a GEOMETRY column type
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+    __visit_name__ = 'GEOMETRY'
+
+    def __init__(self):
+        super(GEOMETRY, self).__init__()
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.GEOMETRY
+
+
+class SUPER(sa.dialects.postgresql.TEXT):
+    """
+    Redshift defines a SUPER column type
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+
+    __visit_name__ = 'SUPER'
+
+    def __init__(self):
+        super(SUPER, self).__init__()
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SUPER
+
+    def bind_expression(self, bindvalue):
+        return sa.func.json_parse(bindvalue)
+
+    def process_bind_param(self, value, dialect):
+        if not isinstance(value, str):
+            return json.dumps(value)
+        return value
 
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
@@ -425,6 +475,12 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
 
 class RedshiftTypeCompiler(PGTypeCompiler):
+
+    def visit_GEOMETRY(self, type_, **kw):
+        return "GEOMETRY"
+
+    def visit_SUPER(self, type_, **kw):
+        return "SUPER"
 
     def visit_TIMESTAMPTZ(self, type_, **kw):
         return "TIMESTAMPTZ"

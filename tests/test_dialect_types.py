@@ -30,6 +30,12 @@ def test_defined_types():
     assert sqlalchemy_redshift.dialect.DOUBLE_PRECISION \
         is sqlalchemy.dialects.postgresql.DOUBLE_PRECISION
 
+    assert sqlalchemy_redshift.dialect.GEOMETRY \
+        is not sqlalchemy.sql.sqltypes.TEXT
+
+    assert sqlalchemy_redshift.dialect.SUPER \
+        is not sqlalchemy.sql.sqltypes.TEXT
+
     assert sqlalchemy_redshift.dialect.TIMESTAMPTZ \
         is not sqlalchemy.sql.sqltypes.TIMESTAMP
 
@@ -37,6 +43,14 @@ def test_defined_types():
         is not sqlalchemy.sql.sqltypes.TIME
 
 custom_type_inheritance = [
+    (
+        sqlalchemy_redshift.dialect.GEOMETRY,
+        sqlalchemy.sql.sqltypes.TEXT
+    ),
+    (
+        sqlalchemy_redshift.dialect.SUPER,
+        sqlalchemy.sql.sqltypes.TEXT
+    ),
     (
         sqlalchemy_redshift.dialect.TIMESTAMP,
         sqlalchemy.sql.sqltypes.TIMESTAMP
@@ -55,6 +69,26 @@ def test_custom_types_extend_super_type(custom_type, super_type):
 
 
 column_and_ddl = [
+    (
+        sqlalchemy_redshift.dialect.GEOMETRY,
+        (
+            u"\nCREATE TABLE t1 ("
+            u"\n\tid INTEGER NOT NULL, "
+            u"\n\tname VARCHAR, "
+            u"\n\ttest_col GEOMETRY, "
+            u"\n\tPRIMARY KEY (id)\n)\n\n"
+        )
+    ),
+    (
+        sqlalchemy_redshift.dialect.SUPER,
+        (
+            u"\nCREATE TABLE t1 ("
+            u"\n\tid INTEGER NOT NULL, "
+            u"\n\tname VARCHAR, "
+            u"\n\ttest_col SUPER, "
+            u"\n\tPRIMARY KEY (id)\n)\n\n"
+        )
+    ),
     (
         sqlalchemy_redshift.dialect.TIMESTAMPTZ,
         (
