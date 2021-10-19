@@ -1,7 +1,8 @@
 0.8.7 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Support GEOMETRY, SUPER Redshift datatypes
+  (`Pull #235 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/235>`_)
 
 
 0.8.6 (2021-09-22)
