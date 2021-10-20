@@ -20,7 +20,7 @@ def _get_server_version_info(self, connection):
             r"(\d+)\.?(\d+)?(?:\.(\d+))?(?:\.\d+)?(?:devel|beta)?",
             v,
     )
-    f not m:
+    if not m:
         if "Redshift" in v: # There is no way of extracting Postgres version from the new version format
             return (8, 0, 2)
         raise AssertionError(
