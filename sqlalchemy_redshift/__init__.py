@@ -12,6 +12,7 @@ __version__ = get_distribution('sqlalchemy-redshift').version
 
 from sqlalchemy.dialects import registry
 from sqlalchemy.dialects.postgresql.base import PGDialect
+import re
 
 def _get_server_version_info(self, connection):
     v = connection.exec_driver_sql("select pg_catalog.version()").scalar()
