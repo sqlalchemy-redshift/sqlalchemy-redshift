@@ -1,9 +1,8 @@
 0.8.7 (unreleased)
 ------------------
 
-- SQLAlchemy 2.0.x support
+- Initial SQLAlchemy 2.0.x support
   (`Pull #237 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/237>`_)
-
 
 
 0.8.6 (2021-09-22)
