@@ -1,4 +1,4 @@
-0.8.7 (unreleased)
+0.8.7 (2021-10-27)
 ------------------
 
 - Initial SQLAlchemy 2.0.x support
