@@ -1,7 +1,8 @@
 0.8.8 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Remove support for Python 2.7; now requires python ``>=3.4``
+  (`Pull #234 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/234>`_)
 
 
 0.8.7 (2021-10-27)

@@ -13,6 +13,8 @@ matrix:
   include:
     - python: "3.9"
       env: TOXENV=lint
+    - python: "3.9"
+      env: TOXENV=docs
 
 install: pip install tox tox-travis
 script: tox
