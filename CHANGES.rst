@@ -1,8 +1,16 @@
-0.8.7 (unreleased)
+0.8.8 (unreleased)
 ------------------
 
+- Remove support for Python 2.7; now requires python ``>=3.4``
+  (`Pull #234 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/234>`_)
 - Support GEOMETRY, SUPER Redshift datatypes
   (`Pull #235 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/235>`_)
+
+0.8.7 (2021-10-27)
+------------------
+
+- Initial SQLAlchemy 2.0.x support
+  (`Pull #237 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/237>`_)
 
 
 0.8.6 (2021-09-22)

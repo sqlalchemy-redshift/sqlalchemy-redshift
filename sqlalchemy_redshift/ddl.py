@@ -2,8 +2,6 @@ import sqlalchemy as sa
 from sqlalchemy.ext import compiler as sa_compiler
 from sqlalchemy.schema import DDLElement
 
-from .compat import string_types
-
 
 def _check_if_key_exists(key):
     return isinstance(key, sa.Column) or key
@@ -87,7 +85,7 @@ def get_table_attributes(preparer,
 
     if has_sortkey or has_interleaved:
         keys = sortkey if has_sortkey else interleaved_sortkey
-        if isinstance(keys, (string_types, sa.Column)):
+        if isinstance(keys, (str, sa.Column)):
             keys = [keys]
         keys = [key.name if isinstance(key, sa.Column) else key
                 for key in keys]
