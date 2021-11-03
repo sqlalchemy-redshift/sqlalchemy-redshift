@@ -1,4 +1,4 @@
-0.8.8 (unreleased)
+0.8.8 (2021-11-03)
 ------------------
 
 - Remove support for Python 2.7; now requires python ``>=3.4``
