@@ -16,8 +16,9 @@ The package is available on PyPI::
 
 .. warning::
 
-    This dialect requires a database driver library to work properly. It does not provide
-    it as required, but relies on you to select the database driver distribution you need:
+    This dialect requires either ``redshift_connector`` or ``psycopg2``
+    to work properly. It does not provide
+    it as required, but relies on you to select the distribution you need:
 
     * psycopg2 - standard distribution of psycopg2, requires compilation so few system dependencies are required for it
     * psycopg2-binary - already compiled distribution (no system dependencies are required)
