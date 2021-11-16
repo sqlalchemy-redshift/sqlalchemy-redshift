@@ -192,8 +192,8 @@ class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
 
     __visit_name__ = 'TIMESTAMPTZ'
 
-    def __init__(self):
-        super(TIMESTAMPTZ, self).__init__(timezone=True)
+    def __init__(self, timezone=True, precision=None):
+        super(TIMESTAMPTZ, self).__init__(timezone=True, precision=precision)
 
 
 class TIMETZ(sa.dialects.postgresql.TIME):
@@ -210,8 +210,8 @@ class TIMETZ(sa.dialects.postgresql.TIME):
 
     __visit_name__ = 'TIMETZ'
 
-    def __init__(self):
-        super(TIMETZ, self).__init__(timezone=True)
+    def __init__(self, timezone=True, precision=None):
+        super(TIMETZ, self).__init__(timezone=True, precision=precision)
 
 
 class GEOMETRY(sa.dialects.postgresql.TEXT):
@@ -260,6 +260,13 @@ class SUPER(sa.dialects.postgresql.TEXT):
             return json.dumps(value)
         return value
 
+# Mapping for database schema inspection of Amazon Redshift datatypes
+redshift_ischema_names = {
+    "geometry": GEOMETRY,
+    "super": SUPER,
+    "time with time zone": TIMETZ,
+    "timestamp with time zone": TIMESTAMPTZ,
+}
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
     """
@@ -535,6 +542,16 @@ class RedshiftDialectMixin(object):
         # Cache domains, as these will be static;
         # Redshift does not support user-created domains.
         self._domains = None
+
+    @property
+    def ischema_names(self):
+        """
+        Returns information about datatypes supported by Amazon Redshift.
+
+        Used in
+        :meth:`~sqlalchemy.engine.dialects.postgresql.base.PGDialect._get_column_info`.
+        """
+        return {**super(RedshiftDialectMixin, self).ischema_names, **redshift_ischema_names}
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
