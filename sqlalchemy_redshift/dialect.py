@@ -11,6 +11,8 @@ from sqlalchemy.dialects.postgresql.base import (
 )
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
+from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.sql.type_api import TypeEngine
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -178,7 +180,18 @@ RESERVED_WORDS = set([
 ])
 
 
-class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
+class RedshiftTypeEngine(TypeEngine):
+
+    def _default_dialect(self, default=None):
+        """
+        Returns the default dialect used for TypeEngine compilation yielding String result.
+
+        :meth:`~sqlalchemy.sql.type_api.TypeEngine.compile`
+        """
+        return RedshiftDialectMixin()
+
+
+class TIMESTAMPTZ(RedshiftTypeEngine, sa.dialects.postgresql.TIMESTAMP):
     """
     Redshift defines a TIMTESTAMPTZ column type as an alias
     of TIMESTAMP WITH TIME ZONE.
@@ -193,10 +206,13 @@ class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
     __visit_name__ = 'TIMESTAMPTZ'
 
     def __init__(self, timezone=True, precision=None):
+        # timezone param must be present as it's provided in base class so the object
+        # can be instantiated with kwargs
+        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
         super(TIMESTAMPTZ, self).__init__(timezone=True, precision=precision)
 
 
-class TIMETZ(sa.dialects.postgresql.TIME):
+class TIMETZ(RedshiftTypeEngine, sa.dialects.postgresql.TIME):
     """
     Redshift defines a TIMTETZ column type as an alias
     of TIME WITH TIME ZONE.
@@ -211,10 +227,13 @@ class TIMETZ(sa.dialects.postgresql.TIME):
     __visit_name__ = 'TIMETZ'
 
     def __init__(self, timezone=True, precision=None):
+        # timezone param must be present as it's provided in base class so the object
+        # can be instantiated with kwargs
+        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
         super(TIMETZ, self).__init__(timezone=True, precision=precision)
 
 
-class GEOMETRY(sa.dialects.postgresql.TEXT):
+class GEOMETRY(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
     """
     Redshift defines a GEOMETRY column type
     https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
@@ -233,7 +252,7 @@ class GEOMETRY(sa.dialects.postgresql.TEXT):
         return dbapi.GEOMETRY
 
 
-class SUPER(sa.dialects.postgresql.TEXT):
+class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
     """
     Redshift defines a SUPER column type
     https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
@@ -261,12 +280,13 @@ class SUPER(sa.dialects.postgresql.TEXT):
         return value
 
 # Mapping for database schema inspection of Amazon Redshift datatypes
-redshift_ischema_names = {
+REDSHIFT_ISCHEMA_NAMES = {
     "geometry": GEOMETRY,
     "super": SUPER,
     "time with time zone": TIMETZ,
     "timestamp with time zone": TIMESTAMPTZ,
 }
+
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
     """
@@ -500,7 +520,7 @@ class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
 
-class RedshiftDialectMixin(object):
+class RedshiftDialectMixin(DefaultDialect):
     """
     Define Redshift-specific behavior.
 
@@ -551,7 +571,7 @@ class RedshiftDialectMixin(object):
         Used in
         :meth:`~sqlalchemy.engine.dialects.postgresql.base.PGDialect._get_column_info`.
         """
-        return {**super(RedshiftDialectMixin, self).ischema_names, **redshift_ischema_names}
+        return {**super(RedshiftDialectMixin, self).ischema_names, **REDSHIFT_ISCHEMA_NAMES}
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):

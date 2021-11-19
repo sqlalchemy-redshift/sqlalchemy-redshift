@@ -161,3 +161,10 @@ def test_custom_types_reflection_inspection(
     actual = inspect.get_columns(table_name='t1', schema='public')
     assert len(actual) == 3
     assert isinstance(actual[2]['type'], custom_datatype)
+
+
+@pytest.mark.parametrize("custom_datatype", redshift_specific_datatypes)
+def test_custom_type_compilation(custom_datatype):
+    dt = custom_datatype()
+    compiled_dt = dt.compile()
+    assert compiled_dt == dt.__visit_name__
