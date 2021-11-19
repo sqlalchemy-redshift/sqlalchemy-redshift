@@ -1,7 +1,8 @@
 0.8.9 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Support inspection of Redshift datatypes
+  (`Pull #242 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/242>`_)
 
 
 0.8.8 (2021-11-03)
