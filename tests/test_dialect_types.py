@@ -1,6 +1,8 @@
 import pytest
 import sqlalchemy_redshift.dialect
 import sqlalchemy
+from sqlalchemy.engine import reflection
+from sqlalchemy import MetaData
 
 
 def test_defined_types():
@@ -130,3 +132,39 @@ def test_custom_types_ddl_generation(
     create_table = sqlalchemy.schema.CreateTable(table)
     actual = compiler.process(create_table)
     assert expected == actual
+
+
+redshift_specific_datatypes = [
+    sqlalchemy_redshift.dialect.GEOMETRY,
+    sqlalchemy_redshift.dialect.SUPER,
+    sqlalchemy_redshift.dialect.TIMETZ,
+    sqlalchemy_redshift.dialect.TIMESTAMPTZ
+]
+
+
+@pytest.mark.parametrize("custom_datatype", redshift_specific_datatypes)
+def test_custom_types_reflection_inspection(
+        custom_datatype, redshift_engine
+):
+    metadata = MetaData(bind=redshift_engine)
+    sqlalchemy.Table(
+        't1',
+        metadata,
+        sqlalchemy.Column('id', sqlalchemy.INTEGER, primary_key=True),
+        sqlalchemy.Column('name', sqlalchemy.String),
+        sqlalchemy.Column('test_col', custom_datatype),
+        schema='public'
+    )
+    metadata.create_all()
+    inspect = reflection.Inspector.from_engine(redshift_engine)
+
+    actual = inspect.get_columns(table_name='t1', schema='public')
+    assert len(actual) == 3
+    assert isinstance(actual[2]['type'], custom_datatype)
+
+
+@pytest.mark.parametrize("custom_datatype", redshift_specific_datatypes)
+def test_custom_type_compilation(custom_datatype):
+    dt = custom_datatype()
+    compiled_dt = dt.compile()
+    assert compiled_dt == dt.__visit_name__
