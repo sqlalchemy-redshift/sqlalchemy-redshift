@@ -596,6 +596,68 @@ class RedshiftDialectMixin(DefaultDialect):
         return columns
 
     @reflection.cache
+    def get_check_constraints(self, connection, table_name, schema=None, **kw):
+        table_oid = self.get_table_oid(
+            connection, table_name, schema, info_cache=kw.get("info_cache")
+        )
+        table_oid = 'NULL' if not table_oid else table_oid
+
+        result = connection.execute("""
+                        SELECT
+                            cons.conname as name,
+                            pg_get_constraintdef(cons.oid) as src
+                        FROM
+                            pg_catalog.pg_constraint cons
+                        WHERE
+                            cons.conrelid = {} AND
+                            cons.contype = 'c'
+                        """.format(table_oid))
+        ret = []
+        for name, src in result:
+            # samples:
+            # "CHECK (((a > 1) AND (a < 5)))"
+            # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
+            # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
+            # "CHECK (some_boolean_function(a))"
+            # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
+
+            m = re.match(
+                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
+            )
+            if not m:
+                print(f"Could not parse CHECK constraint text: {src}")
+                sqltext = ""
+            else:
+                sqltext = re.compile(
+                    r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
+                ).sub(r"\1", m.group(1))
+            entry = {"name": name, "sqltext": sqltext}
+            if m and m.group(2):
+                entry["dialect_options"] = {"not_valid": True}
+
+            ret.append(entry)
+        return ret
+
+    @reflection.cache
+    def get_table_oid(self, connection, table_name, schema=None, **kw):
+        """Fetch the oid for schema.table_name.
+        Return null if not found (external table does not have table oid)"""
+        schema_clause = (
+            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+        )
+
+        result = connection.execute("""
+                        SELECT table_id
+                        FROM
+                            SVV_TABLE_INFO
+                        WHERE 1
+                            {schema_clause}
+                            AND "table" = '{table_name}';
+                        """.format(schema_clause=schema_clause, table_name=table_name))
+
+        return result.scalar()
+
+    @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """
         Return information about the primary key constraint on `table_name`.
@@ -867,71 +929,107 @@ class RedshiftDialectMixin(DefaultDialect):
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
         all_columns = defaultdict(list)
-        result = connection.execute(sa.text("""
-        SELECT
-          n.nspname as "schema",
-          c.relname as "table_name",
-          att.attname as "name",
-          format_encoding(att.attencodingtype::integer) as "encode",
-          format_type(att.atttypid, att.atttypmod) as "type",
-          att.attisdistkey as "distkey",
-          att.attsortkeyord as "sortkey",
-          att.attnotnull as "notnull",
-          pg_catalog.col_description(att.attrelid, att.attnum)
-            as "comment",
-          adsrc,
-          attnum,
-          pg_catalog.format_type(att.atttypid, att.atttypmod),
-          pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
-          n.oid as "schema_oid",
-          c.oid as "table_oid"
-        FROM pg_catalog.pg_class c
-        LEFT JOIN pg_catalog.pg_namespace n
-          ON n.oid = c.relnamespace
-        JOIN pg_catalog.pg_attribute att
-          ON att.attrelid = c.oid
-        LEFT JOIN pg_catalog.pg_attrdef ad
-          ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
-        WHERE n.nspname !~ '^pg_'
-          AND att.attnum > 0
-          AND NOT att.attisdropped
-          {schema_clause}
-        UNION
-        SELECT
-          view_schema as "schema",
-          view_name as "table_name",
-          col_name as "name",
-          null as "encode",
-          col_type as "type",
-          null as "distkey",
-          0 as "sortkey",
-          null as "notnull",
-          null as "comment",
-          null as "adsrc",
-          null as "attnum",
-          col_type as "format_type",
-          null as "default",
-          null as "schema_oid",
-          null as "table_oid"
-        FROM pg_get_late_binding_view_cols() cols(
-          view_schema name,
-          view_name name,
-          col_name name,
-          col_type varchar,
-          col_num int)
-        WHERE 1 {schema_clause}
-        ORDER BY "schema", "table_name", "attnum";
-        """.format(schema_clause=schema_clause))
-        )
-        for col in result:
-            key = RelationKey(col.table_name, col.schema, connection)
-            all_columns[key].append(col)
+        with connection.connect() as cc:
+            result = cc.execute("""
+            SELECT
+              n.nspname as "schema",
+              c.relname as "table_name",
+              att.attname as "name",
+              format_encoding(att.attencodingtype::integer) as "encode",
+              format_type(att.atttypid, att.atttypmod) as "type",
+              att.attisdistkey as "distkey",
+              att.attsortkeyord as "sortkey",
+              att.attnotnull as "notnull",
+              pg_catalog.col_description(att.attrelid, att.attnum)
+                as "comment",
+              adsrc,
+              attnum,
+              pg_catalog.format_type(att.atttypid, att.atttypmod),
+              pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
+              n.oid as "schema_oid",
+              c.oid as "table_oid"
+            FROM pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n
+              ON n.oid = c.relnamespace
+            JOIN pg_catalog.pg_attribute att
+              ON att.attrelid = c.oid
+            LEFT JOIN pg_catalog.pg_attrdef ad
+              ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
+            WHERE n.nspname !~ '^pg_'
+              AND att.attnum > 0
+              AND NOT att.attisdropped
+              {schema_clause}
+            UNION
+            SELECT
+              view_schema as "schema",
+              view_name as "table_name",
+              col_name as "name",
+              null as "encode",
+              col_type as "type",
+              null as "distkey",
+              0 as "sortkey",
+              null as "notnull",
+              null as "comment",
+              null as "adsrc",
+              null as "attnum",
+              col_type as "format_type",
+              null as "default",
+              null as "schema_oid",
+              null as "table_oid"
+            FROM pg_get_late_binding_view_cols() cols(
+              view_schema name,
+              view_name name,
+              col_name name,
+              col_type varchar,
+              col_num int)
+            WHERE 1 {schema_clause}
+            UNION
+            SELECT c.schemaname AS "schema",
+               c.tablename AS "table_name",
+               c.columnname AS "name",
+               null AS "encode",
+               -- Spectrum represents data types differently.
+               -- Standardize, so we can infer types.
+               CASE
+                 WHEN c.external_type = 'int' THEN 'integer'
+                 ELSE
+                   replace(
+                    replace(c.external_type, 'decimal', 'numeric'),
+                    'varchar', 'character varying')
+                 END
+                    AS "type",
+               false AS "distkey",
+               0 AS "sortkey",
+               null AS "notnull",
+               null as "comment",
+               null AS "adsrc",
+               c.columnnum AS "attnum",
+               CASE
+                 WHEN c.external_type = 'int' THEN 'integer'
+                 ELSE
+                   replace(
+                    replace(c.external_type, 'decimal', 'numeric'),
+                    'varchar', 'character varying')
+                 END
+                    AS "format_type",
+               null AS "default",
+               s.esoid AS "schema_oid",
+               null AS "table_oid"
+            FROM svv_external_columns c
+            JOIN svv_external_schemas s ON s.schemaname = c.schemaname
+            WHERE 1 {schema_clause}
+            ORDER BY "schema", "table_name", "attnum";
+            """.format(schema_clause=schema_clause)
+            )
+            for col in result:
+                key = RelationKey(col.table_name, col.schema, connection)
+                all_columns[key].append(col)
 
         return dict(all_columns)
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
-        result = connection.execute(sa.text("""
+        result = connection.execute("""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
@@ -940,7 +1038,7 @@ class RedshiftDialectMixin(DefaultDialect):
           t.conkey,
           a.attnum,
           a.attname,
-          pg_catalog.pg_get_constraintdef(t.oid, true) as condef,
+          pg_catalog.pg_get_constraintdef(t.oid, true)::varchar(512) as condef,
           n.oid as "schema_oid",
           c.oid as "rel_oid"
         FROM pg_catalog.pg_class c
@@ -951,8 +1049,23 @@ class RedshiftDialectMixin(DefaultDialect):
         JOIN pg_catalog.pg_attribute a
           ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
         WHERE n.nspname !~ '^pg_'
-        ORDER BY n.nspname, c.relname
-        """))
+        UNION 
+        SELECT
+            s.schemaname AS "schema",
+            t.tablename AS "table_name",
+            'p' as "contype",
+            t.tablename || '_pkey' as "conname",
+            array[1::SMALLINT] as "conkey",
+            2 as "attnum",
+            'id' as "attname",
+            'PRIMARY KEY (id)'::VARCHAR(512) as "condef",
+            s.esoid AS "schema_oid",
+            null AS "rel_oid"
+        FROM
+            svv_external_tables t
+            JOIN svv_external_schemas s ON s.schemaname = t.schemaname
+        ORDER BY "schema", "table_name"
+        """)
         all_constraints = defaultdict(list)
         for con in result:
             key = RelationKey(con.table_name, con.schema, connection)
