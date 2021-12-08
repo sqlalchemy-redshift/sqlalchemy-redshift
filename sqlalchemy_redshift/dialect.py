@@ -575,7 +575,6 @@ class RedshiftDialectMixin(DefaultDialect):
 
     @reflection.cache
     def has_table(self, connection, table_name, schema=None):
-        self._ensure_has_table_connection(connection)
         table = self._get_redshift_relation(connection, table_name, schema)
         return True if table else False
 
