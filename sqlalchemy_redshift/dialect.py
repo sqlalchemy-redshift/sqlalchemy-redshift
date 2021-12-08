@@ -11,6 +11,8 @@ from sqlalchemy.dialects.postgresql.base import (
 )
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
+from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.sql.type_api import TypeEngine
 from sqlalchemy.engine import reflection
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (
@@ -29,6 +31,7 @@ from .ddl import (
     CreateMaterializedView, DropMaterializedView, get_table_attributes
 )
 import importlib
+import json
 
 sa_version = Version(sa.__version__)
 
@@ -64,6 +67,8 @@ __all__ = (
     'TIMESTAMP',
     'VARCHAR',
     'DOUBLE_PRECISION',
+    'GEOMETRY',
+    'SUPER',
     'TIMESTAMPTZ',
     'TIMETZ',
 
@@ -175,7 +180,18 @@ RESERVED_WORDS = set([
 ])
 
 
-class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
+class RedshiftTypeEngine(TypeEngine):
+
+    def _default_dialect(self, default=None):
+        """
+        Returns the default dialect used for TypeEngine compilation yielding String result.
+
+        :meth:`~sqlalchemy.sql.type_api.TypeEngine.compile`
+        """
+        return RedshiftDialectMixin()
+
+
+class TIMESTAMPTZ(RedshiftTypeEngine, sa.dialects.postgresql.TIMESTAMP):
     """
     Redshift defines a TIMTESTAMPTZ column type as an alias
     of TIMESTAMP WITH TIME ZONE.
@@ -189,11 +205,14 @@ class TIMESTAMPTZ(sa.dialects.postgresql.TIMESTAMP):
 
     __visit_name__ = 'TIMESTAMPTZ'
 
-    def __init__(self):
-        super(TIMESTAMPTZ, self).__init__(timezone=True)
+    def __init__(self, timezone=True, precision=None):
+        # timezone param must be present as it's provided in base class so the object
+        # can be instantiated with kwargs
+        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
+        super(TIMESTAMPTZ, self).__init__(timezone=True, precision=precision)
 
 
-class TIMETZ(sa.dialects.postgresql.TIME):
+class TIMETZ(RedshiftTypeEngine, sa.dialects.postgresql.TIME):
     """
     Redshift defines a TIMTETZ column type as an alias
     of TIME WITH TIME ZONE.
@@ -207,8 +226,66 @@ class TIMETZ(sa.dialects.postgresql.TIME):
 
     __visit_name__ = 'TIMETZ'
 
+    def __init__(self, timezone=True, precision=None):
+        # timezone param must be present as it's provided in base class so the object
+        # can be instantiated with kwargs
+        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
+        super(TIMETZ, self).__init__(timezone=True, precision=precision)
+
+
+class GEOMETRY(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
+    """
+    Redshift defines a GEOMETRY column type
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+    __visit_name__ = 'GEOMETRY'
+
     def __init__(self):
-        super(TIMETZ, self).__init__(timezone=True)
+        super(GEOMETRY, self).__init__()
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.GEOMETRY
+
+
+class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
+    """
+    Redshift defines a SUPER column type
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+
+    __visit_name__ = 'SUPER'
+
+    def __init__(self):
+        super(SUPER, self).__init__()
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.SUPER
+
+    def bind_expression(self, bindvalue):
+        return sa.func.json_parse(bindvalue)
+
+    def process_bind_param(self, value, dialect):
+        if not isinstance(value, str):
+            return json.dumps(value)
+        return value
+
+# Mapping for database schema inspection of Amazon Redshift datatypes
+REDSHIFT_ISCHEMA_NAMES = {
+    "geometry": GEOMETRY,
+    "super": SUPER,
+    "time with time zone": TIMETZ,
+    "timestamp with time zone": TIMESTAMPTZ,
+}
 
 
 class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
@@ -426,6 +503,12 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
 class RedshiftTypeCompiler(PGTypeCompiler):
 
+    def visit_GEOMETRY(self, type_, **kw):
+        return "GEOMETRY"
+
+    def visit_SUPER(self, type_, **kw):
+        return "SUPER"
+
     def visit_TIMESTAMPTZ(self, type_, **kw):
         return "TIMESTAMPTZ"
 
@@ -437,7 +520,7 @@ class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
 
-class RedshiftDialectMixin(object):
+class RedshiftDialectMixin(DefaultDialect):
     """
     Define Redshift-specific behavior.
 
@@ -479,6 +562,16 @@ class RedshiftDialectMixin(object):
         # Cache domains, as these will be static;
         # Redshift does not support user-created domains.
         self._domains = None
+
+    @property
+    def ischema_names(self):
+        """
+        Returns information about datatypes supported by Amazon Redshift.
+
+        Used in
+        :meth:`~sqlalchemy.engine.dialects.postgresql.base.PGDialect._get_column_info`.
+        """
+        return {**super(RedshiftDialectMixin, self).ischema_names, **REDSHIFT_ISCHEMA_NAMES}
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
@@ -736,7 +829,7 @@ class RedshiftDialectMixin(object):
 
     @reflection.cache
     def _get_all_relation_info(self, connection, **kw):
-        result = connection.execute("""
+        result = connection.execute(sa.text("""
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -757,7 +850,7 @@ class RedshiftDialectMixin(object):
         WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
           AND n.nspname !~ '^pg_'
         ORDER BY c.relkind, n.oid, n.nspname;
-        """)
+        """))
         relations = {}
         for rel in result:
             key = RelationKey(rel.relname, rel.schema, connection)
@@ -774,72 +867,71 @@ class RedshiftDialectMixin(object):
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
         all_columns = defaultdict(list)
-        with connection.connect() as cc:
-            result = cc.execute("""
-            SELECT
-              n.nspname as "schema",
-              c.relname as "table_name",
-              att.attname as "name",
-              format_encoding(att.attencodingtype::integer) as "encode",
-              format_type(att.atttypid, att.atttypmod) as "type",
-              att.attisdistkey as "distkey",
-              att.attsortkeyord as "sortkey",
-              att.attnotnull as "notnull",
-              pg_catalog.col_description(att.attrelid, att.attnum)
-                as "comment",
-              adsrc,
-              attnum,
-              pg_catalog.format_type(att.atttypid, att.atttypmod),
-              pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
-              n.oid as "schema_oid",
-              c.oid as "table_oid"
-            FROM pg_catalog.pg_class c
-            LEFT JOIN pg_catalog.pg_namespace n
-              ON n.oid = c.relnamespace
-            JOIN pg_catalog.pg_attribute att
-              ON att.attrelid = c.oid
-            LEFT JOIN pg_catalog.pg_attrdef ad
-              ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
-            WHERE n.nspname !~ '^pg_'
-              AND att.attnum > 0
-              AND NOT att.attisdropped
-              {schema_clause}
-            UNION
-            SELECT
-              view_schema as "schema",
-              view_name as "table_name",
-              col_name as "name",
-              null as "encode",
-              col_type as "type",
-              null as "distkey",
-              0 as "sortkey",
-              null as "notnull",
-              null as "comment",
-              null as "adsrc",
-              null as "attnum",
-              col_type as "format_type",
-              null as "default",
-              null as "schema_oid",
-              null as "table_oid"
-            FROM pg_get_late_binding_view_cols() cols(
-              view_schema name,
-              view_name name,
-              col_name name,
-              col_type varchar,
-              col_num int)
-            WHERE 1 {schema_clause}
-            ORDER BY "schema", "table_name", "attnum";
-            """.format(schema_clause=schema_clause)
-            )
-            for col in result:
-                key = RelationKey(col.table_name, col.schema, connection)
-                all_columns[key].append(col)
+        result = connection.execute(sa.text("""
+        SELECT
+          n.nspname as "schema",
+          c.relname as "table_name",
+          att.attname as "name",
+          format_encoding(att.attencodingtype::integer) as "encode",
+          format_type(att.atttypid, att.atttypmod) as "type",
+          att.attisdistkey as "distkey",
+          att.attsortkeyord as "sortkey",
+          att.attnotnull as "notnull",
+          pg_catalog.col_description(att.attrelid, att.attnum)
+            as "comment",
+          adsrc,
+          attnum,
+          pg_catalog.format_type(att.atttypid, att.atttypmod),
+          pg_catalog.pg_get_expr(ad.adbin, ad.adrelid) AS DEFAULT,
+          n.oid as "schema_oid",
+          c.oid as "table_oid"
+        FROM pg_catalog.pg_class c
+        LEFT JOIN pg_catalog.pg_namespace n
+          ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_attribute att
+          ON att.attrelid = c.oid
+        LEFT JOIN pg_catalog.pg_attrdef ad
+          ON (att.attrelid, att.attnum) = (ad.adrelid, ad.adnum)
+        WHERE n.nspname !~ '^pg_'
+          AND att.attnum > 0
+          AND NOT att.attisdropped
+          {schema_clause}
+        UNION
+        SELECT
+          view_schema as "schema",
+          view_name as "table_name",
+          col_name as "name",
+          null as "encode",
+          col_type as "type",
+          null as "distkey",
+          0 as "sortkey",
+          null as "notnull",
+          null as "comment",
+          null as "adsrc",
+          null as "attnum",
+          col_type as "format_type",
+          null as "default",
+          null as "schema_oid",
+          null as "table_oid"
+        FROM pg_get_late_binding_view_cols() cols(
+          view_schema name,
+          view_name name,
+          col_name name,
+          col_type varchar,
+          col_num int)
+        WHERE 1 {schema_clause}
+        ORDER BY "schema", "table_name", "attnum";
+        """.format(schema_clause=schema_clause))
+        )
+        for col in result:
+            key = RelationKey(col.table_name, col.schema, connection)
+            all_columns[key].append(col)
 
         return dict(all_columns)
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
-        result = connection.execute("""
+        result = connection.execute(sa.text("""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
@@ -860,7 +952,7 @@ class RedshiftDialectMixin(object):
           ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
         WHERE n.nspname !~ '^pg_'
         ORDER BY n.nspname, c.relname
-        """)
+        """))
         all_constraints = defaultdict(list)
         for con in result:
             key = RelationKey(con.table_name, con.schema, connection)

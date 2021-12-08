@@ -10,7 +10,6 @@ Contents:
    ddl-compiler
    dialect
    commands
-   ddl
 
 Indices and tables
 ==================
