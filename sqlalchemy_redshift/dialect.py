@@ -574,6 +574,12 @@ class RedshiftDialectMixin(DefaultDialect):
         return {**super(RedshiftDialectMixin, self).ischema_names, **REDSHIFT_ISCHEMA_NAMES}
 
     @reflection.cache
+    def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+        table = self._get_redshift_relation(connection, table_name, schema)
+        return True if table else False
+
+    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
         """
         Return information about columns in `table_name`.
