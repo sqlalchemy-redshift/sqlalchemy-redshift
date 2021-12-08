@@ -911,7 +911,23 @@ class RedshiftDialectMixin(DefaultDialect):
              JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
         WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
           AND n.nspname !~ '^pg_'
-        ORDER BY c.relkind, n.oid, n.nspname;
+        UNION
+        SELECT
+            'r' AS "relkind",
+            s.esoid AS "schema_oid",
+            s.schemaname AS "schema",
+            null AS "rel_oid",
+            t.tablename AS "relname",
+            null AS "diststyle",
+            s.esowner AS "owner_id",
+            u.usename AS "owner_name",
+            null AS "view_definition",
+            null AS "privileges"
+        FROM
+            svv_external_tables t
+            JOIN svv_external_schemas s ON s.schemaname = t.schemaname
+            JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
+        ORDER BY "relkind", "schema_oid", "schema";
         """))
         relations = {}
         for rel in result:
@@ -930,7 +946,7 @@ class RedshiftDialectMixin(DefaultDialect):
         )
         all_columns = defaultdict(list)
         with connection.connect() as cc:
-            result = cc.execute("""
+            result = cc.execute(sa.text("""
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -1019,8 +1035,8 @@ class RedshiftDialectMixin(DefaultDialect):
             JOIN svv_external_schemas s ON s.schemaname = c.schemaname
             WHERE 1 {schema_clause}
             ORDER BY "schema", "table_name", "attnum";
-            """.format(schema_clause=schema_clause)
-            )
+            """.format(schema_clause=schema_clause)))
+
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
                 all_columns[key].append(col)
@@ -1029,7 +1045,7 @@ class RedshiftDialectMixin(DefaultDialect):
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
-        result = connection.execute("""
+        result = connection.execute(sa.text("""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
@@ -1065,7 +1081,7 @@ class RedshiftDialectMixin(DefaultDialect):
             svv_external_tables t
             JOIN svv_external_schemas s ON s.schemaname = t.schemaname
         ORDER BY "schema", "table_name"
-        """)
+        """))
         all_constraints = defaultdict(list)
         for con in result:
             key = RelationKey(con.table_name, con.schema, connection)
