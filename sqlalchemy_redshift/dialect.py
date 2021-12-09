@@ -574,11 +574,6 @@ class RedshiftDialectMixin(DefaultDialect):
         return {**super(RedshiftDialectMixin, self).ischema_names, **REDSHIFT_ISCHEMA_NAMES}
 
     @reflection.cache
-    def has_table(self, connection, table_name, schema=None):
-        table = self._get_redshift_relation(connection, table_name, schema)
-        return True if table else False
-
-    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
         """
         Return information about columns in `table_name`.
@@ -599,6 +594,11 @@ class RedshiftDialectMixin(DefaultDialect):
                 comment=col.comment)
             columns.append(column_info)
         return columns
+
+    @reflection.cache
+    def has_table(self, connection, table_name, schema=None):
+        table = self._get_redshift_relation(connection, table_name, schema)
+        return True if table else False
 
     @reflection.cache
     def get_check_constraints(self, connection, table_name, schema=None, **kw):
@@ -826,6 +826,8 @@ class RedshiftDialectMixin(DefaultDialect):
             schema = default_schema
         info_cache = kw.get('info_cache')
         all_relations = self._get_all_relation_info(connection,
+                                                    schema=schema,
+                                                    table_name=relkind,
                                                     info_cache=info_cache)
         relation_names = []
         for key, relation in all_relations.items():
@@ -863,6 +865,8 @@ class RedshiftDialectMixin(DefaultDialect):
                                schema=None, **kw):
         info_cache = kw.get('info_cache')
         all_relations = self._get_all_relation_info(connection,
+                                                    schema=schema,
+                                                    table_name=table_name,
                                                     info_cache=info_cache)
         key = RelationKey(table_name, schema, connection)
         if key not in all_relations.keys():
@@ -876,7 +880,8 @@ class RedshiftDialectMixin(DefaultDialect):
         info_cache = kw.get('info_cache')
         all_schema_columns = self._get_schema_column_info(
             connection,
-            schema,
+            schema=schema,
+            table_name=table_name,
             info_cache=info_cache
         )
         key = RelationKey(table_name, schema, connection)
@@ -888,6 +893,8 @@ class RedshiftDialectMixin(DefaultDialect):
                                   schema=None, **kw):
         info_cache = kw.get('info_cache')
         all_constraints = self._get_all_constraint_info(connection,
+                                                        schema=schema,
+                                                        table_name=table_name,
                                                         info_cache=info_cache)
         key = RelationKey(table_name, schema, connection)
         if key not in all_constraints.keys():
@@ -896,7 +903,16 @@ class RedshiftDialectMixin(DefaultDialect):
 
     @reflection.cache
     def _get_all_relation_info(self, connection, **kw):
-        result = connection.execute(sa.text("""
+        schema = kw.get('schema', None)
+        table_name = kw.get('table_name', None)
+        schema_clause = (
+            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+        )
+        table_clause = (
+            "AND relname = '{table}'".format(table=table_name) if table_name else ""
+        )
+
+        result = connection.execute(sa.text(f"""
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -915,7 +931,7 @@ class RedshiftDialectMixin(DefaultDialect):
              LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
              JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
         WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
-          AND n.nspname !~ '^pg_'
+          AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
         UNION
         SELECT
             'r' AS "relkind",
@@ -932,8 +948,9 @@ class RedshiftDialectMixin(DefaultDialect):
             svv_external_tables t
             JOIN svv_external_schemas s ON s.schemaname = t.schemaname
             JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
+        where 1 {schema_clause} {table_clause}
         ORDER BY "relkind", "schema_oid", "schema";
-        """))
+        """.format(schema_clause=schema_clause, table_clause=table_clause)))
         relations = {}
         for rel in result:
             key = RelationKey(rel.relname, rel.schema, connection)
@@ -943,12 +960,17 @@ class RedshiftDialectMixin(DefaultDialect):
     # We fetch column info an entire schema at a time to improve performance
     # when reflecting schema for multiple tables at once.
     @reflection.cache
-    def _get_schema_column_info(
-        self, connection, schema=None, **kw
-    ):
+    def _get_schema_column_info(self, connection, **kw):
+
+        schema = kw.get('schema', None)
+        table_name = kw.get('table_name', None)
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
+        table_clause = (
+            "AND table_name = '{table}'".format(table=table_name) if table_name else ""
+        )
+
         all_columns = defaultdict(list)
         with connection.connect() as cc:
             result = cc.execute(sa.text("""
@@ -979,7 +1001,7 @@ class RedshiftDialectMixin(DefaultDialect):
             WHERE n.nspname !~ '^pg_'
               AND att.attnum > 0
               AND NOT att.attisdropped
-              {schema_clause}
+              {schema_clause} {table_clause}
             UNION
             SELECT
               view_schema as "schema",
@@ -1003,7 +1025,7 @@ class RedshiftDialectMixin(DefaultDialect):
               col_name name,
               col_type varchar,
               col_num int)
-            WHERE 1 {schema_clause}
+            WHERE 1 {schema_clause} {table_clause}
             UNION
             SELECT c.schemaname AS "schema",
                c.tablename AS "table_name",
@@ -1038,9 +1060,9 @@ class RedshiftDialectMixin(DefaultDialect):
                null AS "table_oid"
             FROM svv_external_columns c
             JOIN svv_external_schemas s ON s.schemaname = c.schemaname
-            WHERE 1 {schema_clause}
+            WHERE 1 {schema_clause} {table_clause}
             ORDER BY "schema", "table_name", "attnum";
-            """.format(schema_clause=schema_clause)))
+            """.format(schema_clause=schema_clause, table_clause=table_clause)))
 
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
@@ -1050,7 +1072,16 @@ class RedshiftDialectMixin(DefaultDialect):
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
-        result = connection.execute(sa.text("""
+        schema = kw.get('schema', None)
+        table_name = kw.get('table_name', None)
+        schema_clause = (
+            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+        )
+        table_clause = (
+            "AND table_name = '{table}'".format(table=table_name) if table_name else ""
+        )
+
+        result = connection.execute(sa.text(f"""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
@@ -1069,24 +1100,25 @@ class RedshiftDialectMixin(DefaultDialect):
           ON t.conrelid = c.oid
         JOIN pg_catalog.pg_attribute a
           ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
-        WHERE n.nspname !~ '^pg_'
+        WHERE n.nspname !~ '^pg_' {schema_clause} {table_clause}
         UNION 
         SELECT
             s.schemaname AS "schema",
-            t.tablename AS "table_name",
+            c.tablename AS "table_name",
             'p' as "contype",
-            t.tablename || '_pkey' as "conname",
+            c.tablename || '_pkey' as "conname",
             array[1::SMALLINT] as "conkey",
-            2 as "attnum",
-            'id' as "attname",
-            'PRIMARY KEY (id)'::VARCHAR(512) as "condef",
+            1 as "attnum",
+            c.columnname as "attname",
+            'PRIMARY KEY (' || c.columnname  || ')'::VARCHAR(512) as "condef",
             s.esoid AS "schema_oid",
             null AS "rel_oid"
         FROM
-            svv_external_tables t
-            JOIN svv_external_schemas s ON s.schemaname = t.schemaname
+            svv_external_columns c
+            JOIN svv_external_schemas s ON s.schemaname = c.schemaname
+        where 1 {schema_clause} {table_clause}
         ORDER BY "schema", "table_name"
-        """))
+        """.format(schema_clause=schema_clause, table_clause=table_clause)))
         all_constraints = defaultdict(list)
         for con in result:
             key = RelationKey(con.table_name, con.schema, connection)
