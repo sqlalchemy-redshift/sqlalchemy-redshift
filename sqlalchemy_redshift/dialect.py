@@ -597,6 +597,10 @@ class RedshiftDialectMixin(DefaultDialect):
 
     @reflection.cache
     def has_table(self, connection, table_name, schema=None):
+        default_schema = inspect(connection).default_schema_name
+        if not schema:
+            schema = default_schema
+
         table = self._get_redshift_relation(connection, table_name, schema)
         return True if table else False
 
@@ -827,7 +831,6 @@ class RedshiftDialectMixin(DefaultDialect):
         info_cache = kw.get('info_cache')
         all_relations = self._get_all_relation_info(connection,
                                                     schema=schema,
-                                                    table_name=relkind,
                                                     info_cache=info_cache)
         relation_names = []
         for key, relation in all_relations.items():
