@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import MetaData, Table
+from sqlalchemy import MetaData, Table, inspect
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.exc import NoSuchTableError
 
@@ -191,3 +191,44 @@ def test_no_search_path_leak(redshift_session):
     result = redshift_session.execute("SHOW search_path")
     search_path = result.scalar()
     assert 'other_schema' not in search_path
+
+
+def test_external_schema_reflection(redshift_engine):
+    schema_ddl = """create external schema spectrum 
+                    from data catalog 
+                    database 'spectrumdb' 
+                    iam_role 'arn:aws:iam::123456789012:role/mySpectrumRole'
+                    create external database if not exists;
+                    """
+
+    conn = redshift_engine.connect()
+    conn.execute(schema_ddl)
+    insp = inspect(redshift_engine)
+    all_schemas = insp.get_schema_names()
+    assert 'spectrum' in all_schemas
+
+
+def test_external_table_reflection(redshift_engine):
+    table_ddl = """create external table spectrum.sales(
+        salesid integer,
+        listid integer,
+        sellerid integer,
+        pricepaid decimal(8,2),
+        saletime timestamp)
+        row format delimited
+        fields terminated by '\t'
+        stored as textfile
+        location 's3://awssampledbuswest2/tickit/spectrum/sales/'
+        table properties ('numRows'='172000');
+    """
+    with redshift_engine.connect() as conn:
+        # Redshift can't run CREATE EXTERNAL TABLE inside a transaction (BEGIN … END)
+        conn.execution_options(isolation_level='AUTOCOMMIT')
+        conn.execute(table_ddl)
+
+        insp = inspect(redshift_engine)
+        table_columns_definition = insp.get_columns(table_name='sales', schema='spectrum')
+        table_columns = [col['name'] for col in table_columns_definition]
+
+        assert 'salesid' in table_columns
+        assert 'pricepaid' in table_columns
