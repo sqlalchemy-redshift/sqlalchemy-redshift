@@ -634,7 +634,7 @@ class RedshiftDialectMixin(DefaultDialect):
                 r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
             )
             if not m:
-                print(f"Could not parse CHECK constraint text: {src}")
+                print("Could not parse CHECK constraint text: {src}".format(src=src))
                 sqltext = ""
             else:
                 sqltext = re.compile(
