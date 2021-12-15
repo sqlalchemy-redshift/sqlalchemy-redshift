@@ -1,4 +1,4 @@
-0.8.9 (unreleased)
+0.8.9 (2021-12-15)
 ------------------
 
 - Support inspection of Redshift datatypes
