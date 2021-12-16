@@ -915,7 +915,7 @@ class RedshiftDialectMixin(DefaultDialect):
             "AND relname = '{table}'".format(table=table_name) if table_name else ""
         )
 
-        result = connection.execute(sa.text(f"""
+        result = connection.execute(sa.text("""
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -1084,7 +1084,7 @@ class RedshiftDialectMixin(DefaultDialect):
             "AND table_name = '{table}'".format(table=table_name) if table_name else ""
         )
 
-        result = connection.execute(sa.text(f"""
+        result = connection.execute(sa.text("""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
