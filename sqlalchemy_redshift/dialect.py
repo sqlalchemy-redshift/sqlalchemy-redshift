@@ -1038,9 +1038,14 @@ class RedshiftDialectMixin(DefaultDialect):
                -- Standardize, so we can infer types.
                CASE
                  WHEN c.external_type = 'int' THEN 'integer'
+                 WHEN c.external_type = 'float' THEN 'real'
+                 WHEN c.external_type = 'double' THEN 'double precision'
+                 WHEN c.external_type = 'timestamp' THEN 'timestamp without time zone'
                  ELSE
                    replace(
-                    replace(c.external_type, 'decimal', 'numeric'),
+                    replace(
+                        replace(c.external_type, 'decimal', 'numeric'),
+                        'char', 'character'),
                     'varchar', 'character varying')
                  END
                     AS "type",
@@ -1052,9 +1057,14 @@ class RedshiftDialectMixin(DefaultDialect):
                c.columnnum AS "attnum",
                CASE
                  WHEN c.external_type = 'int' THEN 'integer'
+                 WHEN c.external_type = 'float' THEN 'real'
+                 WHEN c.external_type = 'double' THEN 'double precision'
+                 WHEN c.external_type = 'timestamp' THEN 'timestamp without time zone'
                  ELSE
                    replace(
-                    replace(c.external_type, 'decimal', 'numeric'),
+                    replace(
+                        replace(c.external_type, 'decimal', 'numeric'),
+                        'char', 'character'),
                     'varchar', 'character varying')
                  END
                     AS "format_type",

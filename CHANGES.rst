@@ -1,14 +1,8 @@
-0.8.11 (unreleased)
-------------------
-
-- Add support for reflection of spectrum tables.
-  (`Issue #122 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/122>`_)
-
-
 0.8.10 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Add spectrum support
+  (`Pull #243 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/243>`_)
 
 
 0.8.9 (2021-12-15)
