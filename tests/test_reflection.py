@@ -193,7 +193,7 @@ def test_no_search_path_leak(redshift_session):
     assert 'other_schema' not in search_path
 
 
-def test_external_schema_reflection(redshift_engine):
+def test_external_table_reflection(redshift_engine):
     schema_ddl = """create external schema spectrum 
                     from data catalog 
                     database 'spectrumdb' 
@@ -207,8 +207,6 @@ def test_external_schema_reflection(redshift_engine):
     all_schemas = insp.get_schema_names()
     assert 'spectrum' in all_schemas
 
-
-def test_external_table_reflection(redshift_engine):
     table_ddl = """create external table spectrum.sales(
         salesid integer,
         listid integer,
@@ -232,3 +230,9 @@ def test_external_table_reflection(redshift_engine):
 
         assert 'salesid' in table_columns
         assert 'pricepaid' in table_columns
+
+        # Drop external table because we are using `AUTOCOMMIT`
+        conn.execute("""DROP TABLE IF EXISTS spectrum.sales""")
+
+        # Also drop the external db -> https://docs.aws.amazon.com/redshift/latest/dg/r_DROP_DATABASE.html
+        conn.execute("""DROP SCHEMA IF EXISTS spectrum DROP EXTERNAL DATABASE""")

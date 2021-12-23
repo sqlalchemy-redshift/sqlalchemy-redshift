@@ -596,12 +596,16 @@ class RedshiftDialectMixin(DefaultDialect):
         return columns
 
     @reflection.cache
-    def has_table(self, connection, table_name, schema=None):
-        default_schema = inspect(connection).default_schema_name
+    def has_table(self, connection, table_name, schema=None, **kw):
         if not schema:
-            schema = default_schema
+            schema = inspect(connection).default_schema_name
 
-        table = self._get_redshift_relation(connection, table_name, schema)
+        info_cache = kw.get('info_cache')
+        table = self._get_all_relation_info(connection,
+                                            schema=schema,
+                                            table_name=table_name,
+                                            info_cache=info_cache)
+
         return True if table else False
 
     @reflection.cache
