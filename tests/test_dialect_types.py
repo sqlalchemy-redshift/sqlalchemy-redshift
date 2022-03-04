@@ -45,7 +45,7 @@ def test_defined_types():
         is not sqlalchemy.sql.sqltypes.TIME
 
     assert sqlalchemy_redshift.dialect.HLLSKETCH \
-        is not sqlalchemy.sql.sqltypes.HLLSKETCH
+        is not sqlalchemy.sql.sqltypes.TEXT
 
 custom_type_inheritance = [
     (
