@@ -44,6 +44,9 @@ def test_defined_types():
     assert sqlalchemy_redshift.dialect.TIMETZ \
         is not sqlalchemy.sql.sqltypes.TIME
 
+    assert sqlalchemy_redshift.dialect.HLLSKETCH \
+        is not sqlalchemy.sql.sqltypes.HLLSKETCH
+
 custom_type_inheritance = [
     (
         sqlalchemy_redshift.dialect.GEOMETRY,
@@ -60,6 +63,10 @@ custom_type_inheritance = [
     (
         sqlalchemy_redshift.dialect.TIMETZ,
         sqlalchemy.sql.sqltypes.TIME
+    ),
+    (
+        sqlalchemy_redshift.dialect.HLLSKETCH,
+        sqlalchemy.sql.sqltypes.TEXT
     ),
 ]
 
@@ -111,6 +118,16 @@ column_and_ddl = [
             u"\n\tPRIMARY KEY (id)\n)\n\n"
         )
     ),
+    (
+        sqlalchemy_redshift.dialect.HLLSKETCH,
+        (
+            u"\nCREATE TABLE t1 ("
+            u"\n\tid INTEGER NOT NULL, "
+            u"\n\tname VARCHAR, "
+            u"\n\ttest_col HLLSKETCH, "
+            u"\n\tPRIMARY KEY (id)\n)\n\n"
+        )
+    ),
 ]
 
 
@@ -138,7 +155,8 @@ redshift_specific_datatypes = [
     sqlalchemy_redshift.dialect.GEOMETRY,
     sqlalchemy_redshift.dialect.SUPER,
     sqlalchemy_redshift.dialect.TIMETZ,
-    sqlalchemy_redshift.dialect.TIMESTAMPTZ
+    sqlalchemy_redshift.dialect.TIMESTAMPTZ,
+    sqlalchemy_redshift.dialect.HLLSKETCH
 ]
 
 

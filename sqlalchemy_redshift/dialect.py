@@ -71,6 +71,7 @@ __all__ = (
     'SUPER',
     'TIMESTAMPTZ',
     'TIMETZ',
+    'HLLSKETCH',
 
     'RedshiftDialect', 'RedshiftDialect_psycopg2',
     'RedshiftDialect_psycopg2cffi', 'RedshiftDialect_redshift_connector',
@@ -279,12 +280,31 @@ class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
             return json.dumps(value)
         return value
 
+class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
+    """
+    Redshift defines a HLLSKETCH column type
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+    __visit_name__ = 'HLLSKETCH'
+
+    def __init__(self):
+        super(HLLSKETCH, self).__init__()
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.HLLSKETCH
+
 # Mapping for database schema inspection of Amazon Redshift datatypes
 REDSHIFT_ISCHEMA_NAMES = {
     "geometry": GEOMETRY,
     "super": SUPER,
     "time with time zone": TIMETZ,
     "timestamp with time zone": TIMESTAMPTZ,
+    "hllsketch": HLLSKETCH,
 }
 
 
@@ -514,6 +534,9 @@ class RedshiftTypeCompiler(PGTypeCompiler):
 
     def visit_TIMETZ(self, type_, **kw):
         return "TIMETZ"
+
+    def visit_HLLSKETCH(self, type_, **kw):
+        return "HLLSKETCH"
 
 
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
