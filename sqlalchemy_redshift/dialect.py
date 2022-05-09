@@ -168,16 +168,17 @@ RESERVED_WORDS = set([
     "ignore", "ilike", "in", "initially", "inner", "intersect", "into",
     "is", "isnull", "join", "language", "leading", "left", "like",
     "limit", "localtime", "localtimestamp", "lun", "luns", "lzo", "lzop",
-    "minus", "mostly13", "mostly32", "mostly8", "natural", "new", "not",
+    "minus", "mostly16", "mostly32", "mostly8", "natural", "new", "not",
     "notnull", "null", "nulls", "off", "offline", "offset", "oid", "old",
     "on", "only", "open", "or", "order", "outer", "overlaps", "parallel",
-    "partition", "percent", "permissions", "placing", "primary", "raw",
-    "readratio", "recover", "references", "respect", "rejectlog",
+    "partition", "percent", "permissions", "pivot", "placing", "primary",
+    "raw", "readratio", "recover", "references", "respect", "rejectlog",
     "resort", "restore", "right", "select", "session_user", "similar",
     "snapshot", "some", "sysdate", "system", "table", "tag", "tdes",
     "text255", "text32k", "then", "timestamp", "to", "top", "trailing",
-    "true", "truncatecolumns", "union", "unique", "user", "using",
-    "verbose", "wallet", "when", "where", "with", "without",
+    "true", "truncatecolumns", "union", "unique", "unnest", "unpivot",
+    "user", "using", "verbose", "wallet", "when", "where", "with",
+    "without",
 ])
 
 
