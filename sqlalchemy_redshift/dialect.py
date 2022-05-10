@@ -555,6 +555,9 @@ class RedshiftDialectMixin(DefaultDialect):
 
     name = 'redshift'
     max_identifier_length = 127
+    # explicitly disables statement cache to disable warnings in logs
+    # ref: https://docs.sqlalchemy.org/en/14/core/connections.html#caching-for-third-party-dialects
+    supports_statement_cache = False
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
