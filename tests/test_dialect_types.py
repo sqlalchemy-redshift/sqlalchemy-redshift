@@ -47,6 +47,7 @@ def test_defined_types():
     assert sqlalchemy_redshift.dialect.HLLSKETCH \
         is not sqlalchemy.sql.sqltypes.TEXT
 
+
 custom_type_inheritance = [
     (
         sqlalchemy_redshift.dialect.GEOMETRY,

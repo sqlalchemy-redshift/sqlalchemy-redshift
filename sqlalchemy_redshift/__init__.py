@@ -10,7 +10,7 @@ for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
 
 __version__ = get_distribution('sqlalchemy-redshift').version
 
-from sqlalchemy.dialects import registry
+from sqlalchemy.dialects import registry  # noqa
 
 registry.register(
     "redshift", "sqlalchemy_redshift.dialect",
