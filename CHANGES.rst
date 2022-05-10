@@ -5,6 +5,8 @@
   (`Pull #246 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/246>`_)
 - Disable supports_statement_cache
   (`Pull #249 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/249>`_)
+- Fix doc, lint CI dependency issues
+  (`Pull #250 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/250>`_)
 
 0.8.9 (2021-12-15)
 ------------------
