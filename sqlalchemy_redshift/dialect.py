@@ -186,7 +186,8 @@ class RedshiftTypeEngine(TypeEngine):
 
     def _default_dialect(self, default=None):
         """
-        Returns the default dialect used for TypeEngine compilation yielding String result.
+        Returns the default dialect used for TypeEngine compilation yielding
+        String result.
 
         :meth:`~sqlalchemy.sql.type_api.TypeEngine.compile`
         """
@@ -208,9 +209,9 @@ class TIMESTAMPTZ(RedshiftTypeEngine, sa.dialects.postgresql.TIMESTAMP):
     __visit_name__ = 'TIMESTAMPTZ'
 
     def __init__(self, timezone=True, precision=None):
-        # timezone param must be present as it's provided in base class so the object
-        # can be instantiated with kwargs
-        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
+        # timezone param must be present as it's provided in base class so the
+        # object can be instantiated with kwargs. see
+        # :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
         super(TIMESTAMPTZ, self).__init__(timezone=True, precision=precision)
 
 
@@ -229,9 +230,9 @@ class TIMETZ(RedshiftTypeEngine, sa.dialects.postgresql.TIME):
     __visit_name__ = 'TIMETZ'
 
     def __init__(self, timezone=True, precision=None):
-        # timezone param must be present as it's provided in base class so the object
-        # can be instantiated with kwargs
-        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
+        # timezone param must be present as it's provided in base class so the
+        # object can be instantiated with kwargs. see
+        # :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
         super(TIMETZ, self).__init__(timezone=True, precision=precision)
 
 
@@ -281,6 +282,7 @@ class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
             return json.dumps(value)
         return value
 
+
 class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
     """
     Redshift defines a HLLSKETCH column type
@@ -298,6 +300,7 @@ class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.HLLSKETCH
+
 
 # Mapping for database schema inspection of Amazon Redshift datatypes
 REDSHIFT_ISCHEMA_NAMES = {
@@ -556,7 +559,7 @@ class RedshiftDialectMixin(DefaultDialect):
     name = 'redshift'
     max_identifier_length = 127
     # explicitly disables statement cache to disable warnings in logs
-    # ref: https://docs.sqlalchemy.org/en/14/core/connections.html#caching-for-third-party-dialects
+    # ref: https://docs.sqlalchemy.org/en/14/core/connections.html#caching-for-third-party-dialects  # noqa
     supports_statement_cache = False
 
     statement_compiler = RedshiftCompiler
@@ -598,7 +601,10 @@ class RedshiftDialectMixin(DefaultDialect):
         Used in
         :meth:`~sqlalchemy.engine.dialects.postgresql.base.PGDialect._get_column_info`.
         """
-        return {**super(RedshiftDialectMixin, self).ischema_names, **REDSHIFT_ISCHEMA_NAMES}
+        return {
+            **super(RedshiftDialectMixin, self).ischema_names,
+            **REDSHIFT_ISCHEMA_NAMES
+        }
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
