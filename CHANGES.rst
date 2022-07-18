@@ -7,6 +7,8 @@
   (`Pull #249 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/249>`_)
 - Fix doc, lint CI dependency issues
   (`Pull #250 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/250>`_)
+- Fix redshift_connector dialect column encoding
+  (`Pull #255 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/255>`_)
 
 0.8.9 (2021-12-15)
 ------------------

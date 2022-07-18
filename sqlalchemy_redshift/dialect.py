@@ -1096,7 +1096,6 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
     supports_sane_multi_rowcount = True
     statement_compiler = RedshiftCompiler_redshift_connector
     execution_ctx_cls = RedshiftExecutionContext_redshift_connector
-    description_encoding = "use_encoding"
 
     supports_statement_cache = True
     use_setinputsizes = False  # not implemented in redshift_connector
@@ -1110,7 +1109,15 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
     @classmethod
     def dbapi(cls):
         try:
-            return importlib.import_module(cls.driver)
+            driver_module = importlib.import_module(cls.driver)
+
+            # Starting v2.0.908 driver converts description column names to str
+            if Version(driver_module.__version__) < Version('2.0.908'):
+                cls.description_encoding = "use_encoding"
+            else:
+                cls.description_encoding = None
+
+            return driver_module
         except ImportError:
             raise ImportError(
                 'No module named redshift_connector. Please install '
