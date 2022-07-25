@@ -9,7 +9,6 @@
   (`Pull #250 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/250>`_)
 - Fix redshift_connector dialect column encoding
   (`Pull #255 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/255>`_)
-- Migrate CI to new AWS account (`Pull #256 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/256>`_)
 
 0.8.9 (2021-12-15)
 ------------------
