@@ -1,7 +1,7 @@
 0.8.11 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Disable redshift_connector dialect statement cache (`Pull #257 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/257>`_)
 
 
 0.8.10 (2022-07-21)
