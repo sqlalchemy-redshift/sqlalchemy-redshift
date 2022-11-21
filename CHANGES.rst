@@ -1,7 +1,7 @@
 0.8.12 (unreleased)
 -------------------
 
-- Fix SQLAlchemy's "supports_statement_cache"
+- Fix SQLAlchemy's "supports_statement_cache" (`Pull #259 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/259>`_)
 
 
 0.8.11 (2022-07-27)
