@@ -558,9 +558,6 @@ class RedshiftDialectMixin(DefaultDialect):
 
     name = 'redshift'
     max_identifier_length = 127
-    # explicitly disables statement cache to disable warnings in logs
-    # ref: https://docs.sqlalchemy.org/en/14/core/connections.html#caching-for-third-party-dialects  # noqa
-    supports_statement_cache = False
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
@@ -1036,7 +1033,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
 class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
 ):
-    pass
+    supports_statement_cache = False
 
 
 # Add RedshiftDialect synonym for backwards compatibility.
@@ -1046,7 +1043,7 @@ RedshiftDialect = RedshiftDialect_psycopg2
 class RedshiftDialect_psycopg2cffi(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2cffi
 ):
-    pass
+    supports_statement_cache = False
 
 
 class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
