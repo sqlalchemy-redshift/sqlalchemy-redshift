@@ -725,6 +725,22 @@ class RedshiftDialectMixin(DefaultDialect):
         """
         return []
 
+    @staticmethod
+    def unquote(text):
+        if text is None:
+            return None
+        
+        if text.startswith('"') and text.endswith('"'):
+            return text[1:-1]
+        
+        return text
+
+    def get_table_oid(self, connection, table_name, schema=None, **kw):
+        """Unquote table name and schema before getting table oid"""
+        schema = self.unquote(schema)
+        table_name = self.unquote(table_name)
+        return PGDialect.get_table_oid(self, connection, table_name, schema, **kw)
+
     @reflection.cache
     def get_unique_constraints(self, connection, table_name,
                                schema=None, **kw):
@@ -893,6 +909,7 @@ class RedshiftDialectMixin(DefaultDialect):
     def _get_schema_column_info(
         self, connection, schema=None, **kw
     ):
+        schema = self.unquote(schema)
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
