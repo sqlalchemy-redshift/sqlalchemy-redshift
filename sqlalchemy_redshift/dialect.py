@@ -674,8 +674,8 @@ class RedshiftDialectMixin(DefaultDialect):
             fkey_d = {
                 'name': conname,
                 'constrained_columns': constrained_columns,
-                'referred_schema': referred_schema,
-                'referred_table': referred_table,
+                'referred_schema': self.unquote(referred_schema),
+                'referred_table': self.unquote(referred_table),
                 'referred_columns': referred_columns,
             }
             fkeys.append(fkey_d)
