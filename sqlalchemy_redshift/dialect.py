@@ -674,8 +674,8 @@ class RedshiftDialectMixin(DefaultDialect):
             fkey_d = {
                 'name': conname,
                 'constrained_columns': constrained_columns,
-                'referred_schema': referred_schema,
-                'referred_table': referred_table,
+                'referred_schema': self.unquote(referred_schema),
+                'referred_table': self.unquote(referred_table),
                 'referred_columns': referred_columns,
             }
             fkeys.append(fkey_d)
@@ -724,6 +724,22 @@ class RedshiftDialectMixin(DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
         """
         return []
+
+    @staticmethod
+    def unquote(text):
+        if text is None:
+            return None
+        
+        if text.startswith('"') and text.endswith('"'):
+            return text[1:-1]
+        
+        return text
+
+    def get_table_oid(self, connection, table_name, schema=None, **kw):
+        """Unquote table name and schema before getting table oid"""
+        schema = self.unquote(schema)
+        table_name = self.unquote(table_name)
+        return PGDialect.get_table_oid(self, connection, table_name, schema, **kw)
 
     @reflection.cache
     def get_unique_constraints(self, connection, table_name,
@@ -893,6 +909,7 @@ class RedshiftDialectMixin(DefaultDialect):
     def _get_schema_column_info(
         self, connection, schema=None, **kw
     ):
+        schema = self.unquote(schema)
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
