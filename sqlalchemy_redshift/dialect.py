@@ -71,6 +71,7 @@ __all__ = (
     'SUPER',
     'TIMESTAMPTZ',
     'TIMETZ',
+    'HLLSKETCH',
 
     'RedshiftDialect', 'RedshiftDialect_psycopg2',
     'RedshiftDialect_psycopg2cffi', 'RedshiftDialect_redshift_connector',
@@ -167,16 +168,17 @@ RESERVED_WORDS = set([
     "ignore", "ilike", "in", "initially", "inner", "intersect", "into",
     "is", "isnull", "join", "language", "leading", "left", "like",
     "limit", "localtime", "localtimestamp", "lun", "luns", "lzo", "lzop",
-    "minus", "mostly13", "mostly32", "mostly8", "natural", "new", "not",
+    "minus", "mostly16", "mostly32", "mostly8", "natural", "new", "not",
     "notnull", "null", "nulls", "off", "offline", "offset", "oid", "old",
     "on", "only", "open", "or", "order", "outer", "overlaps", "parallel",
-    "partition", "percent", "permissions", "placing", "primary", "raw",
-    "readratio", "recover", "references", "respect", "rejectlog",
+    "partition", "percent", "permissions", "pivot", "placing", "primary",
+    "raw", "readratio", "recover", "references", "respect", "rejectlog",
     "resort", "restore", "right", "select", "session_user", "similar",
     "snapshot", "some", "sysdate", "system", "table", "tag", "tdes",
     "text255", "text32k", "then", "timestamp", "to", "top", "trailing",
-    "true", "truncatecolumns", "union", "unique", "user", "using",
-    "verbose", "wallet", "when", "where", "with", "without",
+    "true", "truncatecolumns", "union", "unique", "unnest", "unpivot",
+    "user", "using", "verbose", "wallet", "when", "where", "with",
+    "without",
 ])
 
 
@@ -184,7 +186,8 @@ class RedshiftTypeEngine(TypeEngine):
 
     def _default_dialect(self, default=None):
         """
-        Returns the default dialect used for TypeEngine compilation yielding String result.
+        Returns the default dialect used for TypeEngine compilation yielding
+        String result.
 
         :meth:`~sqlalchemy.sql.type_api.TypeEngine.compile`
         """
@@ -206,9 +209,9 @@ class TIMESTAMPTZ(RedshiftTypeEngine, sa.dialects.postgresql.TIMESTAMP):
     __visit_name__ = 'TIMESTAMPTZ'
 
     def __init__(self, timezone=True, precision=None):
-        # timezone param must be present as it's provided in base class so the object
-        # can be instantiated with kwargs
-        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
+        # timezone param must be present as it's provided in base class so the
+        # object can be instantiated with kwargs. see
+        # :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
         super(TIMESTAMPTZ, self).__init__(timezone=True, precision=precision)
 
 
@@ -227,9 +230,9 @@ class TIMETZ(RedshiftTypeEngine, sa.dialects.postgresql.TIME):
     __visit_name__ = 'TIMETZ'
 
     def __init__(self, timezone=True, precision=None):
-        # timezone param must be present as it's provided in base class so the object
-        # can be instantiated with kwargs
-        # see :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
+        # timezone param must be present as it's provided in base class so the
+        # object can be instantiated with kwargs. see
+        # :meth:`~sqlalchemy.dialects.postgresql.base.PGDialect._get_column_info`
         super(TIMETZ, self).__init__(timezone=True, precision=precision)
 
 
@@ -279,12 +282,33 @@ class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
             return json.dumps(value)
         return value
 
+
+class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
+    """
+    Redshift defines a HLLSKETCH column type
+    https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
+    Adding an explicit type to the RedshiftDialect allows us follow the
+    SqlAlchemy conventions for "vendor-specific types."
+
+    https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+    """
+    __visit_name__ = 'HLLSKETCH'
+
+    def __init__(self):
+        super(HLLSKETCH, self).__init__()
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.HLLSKETCH
+
+
 # Mapping for database schema inspection of Amazon Redshift datatypes
 REDSHIFT_ISCHEMA_NAMES = {
     "geometry": GEOMETRY,
     "super": SUPER,
     "time with time zone": TIMETZ,
     "timestamp with time zone": TIMESTAMPTZ,
+    "hllsketch": HLLSKETCH,
 }
 
 
@@ -515,6 +539,9 @@ class RedshiftTypeCompiler(PGTypeCompiler):
     def visit_TIMETZ(self, type_, **kw):
         return "TIMETZ"
 
+    def visit_HLLSKETCH(self, type_, **kw):
+        return "HLLSKETCH"
+
 
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
@@ -571,7 +598,10 @@ class RedshiftDialectMixin(DefaultDialect):
         Used in
         :meth:`~sqlalchemy.engine.dialects.postgresql.base.PGDialect._get_column_info`.
         """
-        return {**super(RedshiftDialectMixin, self).ischema_names, **REDSHIFT_ISCHEMA_NAMES}
+        return {
+            **super(RedshiftDialectMixin, self).ischema_names,
+            **REDSHIFT_ISCHEMA_NAMES
+        }
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
@@ -1186,7 +1216,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
 class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
 ):
-    pass
+    supports_statement_cache = False
 
 
 # Add RedshiftDialect synonym for backwards compatibility.
@@ -1196,7 +1226,7 @@ RedshiftDialect = RedshiftDialect_psycopg2
 class RedshiftDialect_psycopg2cffi(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2cffi
 ):
-    pass
+    supports_statement_cache = False
 
 
 class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
@@ -1246,9 +1276,8 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
     supports_sane_multi_rowcount = True
     statement_compiler = RedshiftCompiler_redshift_connector
     execution_ctx_cls = RedshiftExecutionContext_redshift_connector
-    description_encoding = "use_encoding"
 
-    supports_statement_cache = True
+    supports_statement_cache = False
     use_setinputsizes = False  # not implemented in redshift_connector
 
     def __init__(self, client_encoding=None, **kwargs):
@@ -1260,7 +1289,15 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
     @classmethod
     def dbapi(cls):
         try:
-            return importlib.import_module(cls.driver)
+            driver_module = importlib.import_module(cls.driver)
+
+            # Starting v2.0.908 driver converts description column names to str
+            if Version(driver_module.__version__) < Version('2.0.908'):
+                cls.description_encoding = "use_encoding"
+            else:
+                cls.description_encoding = None
+
+            return driver_module
         except ImportError:
             raise ImportError(
                 'No module named redshift_connector. Please install '

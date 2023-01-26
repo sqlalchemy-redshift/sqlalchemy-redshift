@@ -1,9 +1,33 @@
-0.8.10 (unreleased)
+0.8.13 (unreleased)
 -------------------
 
 - Add spectrum support
   (`Pull #243 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/243>`_)
 
+
+0.8.12 (2022-12-08)
+-------------------
+
+- Fix SQLAlchemy's "supports_statement_cache" (`Pull #259 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/259>`_)
+
+
+0.8.11 (2022-07-27)
+-------------------
+
+- Disable redshift_connector dialect statement cache (`Pull #257 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/257>`_)
+
+
+0.8.10 (2022-07-21)
+-------------------
+
+- Support HLLSKETCH Redshift datatypes
+  (`Pull #246 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/246>`_)
+- Disable supports_statement_cache
+  (`Pull #249 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/249>`_)
+- Fix doc, lint CI dependency issues
+  (`Pull #250 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/250>`_)
+- Fix redshift_connector dialect column encoding
+  (`Pull #255 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/255>`_)
 
 0.8.9 (2021-12-15)
 ------------------
