@@ -1,37 +1,33 @@
+import importlib
+import json
 import re
 from collections import defaultdict, namedtuple
 
-from packaging.version import Version
 import pkg_resources
 import sqlalchemy as sa
+from packaging.version import Version
 from sqlalchemy import inspect
-from sqlalchemy.dialects.postgresql.base import (
-    PGCompiler, PGDDLCompiler, PGIdentifierPreparer, PGTypeCompiler,
-    PGExecutionContext, PGDialect
-)
+from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
+from sqlalchemy.dialects.postgresql.base import (PGCompiler, PGDDLCompiler,
+                                                 PGDialect, PGExecutionContext,
+                                                 PGIdentifierPreparer,
+                                                 PGTypeCompiler)
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
-from sqlalchemy.engine.default import DefaultDialect
-from sqlalchemy.sql.type_api import TypeEngine
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import (
-    BinaryExpression, BooleanClauseList, Delete
-)
-from sqlalchemy.types import (
-    VARCHAR, NullType, SMALLINT, INTEGER, BIGINT,
-    DECIMAL, REAL, BOOLEAN, CHAR, DATE, TIMESTAMP)
-from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
+from sqlalchemy.sql.expression import (BinaryExpression, BooleanClauseList,
+                                       Delete)
+from sqlalchemy.sql.type_api import TypeEngine
+from sqlalchemy.types import (BIGINT, BOOLEAN, CHAR, DATE, DECIMAL, INTEGER,
+                              REAL, SMALLINT, TIMESTAMP, VARCHAR, NullType)
 
-from .commands import (
-    CopyCommand, UnloadFromSelect, Format, Compression, Encoding,
-    CreateLibraryCommand, AlterTableAppendCommand, RefreshMaterializedView
-)
-from .ddl import (
-    CreateMaterializedView, DropMaterializedView, get_table_attributes
-)
-import importlib
-import json
+from .commands import (AlterTableAppendCommand, Compression, CopyCommand,
+                       CreateLibraryCommand, Encoding, Format,
+                       RefreshMaterializedView, UnloadFromSelect)
+from .ddl import (CreateMaterializedView, DropMaterializedView,
+                  get_table_attributes)
 
 sa_version = Version(sa.__version__)
 
@@ -41,7 +37,6 @@ except ImportError:
     pass
 else:
     from alembic.ddl import postgresql
-
     from alembic.ddl.base import RenameTable
     compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
 
@@ -668,7 +663,7 @@ class RedshiftDialectMixin(DefaultDialect):
                 r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
             )
             if not m:
-                print("Could not parse CHECK constraint text: {src}".format(src=src))
+                print(f"Could not parse CHECK constraint text: {src}")
                 sqltext = ""
             else:
                 sqltext = re.compile(
@@ -696,7 +691,10 @@ class RedshiftDialectMixin(DefaultDialect):
                         WHERE 1
                             {schema_clause}
                             AND "table" = '{table_name}';
-                        """.format(schema_clause=schema_clause, table_name=table_name))
+                        """.format(
+                                schema_clause=schema_clause,
+                                table_name=table_name)
+                            )
 
         return result.scalar()
 
@@ -945,8 +943,9 @@ class RedshiftDialectMixin(DefaultDialect):
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
+        table_name = table_name if table_name else ""
         table_clause = (
-            "AND relname = '{table}'".format(table=table_name) if table_name else ""
+            "AND relname = '{table}'".format(table=table_name)
         )
 
         result = connection.execute(sa.text("""
@@ -1004,8 +1003,9 @@ class RedshiftDialectMixin(DefaultDialect):
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
+        table_name = table_name if table_name else ""
         table_clause = (
-            "AND table_name = '{table}'".format(table=table_name) if table_name else ""
+            "AND table_name = '{table}'".format(table=table_name)
         )
 
         all_columns = defaultdict(list)
@@ -1074,7 +1074,8 @@ class RedshiftDialectMixin(DefaultDialect):
                  WHEN c.external_type = 'int' THEN 'integer'
                  WHEN c.external_type = 'float' THEN 'real'
                  WHEN c.external_type = 'double' THEN 'double precision'
-                 WHEN c.external_type = 'timestamp' THEN 'timestamp without time zone'
+                 WHEN c.external_type = 'timestamp'
+                    THEN 'timestamp without time zone'
                  ELSE
                    replace(
                     replace(
@@ -1093,7 +1094,8 @@ class RedshiftDialectMixin(DefaultDialect):
                  WHEN c.external_type = 'int' THEN 'integer'
                  WHEN c.external_type = 'float' THEN 'real'
                  WHEN c.external_type = 'double' THEN 'double precision'
-                 WHEN c.external_type = 'timestamp' THEN 'timestamp without time zone'
+                 WHEN c.external_type = 'timestamp'
+                    THEN 'timestamp without time zone'
                  ELSE
                    replace(
                     replace(
@@ -1109,7 +1111,10 @@ class RedshiftDialectMixin(DefaultDialect):
             JOIN svv_external_schemas s ON s.schemaname = c.schemaname
             WHERE 1 {schema_clause} {table_clause}
             ORDER BY "schema", "table_name", "attnum";
-            """.format(schema_clause=schema_clause, table_clause=table_clause)))
+            """.format(
+                schema_clause=schema_clause,
+                table_clause=table_clause
+            )))
 
             for col in result:
                 key = RelationKey(col.table_name, col.schema, connection)
@@ -1124,8 +1129,9 @@ class RedshiftDialectMixin(DefaultDialect):
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
+        table_name = table_name if table_name else ""
         table_clause = (
-            "AND table_name = '{table}'".format(table=table_name) if table_name else ""
+            "AND table_name = '{table}'".format(table=table_name)
         )
 
         result = connection.execute(sa.text("""
@@ -1148,7 +1154,7 @@ class RedshiftDialectMixin(DefaultDialect):
         JOIN pg_catalog.pg_attribute a
           ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
         WHERE n.nspname !~ '^pg_' {schema_clause} {table_clause}
-        UNION 
+        UNION
         SELECT
             s.schemaname AS "schema",
             c.tablename AS "table_name",
@@ -1346,8 +1352,8 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         fns = []
 
         def on_connect(conn):
-            from sqlalchemy.sql.elements import quoted_name
             from sqlalchemy import util
+            from sqlalchemy.sql.elements import quoted_name
             conn.py_types[quoted_name] = conn.py_types[util.text_type]
 
         fns.append(on_connect)

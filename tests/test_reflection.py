@@ -194,9 +194,9 @@ def test_no_search_path_leak(redshift_session):
 
 
 def test_external_table_reflection(redshift_engine):
-    schema_ddl = """create external schema spectrum 
-                    from data catalog 
-                    database 'spectrumdb' 
+    schema_ddl = """create external schema spectrum
+                    from data catalog
+                    database 'spectrumdb'
                     iam_role 'arn:aws:iam::123456789012:role/mySpectrumRole'
                     create external database if not exists;
                     """
@@ -220,19 +220,24 @@ def test_external_table_reflection(redshift_engine):
         table properties ('numRows'='172000');
     """
     with redshift_engine.connect() as conn:
-        # Redshift can't run CREATE EXTERNAL TABLE inside a transaction (BEGIN … END)
+        # Redshift can't run CREATE EXTERNAL TABLE inside a transaction
+        # e.g. (BEGIN … END)
         conn.execution_options(isolation_level='AUTOCOMMIT')
         conn.execute(table_ddl)
 
         insp = inspect(redshift_engine)
-        table_columns_definition = insp.get_columns(table_name='sales', schema='spectrum')
+        table_columns_definition = insp.get_columns(
+            table_name='sales',
+            schema='spectrum'
+        )
         table_columns = [col['name'] for col in table_columns_definition]
 
         assert 'salesid' in table_columns
         assert 'pricepaid' in table_columns
 
         # Drop external table because we are using `AUTOCOMMIT`
-        conn.execute("""DROP TABLE IF EXISTS spectrum.sales""")
+        conn.execute("DROP TABLE IF EXISTS spectrum.sales")
 
-        # Also drop the external db -> https://docs.aws.amazon.com/redshift/latest/dg/r_DROP_DATABASE.html
-        conn.execute("""DROP SCHEMA IF EXISTS spectrum DROP EXTERNAL DATABASE""")
+        # Also drop the external db:
+        # https://docs.aws.amazon.com/redshift/latest/dg/r_DROP_DATABASE.html
+        conn.execute("DROP SCHEMA IF EXISTS spectrum DROP EXTERNAL DATABASE")
