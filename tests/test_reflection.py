@@ -113,20 +113,26 @@ models_and_ddls = [
         PRIMARY KEY (col1)
     ) DISTSTYLE KEY DISTKEY (col1) SORTKEY (col1)
     """),
-    pytest.mark.xfail((models.ReflectionDelimitedIdentifiers1, '''
-    CREATE TABLE "group" (
-        "this ""is it""" INTEGER NOT NULL,
-        "and this also" INTEGER,
-        PRIMARY KEY ("this ""is it""")
-    ) DISTSTYLE EVEN
-    ''')),
-    pytest.mark.xfail((models.ReflectionDelimitedIdentifiers2, '''
-    CREATE TABLE "column" (
-            "excellent! & column" INTEGER NOT NULL,
-            "most @exce.llent " INTEGER,
-            PRIMARY KEY ("excellent! & column"),
-    ) DISTSTYLE EVEN
-    ''')),
+    pytest.param(
+        models.ReflectionDelimitedIdentifiers1,
+        '''CREATE TABLE "group" (
+            "this ""is it""" INTEGER NOT NULL,
+            "and this also" INTEGER,
+            PRIMARY KEY ("this ""is it""")
+        ) DISTSTYLE EVEN
+        ''',
+        marks=pytest.mark.xfail
+    ),
+    pytest.param(
+        models.ReflectionDelimitedIdentifiers2,
+        '''CREATE TABLE "column" (
+                "excellent! & column" INTEGER NOT NULL,
+                "most @exce.llent " INTEGER,
+                PRIMARY KEY ("excellent! & column")
+        ) DISTSTYLE EVEN
+        ''',
+        marks=pytest.mark.fail
+    ),
     (models.ReflectionCustomReservedWords, '''
     CREATE TABLE "aes256" (
         "open" INTEGER,
