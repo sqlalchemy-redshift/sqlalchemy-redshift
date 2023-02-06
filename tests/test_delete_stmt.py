@@ -33,8 +33,8 @@ This same query needs to be written like this in Redshift:
 
 import sqlalchemy as sa
 from packaging.version import Version
-
 from rs_sqla_test_utils.utils import clean, compile_query
+from sqlalchemy_redshift.compat import sa_select
 
 sa_version = Version(sa.__version__)
 
@@ -174,8 +174,8 @@ def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
         orders
     ).where(
         orders.c.customer_id.in_(
-            sa.select(
-                [customers.c.id]
+            sa_select(
+                customers.c.id
             ).where(customers.c.email.endswith('test.com'))
         )
     ).where(
@@ -201,8 +201,8 @@ def test_delete_stmt_subquery(stub_redshift_dialect):
         orders
     ).where(
         orders.c.customer_id.in_(
-            sa.select(
-                [customers.c.id]
+            sa_select(
+                customers.c.id
             ).where(customers.c.email.endswith('test.com'))
         )
     )
@@ -221,8 +221,8 @@ def test_delete_stmt_on_subquerycomma(stub_redshift_dialect):
         ham
     ).where(
         ham.c.id.in_(
-            sa.select(
-                [hammy_spam.c.ham_id]
+            sa_select(
+                hammy_spam.c.ham_id
             )
         )
     )
@@ -266,7 +266,7 @@ def test_delete_stmt_with_comma_subquery_alias_join(stub_redshift_dialect):
         items.c.order_id == orders.c.id
     ).where(
         orders.c.customer_id.in_(
-            sa.select([customers.c.id]).where(
+            sa_select(customers.c.id).where(
                 customers.c.email.endswith('test.com')
             )
         )
