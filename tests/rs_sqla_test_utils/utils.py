@@ -1,8 +1,9 @@
 __author__ = 'haleemur'
 
 import re
-from packaging.version import Version
+
 import sqlalchemy as sa
+from packaging.version import Version
 from sqlalchemy.engine.url import URL
 
 
@@ -26,9 +27,15 @@ def make_mock_engine(name):
     """
     if Version(sa.__version__) >= Version('1.4.0'):
         return sa.create_mock_engine(URL(
-            drivername=name
-        ), executor=None)
-    else:
-        return sa.create_engine(URL(
+            host='localhost',
+            port=5432,
+            username="",
+            password="",
+            database="example",
             drivername=name,
-        ), strategy='mock', executor=None)
+            query={'sslmode': 'prefer'}
+        ), executor=None)
+
+    return sa.create_engine(URL(
+        drivername=name,
+    ), strategy='mock', executor=None)
