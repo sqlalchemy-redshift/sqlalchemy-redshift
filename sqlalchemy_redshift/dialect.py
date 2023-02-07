@@ -2,6 +2,7 @@ import importlib
 import json
 import re
 from collections import defaultdict, namedtuple
+from logging import getLogger
 
 import pkg_resources
 import sqlalchemy as sa
@@ -30,6 +31,7 @@ from .ddl import (CreateMaterializedView, DropMaterializedView,
                   get_table_attributes)
 
 sa_version = Version(sa.__version__)
+logger = getLogger(__name__)
 
 try:
     import alembic
@@ -663,7 +665,7 @@ class RedshiftDialectMixin(DefaultDialect):
                 r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
             )
             if not m:
-                print(f"Could not parse CHECK constraint text: {src}")
+                logger.warning(f"Could not parse CHECK constraint text: {src}")
                 sqltext = ""
             else:
                 sqltext = re.compile(
