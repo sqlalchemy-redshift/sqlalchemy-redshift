@@ -1,9 +1,10 @@
 import pytest
 import sqlalchemy as sa
-from rs_sqla_test_utils.utils import clean, compile_query
 
 from sqlalchemy_redshift import dialect
-from sqlalchemy_redshift.compat import sa_select
+
+from rs_sqla_test_utils.utils import clean, compile_query
+
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
 secret_access_key = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'
@@ -29,7 +30,7 @@ def test_basic_unload_case(stub_redshift_dialect):
     """Tests that the simplest type of UnloadFromSelect works."""
 
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
@@ -56,7 +57,7 @@ def test_iam_role(stub_redshift_dialect):
     )
 
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         aws_account_id=aws_account_id,
         iam_role_name=iam_role_name,
@@ -85,7 +86,7 @@ def test_iam_role_partition(stub_redshift_dialect):
     )
 
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         aws_partition=aws_partition,
         aws_account_id=aws_account_id,
@@ -111,7 +112,7 @@ def test_iam_role_partition_validation():
 
     with pytest.raises(ValueError):
         dialect.UnloadFromSelect(
-            select=sa_select(sa.func.count(table.c.id)),
+            select=sa.select([sa.func.count(table.c.id)]),
             unload_location='s3://bucket/key',
             aws_partition=aws_partition,
             aws_account_id=aws_account_id,
@@ -130,7 +131,7 @@ def test_iam_role_arns_list(stub_redshift_dialect):
             'arn:aws:iam::000123456789:role/redshiftrole2'
 
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         iam_role_arns=iam_role_arns,
     )
@@ -152,7 +153,7 @@ def test_iam_role_arns_single(stub_redshift_dialect):
     creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole'
 
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         iam_role_arns=iam_role_arns,
     )
@@ -171,7 +172,7 @@ def test_all_redshift_options(stub_redshift_dialect):
     """Tests that UnloadFromSelect handles all options correctly."""
 
     unload = dialect.UnloadFromSelect(
-        sa_select(sa.func.count(table.c.id)),
+        sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
@@ -215,7 +216,7 @@ def test_all_redshift_options_with_header(stub_redshift_dialect):
     """Tests that UnloadFromSelect handles all options correctly."""
 
     unload = dialect.UnloadFromSelect(
-        sa_select(sa.func.count(table.c.id)),
+        sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
@@ -259,7 +260,7 @@ def test_csv_format__basic(stub_redshift_dialect):
     """Tests that UnloadFromSelect uses the format option correctly."""
 
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
@@ -289,7 +290,7 @@ def test_csv_format__bad_options_crash(
     FIXEDWIDTH with the CSV format.
     """
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
@@ -305,7 +306,7 @@ def test_csv_format__bad_options_crash(
 def test_parquet_format__basic(stub_redshift_dialect):
     """Basic successful test of unloading with the Parquet format."""
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
@@ -334,7 +335,7 @@ def test_parquet_format__basic(stub_redshift_dialect):
 def test_parquet_format__bad_options_crash(kwargs, stub_redshift_dialect):
     """Verify we crash if we use the Parquet format with a bad option."""
     unload = dialect.UnloadFromSelect(
-        select=sa_select(sa.func.count(table.c.id)),
+        select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,

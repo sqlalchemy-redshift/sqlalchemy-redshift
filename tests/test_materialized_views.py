@@ -1,9 +1,8 @@
 import pytest
-from rs_sqla_test_utils.utils import clean, compile_query
-from sqlalchemy import Column, Integer, MetaData, String, Table
 
+from sqlalchemy import Table, Integer, String, MetaData, Column, select
 from sqlalchemy_redshift import dialect
-from sqlalchemy_redshift.compat import sa_select
+from rs_sqla_test_utils.utils import clean, compile_query
 
 
 @pytest.fixture
@@ -12,7 +11,7 @@ def selectable():
                   MetaData(),
                   Column('id', Integer, primary_key=True),
                   Column('name', String))
-    return sa_select(table.c.id, table.c.name).select_from(table)
+    return select([table.c.id, table.c.name], from_obj=table)
 
 
 def test_basic_materialized_view(selectable, stub_redshift_dialect):

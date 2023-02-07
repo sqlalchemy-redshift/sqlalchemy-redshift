@@ -107,7 +107,6 @@ class CreateMaterializedView(DDLElement):
     This works for any selectable.  Consider the trivial example of this table:
 
     >>> import sqlalchemy as sa
-    >>> from sqlalchemy_redshift.compat import sa_select
     >>> from sqlalchemy_redshift.dialect import CreateMaterializedView
     >>> engine = sa.create_engine('redshift+psycopg2://example')
     >>> metadata = sa.MetaData()
@@ -117,7 +116,7 @@ class CreateMaterializedView(DDLElement):
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column('name', sa.String)
     ... )
-    >>> selectable = sa_select(user.c.id, user.c.name)
+    >>> selectable = sa.select([user.c.id, user.c.name], from_obj=user)
     >>> view = CreateMaterializedView(
     ...     'materialized_view_of_users',
     ...     selectable,
