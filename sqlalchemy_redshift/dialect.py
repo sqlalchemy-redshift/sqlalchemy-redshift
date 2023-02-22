@@ -941,13 +941,15 @@ class RedshiftDialectMixin(DefaultDialect):
     @reflection.cache
     def _get_all_relation_info(self, connection, **kw):
         schema = kw.get('schema', None)
-        table_name = kw.get('table_name', None)
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
-        table_name = table_name if table_name else ""
+
+        table_name = kw.get('table_name', "")
         table_clause = (
-            "AND relname = '{table}'".format(table=table_name)
+            "AND relname = '{table}'".format(
+                table=table_name
+            ) if table_name else ""
         )
 
         result = connection.execute(sa.text("""
