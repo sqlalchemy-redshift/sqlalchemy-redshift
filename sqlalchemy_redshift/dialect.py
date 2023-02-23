@@ -1083,7 +1083,7 @@ class RedshiftDialectMixin(DefaultDialect):
                     THEN 'timestamp without time zone'
                  WHEN c.external_type ilike 'varchar%' 
                     THEN replace(c.external_type, 'varchar', 'character varying')
-                 WHEN c.external_type ilike 'decimal%'
+                 WHEN c.external_type ilike 'decimal%' 
                     THEN replace(c.external_type, 'decimal', 'numeric')
                  ELSE
                    replace(
