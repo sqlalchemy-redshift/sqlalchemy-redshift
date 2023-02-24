@@ -46,15 +46,15 @@ def test_basic_unload_case(stub_redshift_dialect):
         clean(expected_result)
 
 
-def test_iam_role(stub_redshift_dialect):
+def test_iam_role(
+    stub_redshift_dialect,
+    aws_account_id,
+    iam_role_name,
+    iam_role_arns
+):
     """Tests the use of iam role instead of access keys."""
 
-    aws_account_id = '000123456789'
-    iam_role_name = 'redshiftrole'
-    creds = 'aws_iam_role=arn:aws:iam::{0}:role/{1}'.format(
-        aws_account_id,
-        iam_role_name,
-    )
+    creds = f'aws_iam_role={iam_role_arns}'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
@@ -73,17 +73,16 @@ def test_iam_role(stub_redshift_dialect):
         clean(expected_result)
 
 
-def test_iam_role_partition(stub_redshift_dialect):
+def test_iam_role_partition(
+    stub_redshift_dialect,
+    iam_role_arns_with_aws_partition,
+    aws_account_id,
+    iam_role_name,
+    aws_partition
+):
     """Tests the use of iam role with a custom partition"""
 
-    aws_partition = 'aws-us-gov'
-    aws_account_id = '000123456789'
-    iam_role_name = 'redshiftrole'
-    creds = 'aws_iam_role=arn:{0}:iam::{1}:role/{2}'.format(
-        aws_partition,
-        aws_account_id,
-        iam_role_name,
-    )
+    creds = f'aws_iam_role={iam_role_arns_with_aws_partition}'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
@@ -146,11 +145,10 @@ def test_iam_role_arns_list(stub_redshift_dialect):
         clean(expected_result)
 
 
-def test_iam_role_arns_single(stub_redshift_dialect):
+def test_iam_role_arns_single(stub_redshift_dialect, iam_role_arns):
     """Tests the use of a single iam role arn instead of access keys."""
 
-    iam_role_arns = 'arn:aws:iam::000123456789:role/redshiftrole'
-    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole'
+    creds = f'aws_iam_role={iam_role_arns}'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),

@@ -69,6 +69,41 @@ def connection_kwargs(redshift_dialect_flavor):
     }
 
 
+@pytest.fixture(scope="session")
+def aws_account_id():
+    return os.getenv("AWS_ACCOUNT_ID", '000123456789')
+
+
+@pytest.fixture(scope="session")
+def iam_role_name():
+    return os.getenv("REDSHIFT_IAM_ROLE_NAME", 'redshiftrole')
+
+
+@pytest.fixture(scope="session")
+def aws_partition():
+    return os.getenv("AWS_PARTITION", 'aws-us-gov')
+
+
+@pytest.fixture(scope="session")
+def iam_role_arns(aws_account_id, iam_role_name):
+    return os.getenv(
+        "REDSHIFT_IAM_ROLE_ARN",
+        f'arn:aws:iam::{aws_account_id}:role/{iam_role_name}'
+    )
+
+
+@pytest.fixture(scope="session")
+def iam_role_arns_with_aws_partition(
+    aws_account_id,
+    aws_partition,
+    iam_role_name
+):
+    return os.getenv(
+        "REDSHIFT_IAM_ROLE_ARN",
+        f'arn:{aws_partition}:iam::{aws_account_id}:role/{iam_role_name}'
+    )
+
+
 def database_name_generator():
     template = 'testdb_{uuid}_{count}'
     db_uuid = _unicode(uuid.uuid1()).replace('-', '')
