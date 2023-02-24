@@ -85,7 +85,7 @@ def aws_partition():
 
 
 @pytest.fixture(scope="session")
-def iam_role_arns(aws_account_id, iam_role_name):
+def iam_role_arn(aws_account_id, iam_role_name):
     return os.getenv(
         "REDSHIFT_IAM_ROLE_ARN",
         f'arn:aws:iam::{aws_account_id}:role/{iam_role_name}'
@@ -93,15 +93,25 @@ def iam_role_arns(aws_account_id, iam_role_name):
 
 
 @pytest.fixture(scope="session")
-def iam_role_arns_with_aws_partition(
+def iam_role_arn_with_aws_partition(
     aws_account_id,
     aws_partition,
     iam_role_name
 ):
     return os.getenv(
-        "REDSHIFT_IAM_ROLE_ARN",
+        "REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION",
         f'arn:{aws_partition}:iam::{aws_account_id}:role/{iam_role_name}'
     )
+
+
+@pytest.fixture(scope="session")
+def iam_role_arns():
+    default_arns_as_string = (
+        'arn:aws:iam::000123456789:role/redshiftrole,'
+        'arn:aws:iam::000123456789:role/redshiftrole2'
+    )
+    arns = os.getenv('REDSHIFT_IAM_ROLE_ARNS', default_arns_as_string)
+    return arns.split(',')
 
 
 def database_name_generator():
@@ -131,9 +141,8 @@ class DatabaseTool(object):
 
     @contextlib.contextmanager
     def _database(self):
-        from sqlalchemy_redshift.dialect import (
+        from sqlalchemy_redshift.dialect import \
             RedshiftDialect_redshift_connector
-        )
 
         db_name = database_name()
         with self.engine.connect() as conn:

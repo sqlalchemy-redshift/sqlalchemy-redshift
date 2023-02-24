@@ -50,11 +50,11 @@ def test_iam_role(
     stub_redshift_dialect,
     aws_account_id,
     iam_role_name,
-    iam_role_arns
+    iam_role_arn
 ):
     """Tests the use of iam role instead of access keys."""
 
-    creds = f'aws_iam_role={iam_role_arns}'
+    creds = f'aws_iam_role={iam_role_arn}'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
@@ -75,14 +75,14 @@ def test_iam_role(
 
 def test_iam_role_partition(
     stub_redshift_dialect,
-    iam_role_arns_with_aws_partition,
+    iam_role_arn_with_aws_partition,
     aws_account_id,
     iam_role_name,
     aws_partition
 ):
     """Tests the use of iam role with a custom partition"""
 
-    creds = f'aws_iam_role={iam_role_arns_with_aws_partition}'
+    creds = f'aws_iam_role={iam_role_arn_with_aws_partition}'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
@@ -119,15 +119,10 @@ def test_iam_role_partition_validation():
         )
 
 
-def test_iam_role_arns_list(stub_redshift_dialect):
+def test_iam_role_arns_list(stub_redshift_dialect, iam_role_arns):
     """Tests the use of multiple iam role arns instead of access keys."""
 
-    iam_role_arns = [
-        'arn:aws:iam::000123456789:role/redshiftrole',
-        'arn:aws:iam::000123456789:role/redshiftrole2',
-    ]
-    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole,' \
-            'arn:aws:iam::000123456789:role/redshiftrole2'
+    creds = f'aws_iam_role={",".join(iam_role_arns)}'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
@@ -145,15 +140,15 @@ def test_iam_role_arns_list(stub_redshift_dialect):
         clean(expected_result)
 
 
-def test_iam_role_arns_single(stub_redshift_dialect, iam_role_arns):
+def test_iam_role_arns_single(stub_redshift_dialect, iam_role_arn):
     """Tests the use of a single iam role arn instead of access keys."""
 
-    creds = f'aws_iam_role={iam_role_arns}'
+    creds = f'aws_iam_role={iam_role_arn}'
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
-        iam_role_arns=iam_role_arns,
+        iam_role_arns=iam_role_arn,
     )
 
     expected_result = """

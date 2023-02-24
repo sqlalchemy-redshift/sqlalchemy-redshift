@@ -199,11 +199,11 @@ def test_no_search_path_leak(redshift_session):
     assert 'other_schema' not in search_path
 
 
-def test_external_table_reflection(redshift_engine):
-    schema_ddl = """create external schema spectrum
+def test_external_table_reflection(redshift_engine, iam_role_arn):
+    schema_ddl = f"""create external schema spectrum
                     from data catalog
                     database 'spectrumdb'
-                    iam_role 'arn:aws:iam::123456789012:role/mySpectrumRole'
+                    iam_role '{iam_role_arn}'
                     create external database if not exists;
                     """
 
