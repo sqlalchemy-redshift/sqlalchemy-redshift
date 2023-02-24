@@ -71,21 +71,42 @@ def connection_kwargs(redshift_dialect_flavor):
 
 @pytest.fixture(scope="session")
 def aws_account_id():
+    """ The aws_account_id fixture allows the developer to pass in their own
+    AWS_ACCOUNT_ID for other Redshift instances by setting the following
+    environment variable: AWS_ACCOUNT_ID
+    """
     return os.getenv("AWS_ACCOUNT_ID", '000123456789')
 
 
 @pytest.fixture(scope="session")
 def iam_role_name():
+    """ The iam_role_name fixture allows the developer to pass in their own
+    IAM_ROLE_NAME for other Redshift instances by setting the following
+    environment variable: IAM_ROLE_NAME
+    """
     return os.getenv("REDSHIFT_IAM_ROLE_NAME", 'redshiftrole')
 
 
 @pytest.fixture(scope="session")
 def aws_partition():
+    """ The aws_partition fixture allows the developer to pass in their own
+    aws partition value for other Redshift instances by setting the following
+    environment variable: AWS_PARTITION
+    """
     return os.getenv("AWS_PARTITION", 'aws-us-gov')
 
 
 @pytest.fixture(scope="session")
 def iam_role_arn(aws_account_id, iam_role_name):
+    """ The iam_role_arn fixture allows the developer to pass in their own
+    IAM_ROLE_ARN for other Redshift instances by setting the following
+    environment variable: REDSHIFT_IAM_ROLE_ARN
+
+    The following fixtures are used to construct the rest of the ARN:
+
+    - aws_account_id
+    - iam_role_name
+    """
     return os.getenv(
         "REDSHIFT_IAM_ROLE_ARN",
         f'arn:aws:iam::{aws_account_id}:role/{iam_role_name}'
@@ -98,6 +119,17 @@ def iam_role_arn_with_aws_partition(
     aws_partition,
     iam_role_name
 ):
+    """ The iam_role_arn_with_aws_partition fixture allows the developer to
+    pass in their own IAM_ROLE_ARN for other Redshift instances by setting
+    the following environment variable:
+    REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION
+
+    The following fixtures are used to construct the rest of the ARN:
+
+    - aws_account_id
+    - aws_partition
+    - iam_role_name
+    """
     return os.getenv(
         "REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION",
         f'arn:{aws_partition}:iam::{aws_account_id}:role/{iam_role_name}'
@@ -106,6 +138,19 @@ def iam_role_arn_with_aws_partition(
 
 @pytest.fixture(scope="session")
 def iam_role_arns():
+    """
+    The iam_role_arns fixture allows the developer to pass in their own
+    IAM_ROLE_ARNs for other Redshift instances by setting the following
+    environment variable: REDSHIFT_IAM_ROLE_ARNS
+
+    The following fixtures are used to construct the rest of the ARN:
+
+    - aws_account_id
+    - iam_role_name
+
+    e.g.
+        REDSHIFT_IAM_ROLE_ARNS="arn:aws:iam::123:role/role,arn:aws:iam::123:role/role2"
+    """
     default_arns_as_string = (
         'arn:aws:iam::000123456789:role/redshiftrole,'
         'arn:aws:iam::000123456789:role/redshiftrole2'
@@ -133,6 +178,7 @@ class DatabaseTool(object):
     """
 
     def __init__(self, engine_definition: EngineDefinition):
+        self.engine_definition = engine_definition
         self.engine = engine_definition.engine()
 
     def migrate(self, engine):
