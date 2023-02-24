@@ -131,7 +131,7 @@ models_and_ddls = [
                 PRIMARY KEY ("excellent! & column")
         ) DISTSTYLE EVEN
         ''',
-        marks=pytest.mark.fail
+        marks=pytest.mark.xfail
     ),
     (models.ReflectionCustomReservedWords, '''
     CREATE TABLE "aes256" (

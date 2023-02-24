@@ -275,7 +275,7 @@ def pytest_generate_tests(metafunc):
             scope="session")
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def _redshift_database_tool(connection_kwargs):
     if all([x is not None for x in connection_kwargs.values()]):
         yield DatabaseTool(
@@ -317,7 +317,7 @@ def _redshift_database_tool(connection_kwargs):
         resp.raise_for_status()
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.fixture(scope='function')
 def _redshift_engine_and_definition(_redshift_database_tool):
     with _redshift_database_tool.migrated_database() as database:
         yield database
@@ -339,7 +339,7 @@ def redshift_engine_definition(_redshift_engine_and_definition):
     return _redshift_engine_and_definition['definition']
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def _session_scoped_redshift_engine(_redshift_database_tool):
     """
     Private fixture to maintain a db for the entire test session.
@@ -348,7 +348,7 @@ def _session_scoped_redshift_engine(_redshift_database_tool):
         yield egs['engine']
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.fixture(scope='function')
 def redshift_session(_session_scoped_redshift_engine):
     """
     A redshift session that rolls back all operations.
