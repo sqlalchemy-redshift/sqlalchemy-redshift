@@ -1,5 +1,6 @@
 import pytest
 from sqlalchemy import MetaData, Table, inspect
+from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.exc import NoSuchTableError
 
@@ -200,9 +201,9 @@ def test_no_search_path_leak(redshift_session):
 
 
 def test_external_table_reflection(redshift_engine, iam_role_arn):
-    schema_ddl = f"""create external schema spectrum
+    schema_ddl = f"""create external schema bananas
                     from data catalog
-                    database 'spectrumdb'
+                    database 'bananasdb'
                     iam_role '{iam_role_arn}'
                     create external database if not exists;
                     """
@@ -211,9 +212,9 @@ def test_external_table_reflection(redshift_engine, iam_role_arn):
     conn.execute(schema_ddl)
     insp = inspect(redshift_engine)
     all_schemas = insp.get_schema_names()
-    assert 'spectrum' in all_schemas
+    assert 'bananas' in all_schemas
 
-    table_ddl = """create external table spectrum.sales(
+    table_ddl = """create external table bananas.sales(
         salesid integer,
         listid integer,
         sellerid integer,
@@ -228,13 +229,15 @@ def test_external_table_reflection(redshift_engine, iam_role_arn):
     with redshift_engine.connect() as conn:
         # Redshift can't run CREATE EXTERNAL TABLE inside a transaction
         # e.g. (BEGIN … END)
-        conn.execution_options(isolation_level='AUTOCOMMIT')
+        if not isinstance(conn.dialect, PGDialect_psycopg2cffi):
+            conn.execution_options(isolation_level="AUTOCOMMIT")
+        
         conn.execute(table_ddl)
 
         insp = inspect(redshift_engine)
         table_columns_definition = insp.get_columns(
             table_name='sales',
-            schema='spectrum'
+            schema='bananas'
         )
         table_columns = [col['name'] for col in table_columns_definition]
 
@@ -242,8 +245,8 @@ def test_external_table_reflection(redshift_engine, iam_role_arn):
         assert 'pricepaid' in table_columns
 
         # Drop external table because we are using `AUTOCOMMIT`
-        conn.execute("DROP TABLE IF EXISTS spectrum.sales")
+        conn.execute("DROP TABLE IF EXISTS bananas.sales")
 
         # Also drop the external db:
         # https://docs.aws.amazon.com/redshift/latest/dg/r_DROP_DATABASE.html
-        conn.execute("DROP SCHEMA IF EXISTS spectrum DROP EXTERNAL DATABASE")
+        conn.execute("DROP SCHEMA IF EXISTS bananas DROP EXTERNAL DATABASE")
