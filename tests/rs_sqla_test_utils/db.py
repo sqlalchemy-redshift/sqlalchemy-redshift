@@ -30,6 +30,11 @@ def redshift_engine_definition(
     database: str,
 ):
     url_builder = get_url_builder()
+
+    connect_args = {}
+    if dialect == 'redshift_connector':
+        connect_args['isolation_level'] = 'AUTOCOMMIT'
+
     return EngineDefinition(
         db_connect_url=url_builder(
             drivername=dialect,
@@ -40,5 +45,5 @@ def redshift_engine_definition(
             database=database,
             query={'client_encoding': 'utf8'},
         ),
-        connect_args={},
+        connect_args=connect_args,
     )
