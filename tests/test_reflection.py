@@ -231,7 +231,7 @@ def test_external_table_reflection(redshift_engine, iam_role_arn):
         # e.g. (BEGIN … END)
         if not isinstance(conn.dialect, PGDialect_psycopg2cffi):
             conn.execution_options(isolation_level="AUTOCOMMIT")
-        
+
         conn.execute(table_ddl)
 
         insp = inspect(redshift_engine)
