@@ -45,7 +45,6 @@ def connection_kwargs(redshift_dialect_flavor):
         - REDSHIFT_HOST
         - REDSHIFT_PORT
         - REDSHIFT_USERNAME
-        - REDSHIFT_PASSWORD
         - REDSHIFT_DATABASE
         - PGPASSWORD
 
