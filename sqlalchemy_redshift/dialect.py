@@ -989,6 +989,9 @@ class RedshiftDialectMixin(DefaultDialect):
             all_constraints[key].append(con)
         return all_constraints
 
+    def _set_backslash_escapes(self, connection):
+        self._backslash_escapes = False
+
 
 class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
     """
