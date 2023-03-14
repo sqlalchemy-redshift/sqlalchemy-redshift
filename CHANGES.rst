@@ -1,7 +1,7 @@
 0.8.13 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Override new upstream postgres method that fails against redshift (`Pull #266 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/266>`_)
 
 
 0.8.12 (2022-12-08)
