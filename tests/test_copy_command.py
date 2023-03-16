@@ -82,9 +82,6 @@ def test_iam_role(
 
 def test_iam_role_partition(
     stub_redshift_dialect,
-    aws_account_id,
-    aws_partition,
-    iam_role_name,
     iam_role_arn_with_aws_partition
 ):
     """Tests the use of iam role with a custom partition"""
@@ -99,9 +96,9 @@ def test_iam_role_partition(
     copy = dialect.CopyCommand(
         tbl,
         data_location='s3://mybucket/data/listing/',
-        aws_partition=aws_partition,
-        aws_account_id=aws_account_id,
-        iam_role_name=iam_role_name,
+        aws_partition='aws-us-gov',
+        aws_account_id='000123456789',
+        iam_role_name='redshiftrole'
     )
     assert clean(expected_result) == \
         clean(compile_query(copy, stub_redshift_dialect))

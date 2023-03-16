@@ -73,13 +73,7 @@ def test_iam_role(
         clean(expected_result)
 
 
-def test_iam_role_partition(
-    stub_redshift_dialect,
-    iam_role_arn_with_aws_partition,
-    aws_account_id,
-    iam_role_name,
-    aws_partition
-):
+def test_iam_role_partition(stub_redshift_dialect, iam_role_arn_with_aws_partition):
     """Tests the use of iam role with a custom partition"""
 
     creds = f'aws_iam_role={iam_role_arn_with_aws_partition}'
@@ -87,9 +81,9 @@ def test_iam_role_partition(
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
         unload_location='s3://bucket/key',
-        aws_partition=aws_partition,
-        aws_account_id=aws_account_id,
-        iam_role_name=iam_role_name,
+        aws_partition='aws-us-gov',
+        aws_account_id='000123456789',
+        iam_role_name='redshiftrole'
     )
 
     expected_result = """
