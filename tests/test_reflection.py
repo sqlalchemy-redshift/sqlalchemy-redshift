@@ -1,5 +1,6 @@
 import pytest
-from sqlalchemy import MetaData, Table
+from sqlalchemy import MetaData, Table, inspect
+from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.exc import NoSuchTableError
 
@@ -113,20 +114,26 @@ models_and_ddls = [
         PRIMARY KEY (col1)
     ) DISTSTYLE KEY DISTKEY (col1) SORTKEY (col1)
     """),
-    pytest.mark.xfail((models.ReflectionDelimitedIdentifiers1, '''
-    CREATE TABLE "group" (
-        "this ""is it""" INTEGER NOT NULL,
-        "and this also" INTEGER,
-        PRIMARY KEY ("this ""is it""")
-    ) DISTSTYLE EVEN
-    ''')),
-    pytest.mark.xfail((models.ReflectionDelimitedIdentifiers2, '''
-    CREATE TABLE "column" (
-            "excellent! & column" INTEGER NOT NULL,
-            "most @exce.llent " INTEGER,
-            PRIMARY KEY ("excellent! & column"),
-    ) DISTSTYLE EVEN
-    ''')),
+    pytest.param(
+        models.ReflectionDelimitedIdentifiers1,
+        '''CREATE TABLE "group" (
+            "this ""is it""" INTEGER NOT NULL,
+            "and this also" INTEGER,
+            PRIMARY KEY ("this ""is it""")
+        ) DISTSTYLE EVEN
+        ''',
+        marks=pytest.mark.xfail
+    ),
+    pytest.param(
+        models.ReflectionDelimitedIdentifiers2,
+        '''CREATE TABLE "column" (
+                "excellent! & column" INTEGER NOT NULL,
+                "most @exce.llent " INTEGER,
+                PRIMARY KEY ("excellent! & column")
+        ) DISTSTYLE EVEN
+        ''',
+        marks=pytest.mark.xfail
+    ),
     (models.ReflectionCustomReservedWords, '''
     CREATE TABLE "aes256" (
         "open" INTEGER,
@@ -191,3 +198,55 @@ def test_no_search_path_leak(redshift_session):
     result = redshift_session.execute("SHOW search_path")
     search_path = result.scalar()
     assert 'other_schema' not in search_path
+
+
+def test_external_table_reflection(redshift_engine, iam_role_arn):
+    schema_ddl = f"""create external schema bananas
+                    from data catalog
+                    database 'bananasdb'
+                    iam_role '{iam_role_arn}'
+                    create external database if not exists;
+                    """
+
+    conn = redshift_engine.connect()
+    conn.execute(schema_ddl)
+    insp = inspect(redshift_engine)
+    all_schemas = insp.get_schema_names()
+    assert 'bananas' in all_schemas
+
+    table_ddl = """create external table bananas.sales(
+        salesid integer,
+        listid integer,
+        sellerid integer,
+        pricepaid decimal(8,2),
+        saletime timestamp)
+        row format delimited
+        fields terminated by '\t'
+        stored as textfile
+        location 's3://awssampledbuswest2/tickit/spectrum/sales/'
+        table properties ('numRows'='172000');
+    """
+    with redshift_engine.connect() as conn:
+        # Redshift can't run CREATE EXTERNAL TABLE inside a transaction
+        # e.g. (BEGIN … END)
+        if not isinstance(conn.dialect, PGDialect_psycopg2cffi):
+            conn.execution_options(isolation_level="AUTOCOMMIT")
+
+        conn.execute(table_ddl)
+
+        insp = inspect(redshift_engine)
+        table_columns_definition = insp.get_columns(
+            table_name='sales',
+            schema='bananas'
+        )
+        table_columns = [col['name'] for col in table_columns_definition]
+
+        assert 'salesid' in table_columns
+        assert 'pricepaid' in table_columns
+
+        # Drop external table because we are using `AUTOCOMMIT`
+        conn.execute("DROP TABLE IF EXISTS bananas.sales")
+
+        # Also drop the external db:
+        # https://docs.aws.amazon.com/redshift/latest/dg/r_DROP_DATABASE.html
+        conn.execute("DROP SCHEMA IF EXISTS bananas DROP EXTERNAL DATABASE")

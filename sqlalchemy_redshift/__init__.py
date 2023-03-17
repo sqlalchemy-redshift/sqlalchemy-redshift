@@ -1,4 +1,8 @@
+import logging
+
 from pkg_resources import DistributionNotFound, get_distribution, parse_version
+
+logging.basicConfig(format='%(name)s - %(levelname)s - %(message)s')
 
 for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
     try:

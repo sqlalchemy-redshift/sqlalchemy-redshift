@@ -1,7 +1,9 @@
 0.8.13 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Add spectrum support
+  (`Pull #263 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/263>`_)
+- Drop support for Python 3.5
 
 
 0.8.12 (2022-12-08)

@@ -1,7 +1,6 @@
-import os
-
 import sqlalchemy as sa
-from sqlalchemy.engine import url as sa_url
+
+from rs_sqla_test_utils.utils import get_url_builder
 
 
 class EngineDefinition(object):
@@ -22,16 +21,29 @@ class EngineDefinition(object):
         )
 
 
-def redshift_engine_definition(cluster, dialect):
+def redshift_engine_definition(
+    host: str,
+    port: int,
+    dialect: str,
+    password: str,
+    username: str,
+    database: str,
+):
+    url_builder = get_url_builder()
+
+    connect_args = {}
+    if dialect == 'redshift_connector':
+        connect_args['isolation_level'] = 'AUTOCOMMIT'
+
     return EngineDefinition(
-        db_connect_url=sa_url.URL(
+        db_connect_url=url_builder(
             drivername=dialect,
-            username='travis',
-            password=os.environ['PGPASSWORD'],
-            host=cluster['Address'],
-            port=cluster['Port'],
-            database='dev',
+            username=username,
+            password=password,
+            host=host,
+            port=port,
+            database=database,
             query={'client_encoding': 'utf8'},
         ),
-        connect_args={},
+        connect_args=connect_args,
     )

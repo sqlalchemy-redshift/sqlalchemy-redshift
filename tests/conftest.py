@@ -5,6 +5,9 @@ import itertools
 import uuid
 import functools
 import time
+from logging import getLogger
+
+from rs_sqla_test_utils.db import EngineDefinition
 
 try:
     from urllib import parse as urlparse
@@ -19,8 +22,136 @@ import sqlalchemy as sa
 from rs_sqla_test_utils import db
 from rs_sqla_test_utils.utils import make_mock_engine
 
+logger = getLogger(__name__)
 
 _unicode = type(u'')
+
+
+@pytest.fixture(scope="session")
+def connection_kwargs(redshift_dialect_flavor):
+    """ Connection parameters for running integration tests
+    against an existing Redshift instance.
+
+    The tests are currently designed to work with the Travis CI
+    environment, where a Redshift instance is available
+    in the cloud. Travis CI passes the PGPASSWORD environment
+    variable and an API call to a Heroku app gets the rest
+    of the credentials.
+
+    This fixture allows the developer to pass in their own credentials
+    for other Redshift instances by setting the following environment
+    variables:
+
+        - REDSHIFT_HOST
+        - REDSHIFT_PORT
+        - REDSHIFT_USERNAME
+        - REDSHIFT_DATABASE
+        - PGPASSWORD
+
+    If these conditions are met, the tests will be ran
+    against a real Redshift instance. Otherwise, they
+    will be ran against a mock engine.
+
+    See the fixture, _redshift_database_tool, for usage.
+    """
+    pgpassword = os.environ.get("PGPASSWORD", None)
+    if not pgpassword:
+        pytest.skip("This test will only work on Travis.")
+
+    return {
+        "host": os.getenv("REDSHIFT_HOST", None),
+        "port": os.getenv("REDSHIFT_PORT", None),
+        "username": os.getenv("REDSHIFT_USERNAME", "travis"),
+        "password": pgpassword,
+        "database": os.getenv("REDSHIFT_DATABASE", "dev"),
+        "dialect": redshift_dialect_flavor,
+    }
+
+
+@pytest.fixture(scope="session")
+def iam_role_arn():
+    """ The iam_role_arn fixture constructs the ARN for the IAM role. If provided,
+    the following environment variable will be used.
+
+    - REDSHIFT_IAM_ROLE_ARN
+    """
+    return os.getenv(
+        "REDSHIFT_IAM_ROLE_ARN",
+        "arn:aws:iam::000123456789:role/redshiftrole"
+    )
+
+
+@pytest.fixture(scope="session")
+def aws_account_id(iam_role_arn):
+    """ Returns the AWS account ID from the iam_role_arn. If provided,
+    the following environment variable will be used.
+
+    - REDSHIFT_IAM_ROLE_ARN
+    """
+    try:
+        return iam_role_arn.split(":")[4]
+    except IndexError:
+        pytest.fail("Unable to parse iam_role_name from iam_role_arn")
+
+
+@pytest.fixture(scope="session")
+def iam_role_name(iam_role_arn):
+    """ Returns the IAM role name from the iam_role_arn. If provided,
+    the following environment variable will be used.
+
+    - REDSHIFT_IAM_ROLE_ARN
+    """
+    try:
+        return iam_role_arn.split("/")[1]
+    except IndexError:
+        pytest.fail("Unable to parse iam_role_name from iam_role_arn")
+
+
+@pytest.fixture(scope="session")
+def iam_role_arn_with_aws_partition():
+    """ The iam_role_arn_with_aws_partition fixture allows the developer to
+    pass in their own IAM_ROLE_ARN for other Redshift instances by setting
+    the following environment variable:
+    REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION
+    """
+    return os.getenv(
+        "REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION",
+        "arn:aws-us-gov:iam::000123456789:role/redshiftrole"
+    )
+
+
+@pytest.fixture(scope="session")
+def aws_partition(iam_role_arn_with_aws_partition):
+    """ Returns the AWS partition from the iam_role_arn_with_aws_partition.
+    If provided, the following environment variable will be used.
+
+    - REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION
+    """
+    try:
+        return iam_role_arn_with_aws_partition.split(":")[1]
+    except IndexError:
+        pytest.fail(
+            "Unable to parse aws_partition from "
+            "iam_role_arn_with_aws_partition"
+        )
+
+
+@pytest.fixture(scope="session")
+def iam_role_arns():
+    """
+    The iam_role_arns fixture allows the developer to pass in their own
+    IAM_ROLE_ARNs for other Redshift instances by setting the following
+    environment variable: REDSHIFT_IAM_ROLE_ARNS
+
+    e.g.
+        REDSHIFT_IAM_ROLE_ARNS="arn:aws:iam::123:role/role,arn:aws:iam::123:role/role2"
+    """
+    default_arns_as_string = (
+        "arn:aws:iam::000123456789:role/redshiftrole,"
+        "arn:aws:iam::000123456789:role/redshiftrole2"
+    )
+    arns = os.getenv("REDSHIFT_IAM_ROLE_ARNS", default_arns_as_string)
+    return arns.split(",")
 
 
 def database_name_generator():
@@ -41,14 +172,18 @@ class DatabaseTool(object):
     Abstracts the creation and destruction of migrated databases.
     """
 
-    def __init__(self):
-        self.engine = self.engine_definition.engine()
+    def __init__(self, engine_definition: EngineDefinition):
+        self.engine_definition = engine_definition
+        self.engine = engine_definition.engine()
+
+    def migrate(self, engine):
+        from rs_sqla_test_utils import models
+        models.Base.metadata.create_all(bind=engine)
 
     @contextlib.contextmanager
     def _database(self):
-        from sqlalchemy_redshift.dialect import (
+        from sqlalchemy_redshift.dialect import \
             RedshiftDialect_redshift_connector
-        )
 
         db_name = database_name()
         with self.engine.connect() as conn:
@@ -135,34 +270,40 @@ def pytest_generate_tests(metafunc):
             scope="session")
 
 
-@pytest.yield_fixture(scope='session')
-def _redshift_database_tool(redshift_dialect_flavor):
-    from rs_sqla_test_utils import models
-    if 'PGPASSWORD' not in os.environ:
-        pytest.skip('This test will only work on Travis.')
+@pytest.fixture(scope='session')
+def _redshift_database_tool(connection_kwargs):
+    if all([x is not None for x in connection_kwargs.values()]):
+        yield DatabaseTool(
+            engine_definition=db.redshift_engine_definition(
+                **connection_kwargs
+            )
+        )
+        return
 
     session = requests.Session()
-
     while True:
         resp = session.post('https://bigcrunch.herokuapp.com/session/')
         if resp.status_code != 503:
             break
-        print('waiting for Redshift to boot up')
+        logger.info('waiting for Redshift to boot up')
         time.sleep(15)
 
     resp.raise_for_status()
+
     config = resp.json()
+    cluster = config['cluster']
+    connection_kwargs.update({
+        'port': cluster['Port'],
+        'host': cluster['Address']
+    })
+
     try:
-        class RedshiftDatabaseTool(DatabaseTool):
-            engine_definition = db.redshift_engine_definition(
-                config['cluster'],
-                redshift_dialect_flavor
+        yield DatabaseTool(
+            engine_definition=db.redshift_engine_definition(
+                **connection_kwargs
             )
+        )
 
-            def migrate(self, engine):
-                models.Base.metadata.create_all(bind=engine)
-
-        yield RedshiftDatabaseTool()
     finally:
         base_url = resp.request.url
         resp = session.delete(
@@ -171,7 +312,7 @@ def _redshift_database_tool(redshift_dialect_flavor):
         resp.raise_for_status()
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.fixture(scope='function')
 def _redshift_engine_and_definition(_redshift_database_tool):
     with _redshift_database_tool.migrated_database() as database:
         yield database
@@ -193,7 +334,7 @@ def redshift_engine_definition(_redshift_engine_and_definition):
     return _redshift_engine_and_definition['definition']
 
 
-@pytest.yield_fixture(scope='session')
+@pytest.fixture(scope='session')
 def _session_scoped_redshift_engine(_redshift_database_tool):
     """
     Private fixture to maintain a db for the entire test session.
@@ -202,7 +343,7 @@ def _session_scoped_redshift_engine(_redshift_database_tool):
         yield egs['engine']
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.fixture(scope='function')
 def redshift_session(_session_scoped_redshift_engine):
     """
     A redshift session that rolls back all operations.
