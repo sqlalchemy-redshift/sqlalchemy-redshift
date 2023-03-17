@@ -2,7 +2,7 @@
 -------------------
 
 - Add spectrum support
-  (`Pull #243 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/243>`_)
+  (`Pull #263 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/263>`_)
 - Drop support for Python 3.5
 
 
