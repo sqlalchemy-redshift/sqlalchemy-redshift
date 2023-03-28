@@ -1,7 +1,8 @@
 0.8.14 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Add CI CFN template, buildpsec, update README
+  (`Pull #263 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/268>`_)
 
 
 0.8.13 (2023-03-28)
