@@ -1,0 +1,32 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      # start install test dependencies (specific for Python 3.10)
+      - yum -y install bzip2-devel libffi-devel
+      - yum -y groupinstall "Development Tools"
+      - orig_dir=$PWD
+      - cd /opt
+      - curl https://ftp.openssl.org/source/old/1.1.1/openssl-1.1.1j.tar.gz --output openssl.tar.gz
+      - tar xzf openssl.tar.gz
+      - rm openssl.tar.gz
+      - cd openssl-1.1.1j/
+      - ./config --prefix=/opt/openssl && make && make install
+      # end install test dependencies
+      # start install Python
+      - version=3.10.10
+      - wget https://www.python.org/ftp/python/$version/Python-$version.tar.xz
+      - tar xJf Python-$version.tar.xz
+      - cd Python-$version
+      - ./configure  --enable-optimizations --with-openssl=/opt/openssl
+      - make
+      - make altinstall
+      # end install Python
+      - cd $orig_dir
+  pre_build:
+    commands:
+      - pip install tox
+  build:
+    commands:
+      - tox $TEST_COMMAND

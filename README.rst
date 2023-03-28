@@ -3,10 +3,6 @@ sqlalchemy-redshift
 
 Amazon Redshift dialect for SQLAlchemy.
 
-.. image:: https://travis-ci.org/sqlalchemy-redshift/sqlalchemy-redshift.svg?branch=main
-   :target: https://travis-ci.org/sqlalchemy-redshift/sqlalchemy-redshift
-   :alt: Travis CI build status
-
 Installation
 ------------
 
@@ -62,6 +58,12 @@ your shell and running ``tox`` will run the integration tests against
 a real redshift instance. Practice caution when running these tests
 against a production instance.
 
+Continuous Integration (CI)
+-------------
+
+Project CI is built using AWS CodePipeline and CloudFormation. Please see the ``ci/`` folder and included ``README.txt``
+for details on how to spin up the project's CI.
+
 Releasing
 ---------
 
@@ -76,7 +78,7 @@ also the following settings::
 
 To perform a release, run the following::
 
-    python3.6 -m venv ~/.virtualenvs/dist
+    python -m venv ~/.virtualenvs/dist
     workon dist
     pip install -U pip setuptools wheel
     pip install -U tox zest.releaser

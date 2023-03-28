@@ -1,0 +1,428 @@
+#Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#SPDX-License-Identifier: MIT-0
+# Heavily Inspired by https://github.com/aws-samples/amazon-redshift-devops-blog/blob/main/cloudformation_template.yml
+Parameters:
+  TestRedshiftUsername:
+    Type: String
+    Description: The username of the test Redshift cluster
+  TestRedshiftPassword:
+    Type: String
+    Description: The password of the test Redshift cluster
+    NoEcho: true
+  AWSPARTITION:
+    Type: String
+    Description: The partition used for testing
+    Default: "aws"
+  CodeCommitRepoARN:
+    Type: String
+    Descriptiopn: The ARN of an existing AWS CodeCommit repository
+Resources:
+  DemoVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsHostnames: "true"
+      EnableDnsSupport: "true"
+  DemoVPCIGW:
+    Type: AWS::EC2::InternetGateway
+  DemoVPCIGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref DemoVPCIGW
+      VpcId: !Ref DemoVPC
+  DemoVPCPublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DemoVPC
+      CidrBlock: "10.0.0.0/24"
+      AvailabilityZone: !Sub "${AWS::Region}a"
+  DemoVPCPublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DemoVPC
+      CidrBlock: "10.0.1.0/24"
+      AvailabilityZone: !Sub "${AWS::Region}b"
+  DemoVPCPrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DemoVPC
+      CidrBlock: "10.0.2.0/24"
+      AvailabilityZone: !Sub "${AWS::Region}a"
+  DemoVPCPrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DemoVPC
+      CidrBlock: "10.0.3.0/24"
+      AvailabilityZone: !Sub "${AWS::Region}b"
+  DemoVPCPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DemoVPC
+  DemoVPCPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DemoVPC
+  DemoVPCPublicIGWRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref DemoVPCPublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref DemoVPCIGW
+  DemoVPCNatGWEIP:
+    Type: AWS::EC2::EIP
+  DemoVPCNatGW:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt DemoVPCNatGWEIP.AllocationId
+      SubnetId: !Ref DemoVPCPublicSubnetA
+  DemoVPCPublicSubnetARouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref DemoVPCPublicRouteTable
+      SubnetId: !Ref DemoVPCPublicSubnetA
+  DemoVPCPublicSubnetBRouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref DemoVPCPublicRouteTable
+      SubnetId: !Ref DemoVPCPublicSubnetB
+  DemoVPCNatGWRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref DemoVPCPrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref DemoVPCNatGW
+  DemoVPCPrivateSubnetARouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref DemoVPCPrivateRouteTable
+      SubnetId: !Ref DemoVPCPrivateSubnetA
+  DemoVPCPrivateSubnetBRouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref DemoVPCPrivateRouteTable
+      SubnetId: !Ref DemoVPCPrivateSubnetB
+  DemoVPCRSSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: "Subnet group for Redshift Devops Demo VPC."
+      SubnetIds:
+        - !Ref DemoVPCPrivateSubnetA
+        - !Ref DemoVPCPrivateSubnetB
+  TestRedshiftClusterSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      SecretString: !Sub
+        - '{"username": "${username}", "password": "${password}", "host": "${host}", "port": ${port}, "dbName": "${dbName}"}'
+        - {username: !Ref TestRedshiftUsername, password: !Ref TestRedshiftPassword, host: !GetAtt TestRedshiftCluster.Endpoint.Address, port: !GetAtt TestRedshiftCluster.Endpoint.Port, dbName: "dev"}
+  CodePipelineIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: InlineServicePolicy1
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action: ["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketVersioning"]
+                Resource: "*"
+                Effect: Allow
+              - Action: ["s3:PutObject"]
+                Resource: ["arn:aws:s3:::*codepipeline*"]
+                Effect: Allow
+              - Action: ["codebuild:StartBuild", "codebuild:BatchGetBuilds", "codebuild:StartBuildBatch", "codebuild:BatchGetBuildBatches"]
+                Resource: "*"
+                Effect: Allow
+              - Action: ["codecommit:GetRepository", "codecommit:CancelUploadArchive", "codecommit:GetBranch", "codecommit:GetCommit", "codecommit:GetUploadArchiveStatus", "codecommit:UploadArchive"]
+                Resource: "*"
+                Effect: Allow
+  TestRedshiftCluster:
+    Type: AWS::Redshift::Cluster
+    Properties:
+      VpcSecurityGroupIds:
+        - !Ref RSClusterSecurityGroup
+      ClusterSubnetGroupName: !Ref DemoVPCRSSubnetGroup
+      ClusterType: "single-node"
+      NodeType: "dc2.large"
+      IamRoles:
+        - !GetAtt RedshiftIngestIAMRole.Arn
+      MasterUsername: !Ref TestRedshiftUsername
+      MasterUserPassword: !Ref TestRedshiftPassword
+      DBName: "dev"
+      Encrypted: true
+  RSClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Redshift clusters"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5439
+          ToPort: 5439
+          CidrIp: "10.0.0.0/16"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+          Description: "Outbound access to write logs to S3"
+      VpcId: !Ref DemoVPC
+  RedshiftIngestIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: redshift.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: Inline0
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:*"
+                  - "glue:*"
+                Resource: "*"
+  CodeBuildIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: InlineServicePolicy1
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion
+                  - s3:GetObjectVersion
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                  - s3:ListMultipartUploadParts
+                  - s3:AbortMultipartUpload
+                  - s3:ListMultipartUploadParts
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                  - codebuild:BatchPutCodeCoverages
+                  - codecommit:GitPull
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeDhcpOptions
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpcs
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref TestRedshiftClusterSecrets
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterfacePermission
+                Resource: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*'
+                Condition:
+                  StringEquals:
+                    ec2:Subnet:
+                      - !Sub
+                        - "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${subnetId}"
+                        - {subnetId: !Ref DemoVPCPrivateSubnetA}
+                      - !Sub
+                        - "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${subnetId}"
+                        - {subnetId: !Ref DemoVPCPrivateSubnetB}
+                    ec2:AuthorizedService: codebuild.amazonaws.com
+  TestCodeBuildSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: RS Devops Test CodeBuild
+      GroupDescription: Security group for RS Devops Test CodeBuild
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+          Description: "Outbound access to write logs to S3"
+      VpcId: !Ref DemoVPC
+  TestCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: SqlalchemyRedshiftTest
+      ServiceRole: !GetAtt CodeBuildIAMRole.Arn
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
+        EnvironmentVariables:
+          - Name: REDSHIFT_HOST
+            Value: !Sub
+              - '${arn}:host'
+              - {arn: !Ref TestRedshiftClusterSecrets}
+            Type: SECRETS_MANAGER
+          - Name: REDSHIFT_USERNAME
+            Value: !Sub
+              - '${arn}:username'
+              - {arn: !Ref TestRedshiftClusterSecrets}
+            Type: SECRETS_MANAGER
+          - Name: PGPASSWORD
+            Value: !Sub
+              - '${arn}:password'
+              - {arn: !Ref TestRedshiftClusterSecrets}
+            Type: SECRETS_MANAGER
+          - Name: REDSHIFT_PORT
+            Value: !Sub
+              - '${arn}:port'
+              - {arn: !Ref TestRedshiftClusterSecrets}
+            Type: SECRETS_MANAGER
+          - Name: REDSHIFT_DATABASE
+            Value: !Sub
+              - '${arn}:dbName'
+              - {arn: !Ref TestRedshiftClusterSecrets}
+            Type: SECRETS_MANAGER
+          - Name: REDSHIFT_IAM_ROLE_NAME
+            Value: !GetAtt RedshiftIngestIAMRole.Arn
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: AWS_PARTITION
+            Value: !Ref AWSPARTITION
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec_test.yml
+      VpcConfig:
+        VpcId: !Ref DemoVPC
+        Subnets:
+          - !Ref DemoVPCPrivateSubnetA
+          - !Ref DemoVPCPrivateSubnetB
+        SecurityGroupIds:
+          - !Ref TestCodeBuildSecurityGroup
+  CodePipelineBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  TestPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineIAMRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: 1
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                BranchName: main
+                RepositoryName: "sqlalchemy-redshift"
+                PollForSourceChanges: false
+              RunOrder: 1
+              Name: SourceAction
+        - Name: Testing
+          Actions:
+            - ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              InputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                ProjectName: !Ref TestCodeBuild
+                EnvironmentVariables: '[{"name":"TEST_COMMAND","value":"","type":"PLAINTEXT"}]'
+              Name: SequentialTests
+# Disabled for now, but including incase we wish to re-enable in the future
+#            - ActionTypeId:
+#                Category: Build
+#                Owner: AWS
+#                Provider: CodeBuild
+#                Version: 1
+#              InputArtifacts:
+#                - Name: SourceOutput
+#              Configuration:
+#                ProjectName: !Ref TestCodeBuild
+#                EnvironmentVariables: '[{"name":"TEST_COMMAND","value":"--parallel","type":"PLAINTEXT"}]'
+#              Name: ParallelTests
+  CodeCommitEventIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: InlineServicePolicy1
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codepipeline:StartPipelineExecution
+                Resource: "*"
+  CodeCommitEvent:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Trigger CodePipeline whenever there's a commit to the main branch"
+      State: "ENABLED"
+      EventPattern:
+        source:
+          - "aws.codecommit"
+        detail-type:
+          - "CodeCommit Repository State Change"
+        resources:
+          - !Ref CodeCommitRepoARN
+        detail:
+          event:
+            - "referenceCreated"
+            - "referenceUpdated"
+          referenceType:
+            - "branch"
+          referenceName:
+            - "main"
+      Targets:
+        - Arn: !Sub
+            - "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${pipelineName}"
+            - {pipelineName: !Ref TestPipeline}
+          Id: !Sub
+            - "Event-${pipelineName}"
+            - {pipelineName: !Ref TestPipeline}
+          RoleArn: !GetAtt CodeCommitEventIAMRole.Arn
