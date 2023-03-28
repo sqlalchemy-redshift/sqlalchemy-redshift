@@ -1,4 +1,4 @@
-0.8.13 (unreleased)
+0.8.13 (2023-03-28)
 -------------------
 
 - Add spectrum support
