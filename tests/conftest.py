@@ -4,17 +4,10 @@ import contextlib
 import itertools
 import uuid
 import functools
-import time
 from logging import getLogger
 
 from rs_sqla_test_utils.db import EngineDefinition
 
-try:
-    from urllib import parse as urlparse
-except ImportError:
-    import urlparse
-
-import requests
 import pytest
 import sqlalchemy as sa
 
@@ -278,38 +271,7 @@ def _redshift_database_tool(connection_kwargs):
                 **connection_kwargs
             )
         )
-        return
-
-    session = requests.Session()
-    while True:
-        resp = session.post('https://bigcrunch.herokuapp.com/session/')
-        if resp.status_code != 503:
-            break
-        logger.info('waiting for Redshift to boot up')
-        time.sleep(15)
-
-    resp.raise_for_status()
-
-    config = resp.json()
-    cluster = config['cluster']
-    connection_kwargs.update({
-        'port': cluster['Port'],
-        'host': cluster['Address']
-    })
-
-    try:
-        yield DatabaseTool(
-            engine_definition=db.redshift_engine_definition(
-                **connection_kwargs
-            )
-        )
-
-    finally:
-        base_url = resp.request.url
-        resp = session.delete(
-            urlparse.urljoin(base_url, config['resource_url'])
-        )
-        resp.raise_for_status()
+    return
 
 
 @pytest.fixture(scope='function')
