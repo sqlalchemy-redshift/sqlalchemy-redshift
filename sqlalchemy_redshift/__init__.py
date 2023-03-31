@@ -1,5 +1,3 @@
-import logging
-
 from pkg_resources import DistributionNotFound, get_distribution, parse_version
 
 for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
