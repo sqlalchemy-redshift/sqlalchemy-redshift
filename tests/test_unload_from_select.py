@@ -73,7 +73,9 @@ def test_iam_role(
         clean(expected_result)
 
 
-def test_iam_role_partition(stub_redshift_dialect, iam_role_arn_with_aws_partition):
+def test_iam_role_partition(
+        stub_redshift_dialect, iam_role_arn_with_aws_partition
+):
     """Tests the use of iam role with a custom partition"""
 
     creds = f'aws_iam_role={iam_role_arn_with_aws_partition}'
