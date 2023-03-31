@@ -55,15 +55,15 @@ def test_basic_copy_case(stub_redshift_dialect):
         clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_iam_role(stub_redshift_dialect):
+def test_iam_role(
+    stub_redshift_dialect,
+    aws_account_id,
+    iam_role_name,
+    iam_role_arn
+):
     """Tests the use of iam role instead of access keys."""
 
-    aws_account_id = '000123456789'
-    iam_role_name = 'redshiftrole'
-    creds = 'aws_iam_role=arn:aws:iam::{0}:role/{1}'.format(
-        aws_account_id,
-        iam_role_name,
-    )
+    creds = f'aws_iam_role={iam_role_arn}'
 
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
@@ -80,17 +80,13 @@ def test_iam_role(stub_redshift_dialect):
         clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_iam_role_partition(stub_redshift_dialect):
+def test_iam_role_partition(
+    stub_redshift_dialect,
+    iam_role_arn_with_aws_partition
+):
     """Tests the use of iam role with a custom partition"""
 
-    aws_partition = 'aws-us-gov'
-    aws_account_id = '000123456789'
-    iam_role_name = 'redshiftrole'
-    creds = 'aws_iam_role=arn:{0}:iam::{1}:role/{2}'.format(
-        aws_partition,
-        aws_account_id,
-        iam_role_name,
-    )
+    creds = f'aws_iam_role={iam_role_arn_with_aws_partition}'
 
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
@@ -100,9 +96,9 @@ def test_iam_role_partition(stub_redshift_dialect):
     copy = dialect.CopyCommand(
         tbl,
         data_location='s3://mybucket/data/listing/',
-        aws_partition=aws_partition,
-        aws_account_id=aws_account_id,
-        iam_role_name=iam_role_name,
+        aws_partition='aws-us-gov',
+        aws_account_id='000123456789',
+        iam_role_name='redshiftrole'
     )
     assert clean(expected_result) == \
         clean(compile_query(copy, stub_redshift_dialect))
@@ -124,15 +120,10 @@ def test_iam_role_partition_validation():
         )
 
 
-def test_iam_role_arns_list(stub_redshift_dialect):
+def test_iam_role_arns_list(stub_redshift_dialect, iam_role_arns):
     """Tests the use of multiple iam role arns instead of access keys."""
 
-    iam_role_arns = [
-        'arn:aws:iam::000123456789:role/redshiftrole',
-        'arn:aws:iam::000123456789:role/redshiftrole2',
-    ]
-    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole,' \
-            'arn:aws:iam::000123456789:role/redshiftrole2'
+    creds = f'aws_iam_role={",".join(iam_role_arns)}'
 
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
@@ -148,11 +139,10 @@ def test_iam_role_arns_list(stub_redshift_dialect):
         clean(compile_query(copy, stub_redshift_dialect))
 
 
-def test_iam_role_arns_single(stub_redshift_dialect):
+def test_iam_role_arns_single(stub_redshift_dialect, iam_role_arn):
     """Tests the use of a single iam role arn instead of access keys."""
 
-    iam_role_arns = 'arn:aws:iam::000123456789:role/redshiftrole'
-    creds = 'aws_iam_role=arn:aws:iam::000123456789:role/redshiftrole'
+    creds = f'aws_iam_role={iam_role_arn}'
 
     expected_result = """
     COPY schema1.t1 FROM 's3://mybucket/data/listing/'
@@ -162,7 +152,7 @@ def test_iam_role_arns_single(stub_redshift_dialect):
     copy = dialect.CopyCommand(
         tbl,
         data_location='s3://mybucket/data/listing/',
-        iam_role_arns=iam_role_arns,
+        iam_role_arns=iam_role_arn,
     )
     assert clean(expected_result) == \
         clean(compile_query(copy, stub_redshift_dialect))

@@ -1,7 +1,17 @@
-0.8.13 (unreleased)
+0.8.14 (unreleased)
 -------------------
 
 - Override new upstream postgres method that fails against redshift (`Pull #266 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/266>`_)
+- Add CI CFN template, buildpsec, update README
+  (`Pull #268 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/268>`_)
+
+
+0.8.13 (2023-03-28)
+-------------------
+
+- Add spectrum support
+  (`Pull #263 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/263>`_)
+- Drop support for Python 3.5
 
 
 0.8.12 (2022-12-08)

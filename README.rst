@@ -3,10 +3,6 @@ sqlalchemy-redshift
 
 Amazon Redshift dialect for SQLAlchemy.
 
-.. image:: https://travis-ci.org/sqlalchemy-redshift/sqlalchemy-redshift.svg?branch=main
-   :target: https://travis-ci.org/sqlalchemy-redshift/sqlalchemy-redshift
-   :alt: Travis CI build status
-
 Installation
 ------------
 
@@ -39,6 +35,35 @@ See the `RedshiftDDLCompiler documentation
 <https://sqlalchemy-redshift.readthedocs.org/en/latest/ddl-compiler.html>`_
 for details on Redshift-specific features the dialect supports.
 
+Running Tests
+-------------
+Tests are ran via tox and can be run with the following command::
+
+    $ tox
+
+However, this will not run integration tests unless the following
+environment variables are set:
+
+* REDSHIFT_HOST
+* REDSHIFT_PORT
+* REDSHIFT_USERNAME
+* PGPASSWORD (this is the redshift instance password)
+* REDSHIFT_DATABASE
+* REDSHIFT_IAM_ROLE_ARN
+
+Note that the IAM role specified will need to be associated with
+redshift cluster and have the correct permissions to create databases
+and tables as well drop them. Exporting these environment variables in
+your shell and running ``tox`` will run the integration tests against
+a real redshift instance. Practice caution when running these tests
+against a production instance.
+
+Continuous Integration (CI)
+-------------
+
+Project CI is built using AWS CodePipeline and CloudFormation. Please see the ``ci/`` folder and included ``README.txt``
+for details on how to spin up the project's CI.
+
 Releasing
 ---------
 
@@ -53,7 +78,7 @@ also the following settings::
 
 To perform a release, run the following::
 
-    python3.6 -m venv ~/.virtualenvs/dist
+    python -m venv ~/.virtualenvs/dist
     workon dist
     pip install -U pip setuptools wheel
     pip install -U tox zest.releaser
