@@ -1,6 +1,7 @@
 0.8.14 (unreleased)
 -------------------
 
+- Override new upstream postgres method that fails against redshift (`Pull #266 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/266>`_)
 - Add CI CFN template, buildpsec, update README
   (`Pull #268 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/268>`_)
 
