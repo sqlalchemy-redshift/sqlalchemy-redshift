@@ -59,7 +59,7 @@ a real redshift instance. Practice caution when running these tests
 against a production instance.
 
 Continuous Integration (CI)
--------------
+---------------------------
 
 Project CI is built using AWS CodePipeline and CloudFormation. Please see the ``ci/`` folder and included ``README.txt``
 for details on how to spin up the project's CI.
