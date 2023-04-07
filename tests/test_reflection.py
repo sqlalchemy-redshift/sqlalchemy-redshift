@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import MetaData, Table, inspect
-from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.exc import NoSuchTableError
+import sqlalchemy as sa
 
 from rs_sqla_test_utils import models, utils
 
@@ -195,7 +195,7 @@ def test_no_table_reflection(redshift_session):
 def test_no_search_path_leak(redshift_session):
     metadata = MetaData(bind=redshift_session.bind)
     Table('basic', metadata, autoload=True)
-    result = redshift_session.execute("SHOW search_path")
+    result = redshift_session.execute(sa.text("SHOW search_path"))
     search_path = result.scalar()
     assert 'other_schema' not in search_path
 
@@ -207,12 +207,12 @@ def test_external_table_reflection(redshift_engine, iam_role_arn):
                     iam_role '{iam_role_arn}'
                     create external database if not exists;
                     """
-
-    conn = redshift_engine.connect()
-    conn.execute(schema_ddl)
-    insp = inspect(redshift_engine)
-    all_schemas = insp.get_schema_names()
-    assert 'bananas' in all_schemas
+    with redshift_engine.connect() as conn:
+        conn.execute(sa.text(schema_ddl))
+        conn.execute(sa.text('COMMIT'))
+        insp = inspect(redshift_engine)
+        all_schemas = insp.get_schema_names()
+        assert 'bananas' in all_schemas
 
     table_ddl = """create external table bananas.sales(
         salesid integer,
@@ -226,13 +226,19 @@ def test_external_table_reflection(redshift_engine, iam_role_arn):
         location 's3://awssampledbuswest2/tickit/spectrum/sales/'
         table properties ('numRows'='172000');
     """
-    with redshift_engine.connect() as conn:
-        # Redshift can't run CREATE EXTERNAL TABLE inside a transaction
-        # e.g. (BEGIN … END)
-        if not isinstance(conn.dialect, PGDialect_psycopg2cffi):
-            conn.execution_options(isolation_level="AUTOCOMMIT")
+    from sqlalchemy_redshift.dialect import \
+        RedshiftDialect_psycopg2cffi
+    opts = (
+        {"isolation_level": "AUTOCOMMIT"}
+        if not isinstance(
+            redshift_engine.dialect, RedshiftDialect_psycopg2cffi
+        ) else {}
+    )
 
-        conn.execute(table_ddl)
+    with redshift_engine.connect().execution_options(**opts) as conn:
+        conn.execute(sa.text(table_ddl))
+        if isinstance(redshift_engine.dialect, RedshiftDialect_psycopg2cffi):
+            conn.execute(sa.text("COMMIT"))
 
         insp = inspect(redshift_engine)
         table_columns_definition = insp.get_columns(
@@ -245,8 +251,12 @@ def test_external_table_reflection(redshift_engine, iam_role_arn):
         assert 'pricepaid' in table_columns
 
         # Drop external table because we are using `AUTOCOMMIT`
-        conn.execute("DROP TABLE IF EXISTS bananas.sales")
+        conn.execute(sa.text("DROP TABLE IF EXISTS bananas.sales"))
 
         # Also drop the external db:
         # https://docs.aws.amazon.com/redshift/latest/dg/r_DROP_DATABASE.html
-        conn.execute("DROP SCHEMA IF EXISTS bananas DROP EXTERNAL DATABASE")
+        conn.execute(
+            sa.text("DROP SCHEMA IF EXISTS bananas DROP EXTERNAL DATABASE")
+        )
+        if isinstance(redshift_engine.dialect, RedshiftDialect_psycopg2cffi):
+            conn.execute(sa.text("COMMIT"))
