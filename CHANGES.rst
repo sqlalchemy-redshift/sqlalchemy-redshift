@@ -4,6 +4,8 @@
 - Override new upstream postgres method that fails against redshift (`Pull #266 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/266>`_)
 - Fix table reflection broken for non-superusers
   (`Pull #276 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/276>`_)
+- Fix Broken Reflection for 1.4 FutureEngine
+  (`Pull #277 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/277>`_)
 
 
 0.8.13 (2023-03-28)
