@@ -753,7 +753,7 @@ class RedshiftDialectMixin(DefaultDialect):
         )
         table_oid = 'NULL' if not table_oid else table_oid
 
-        result = connection.execute("""
+        result = connection.execute(sa.text("""
                         SELECT
                             cons.conname as name,
                             pg_get_constraintdef(cons.oid) as src
@@ -762,7 +762,7 @@ class RedshiftDialectMixin(DefaultDialect):
                         WHERE
                             cons.conrelid = {} AND
                             cons.contype = 'c'
-                        """.format(table_oid))
+                        """.format(table_oid)))
         ret = []
         for name, src in result:
             # samples:
@@ -1122,15 +1122,14 @@ class RedshiftDialectMixin(DefaultDialect):
         )
 
         all_columns = defaultdict(list)
-        with connection.connect() as cc:
-            result = cc.execute(sa.text(REFLECTION_SQL.format(
-                schema_clause=schema_clause,
-                table_clause=table_clause
-            )))
+        result = connection.execute(sa.text(REFLECTION_SQL.format(
+            schema_clause=schema_clause,
+            table_clause=table_clause
+        )))
 
-            for col in result:
-                key = RelationKey(col.table_name, col.schema, connection)
-                all_columns[key].append(col)
+        for col in result:
+            key = RelationKey(col.table_name, col.schema, connection)
+            all_columns[key].append(col)
 
         return dict(all_columns)
 

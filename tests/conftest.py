@@ -176,14 +176,23 @@ class DatabaseTool(object):
     @contextlib.contextmanager
     def _database(self):
         from sqlalchemy_redshift.dialect import \
-            RedshiftDialect_redshift_connector
+            RedshiftDialect_psycopg2cffi
 
         db_name = database_name()
-        with self.engine.connect() as conn:
-            conn.execute('COMMIT')  # Can't create databases in a transaction
-            if isinstance(conn.dialect, RedshiftDialect_redshift_connector):
-                conn.execution_options(isolation_level="AUTOCOMMIT")
-            conn.execute('CREATE DATABASE {db_name}'.format(db_name=db_name))
+        opts = (
+            {"isolation_level": "AUTOCOMMIT"}
+            if not isinstance(
+                self.engine.dialect, RedshiftDialect_psycopg2cffi
+            )
+            else {}
+        )
+
+        with self.engine.connect().execution_options(**opts) as conn:
+            if isinstance(self.engine.dialect, RedshiftDialect_psycopg2cffi):
+                conn.execute(sa.text("COMMIT"))
+            conn.execute(
+                sa.text('CREATE DATABASE {db_name}'.format(db_name=db_name))
+            )
 
         dburl = copy.deepcopy(self.engine.url)
         try:
@@ -197,13 +206,14 @@ class DatabaseTool(object):
                 connect_args=self.engine_definition.connect_args,
             )
         finally:
-            with self.engine.connect() as conn:
-                conn.execute('COMMIT')  # Can't drop databases in a transaction
+            with self.engine.connect().execution_options(**opts) as conn:
                 if isinstance(
-                        conn.dialect, RedshiftDialect_redshift_connector
+                        self.engine.dialect, RedshiftDialect_psycopg2cffi
                 ):
-                    conn.execution_options(isolation_level="AUTOCOMMIT")
-                conn.execute('DROP DATABASE {db_name}'.format(db_name=db_name))
+                    conn.execute(sa.text("COMMIT"))
+                conn.execute(
+                    sa.text('DROP DATABASE {db_name}'.format(db_name=db_name))
+                )
 
     @contextlib.contextmanager
     def migrated_database(self):
