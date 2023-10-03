@@ -987,7 +987,7 @@ class RedshiftDialectMixin(DefaultDialect):
         relation_names = []
         for key, relation in all_relations.items():
             if key.schema == schema and relation.relkind == relkind:
-                relation_names.append(key.name)
+                relation_names.append(self.unquote(key.name))
         return relation_names
 
     def _get_column_info(self, *args, **kwargs):
