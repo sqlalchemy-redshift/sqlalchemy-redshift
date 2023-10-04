@@ -438,9 +438,9 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
 
     def __str__(self):
         if self.schema is None:
-            return self.name
+            return RelationKey._unquote(self.name)
         else:
-            return self.schema + "." + self.name
+            return RelationKey._unquote(self.schema) + "." + RelationKey._unquote(self.name)
 
     @staticmethod
     def _unquote(part):
