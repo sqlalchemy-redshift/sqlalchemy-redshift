@@ -793,12 +793,12 @@ class RedshiftDialectMixin(DefaultDialect):
     def get_table_oid(self, connection, table_name, schema=None, **kw):
         """Fetch the oid for schema.table_name.
         Return null if not found (external table does not have table oid)"""
-        schema_field = '"{schema}".'.format(schema=schema) if schema else ""
+        schema_field = '{schema}.'.format(schema=schema) if schema else ""
 
         result = connection.execute(
             sa.text(
                 """
-                select '{schema_field}"{table_name}"'::regclass::oid;
+                select '{schema_field}{table_name}'::regclass::oid;
                 """.format(
                     schema_field=schema_field,
                     table_name=table_name
