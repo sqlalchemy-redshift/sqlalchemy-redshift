@@ -32,6 +32,18 @@ class BasicInOtherSchema(Base):
     col1 = sa.Column(sa.Integer(), primary_key=True)
 
 
+class BasicInIncludingDotSchema(Base):
+    __tablename__ = 'basic'
+    __table_args__ = (
+        {'schema': 'dotted.schema',
+         'quote_schema': False,
+         'redshift_diststyle': 'KEY',
+         'redshift_distkey': 'col1',
+         'redshift_sortkey': 'col1'}
+    )
+    col1 = sa.Column(sa.Integer(), primary_key=True)
+
+
 class ReflectionDistKey(Base):
     __tablename__ = 'reflection_distkey'
     col1 = sa.Column(sa.Integer(), primary_key=True)
