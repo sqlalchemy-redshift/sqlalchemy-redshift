@@ -3,6 +3,7 @@ import json
 import re
 from collections import defaultdict, namedtuple
 from logging import getLogger
+from typing import Any, Optional
 
 import pkg_resources
 import sqlalchemy as sa
@@ -653,8 +654,9 @@ class RedshiftTypeCompiler(PGTypeCompiler):
 
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
-    initial_quote: str = ''
-    final_quote: str = ''
+
+    def quote_schema(self, schema: Any, force: Optional[bool] = ...) -> str:
+        return schema
 
 
 class RedshiftDialectMixin(DefaultDialect):
@@ -672,6 +674,7 @@ class RedshiftDialectMixin(DefaultDialect):
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
     preparer = RedshiftIdentifierPreparer
+    identifier_preparer = RedshiftIdentifierPreparer
     type_compiler = RedshiftTypeCompiler
     construct_arguments = [
         (sa.schema.Index, {

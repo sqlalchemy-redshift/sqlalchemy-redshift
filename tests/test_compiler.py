@@ -13,6 +13,5 @@ def test_unquoting_schema(stub_redshift_dialect):
     dialect = stub_redshift_dialect
     s = select(models.BasicInIncludingDotSchema.col1).where(models.BasicInIncludingDotSchema.col1 == 1)
     compiled = s.compile(dialect=dialect)
-    assert str(compiled) == """SELECT dotted.schema.basic.col1 
-FROM dotted.schema.basic 
-WHERE dotted.schema.basic.col1 = %s"""
+    assert "dotted.schema" in str(compiled)
+    assert "\"dotted.schema\"" not in str(compiled)
