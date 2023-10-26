@@ -672,8 +672,6 @@ class RedshiftDialectMixin(DefaultDialect):
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
     preparer = RedshiftIdentifierPreparer
-    preparer.initial_quote = ''
-    preparer.final_quote = ''
     type_compiler = RedshiftTypeCompiler
     construct_arguments = [
         (sa.schema.Index, {
