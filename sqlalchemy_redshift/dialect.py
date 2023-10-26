@@ -3,6 +3,7 @@ import json
 import re
 from collections import defaultdict, namedtuple
 from logging import getLogger
+from typing import Any, Optional
 
 import pkg_resources
 import sqlalchemy as sa
@@ -438,9 +439,9 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
 
     def __str__(self):
         if self.schema is None:
-            return self.name
+            return RelationKey._unquote(self.name)
         else:
-            return self.schema + "." + self.name
+            return RelationKey._unquote(self.schema) + "." + RelationKey._unquote(self.name)
 
     @staticmethod
     def _unquote(part):
@@ -654,6 +655,9 @@ class RedshiftTypeCompiler(PGTypeCompiler):
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
+    def quote_schema(self, schema: Any, force: Optional[bool] = ...) -> str:
+        return schema
+
 
 class RedshiftDialectMixin(DefaultDialect):
     """
@@ -670,6 +674,7 @@ class RedshiftDialectMixin(DefaultDialect):
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
     preparer = RedshiftIdentifierPreparer
+    identifier_preparer = RedshiftIdentifierPreparer
     type_compiler = RedshiftTypeCompiler
     construct_arguments = [
         (sa.schema.Index, {
@@ -793,12 +798,12 @@ class RedshiftDialectMixin(DefaultDialect):
     def get_table_oid(self, connection, table_name, schema=None, **kw):
         """Fetch the oid for schema.table_name.
         Return null if not found (external table does not have table oid)"""
-        schema_field = '"{schema}".'.format(schema=schema) if schema else ""
+        schema_field = '{schema}.'.format(schema=schema) if schema else ""
 
         result = connection.execute(
             sa.text(
                 """
-                select '{schema_field}"{table_name}"'::regclass::oid;
+                select '{schema_field}{table_name}'::regclass::oid;
                 """.format(
                     schema_field=schema_field,
                     table_name=table_name
@@ -857,8 +862,8 @@ class RedshiftDialectMixin(DefaultDialect):
             fkey_d = {
                 'name': conname,
                 'constrained_columns': constrained_columns,
-                'referred_schema': referred_schema,
-                'referred_table': referred_table,
+                'referred_schema': self.unquote(referred_schema),
+                'referred_table': self.unquote(referred_table),
                 'referred_columns': referred_columns,
             }
             fkeys.append(fkey_d)
@@ -907,6 +912,16 @@ class RedshiftDialectMixin(DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
         """
         return []
+
+    @staticmethod
+    def unquote(text):
+        if text is None:
+            return None
+
+        if text.startswith('"') and text.endswith('"'):
+            return text[1:-1]
+
+        return text
 
     @reflection.cache
     def get_unique_constraints(self, connection, table_name,
@@ -977,7 +992,7 @@ class RedshiftDialectMixin(DefaultDialect):
         relation_names = []
         for key, relation in all_relations.items():
             if key.schema == schema and relation.relkind == relkind:
-                relation_names.append(key.name)
+                relation_names.append(self.unquote(key.name))
         return relation_names
 
     def _get_column_info(self, *args, **kwargs):
@@ -1110,6 +1125,7 @@ class RedshiftDialectMixin(DefaultDialect):
     @reflection.cache
     def _get_schema_column_info(self, connection, **kw):
         schema = kw.get('schema', None)
+        schema = self.unquote(schema)
         schema_clause = (
             "AND schema = '{schema}'".format(schema=schema) if schema else ""
         )
