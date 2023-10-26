@@ -653,6 +653,8 @@ class RedshiftTypeCompiler(PGTypeCompiler):
 
 class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
+    initial_quote: str = ''
+    final_quote: str = ''
 
 
 class RedshiftDialectMixin(DefaultDialect):
@@ -670,6 +672,8 @@ class RedshiftDialectMixin(DefaultDialect):
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
     preparer = RedshiftIdentifierPreparer
+    preparer.initial_quote = ''
+    preparer.final_quote = ''
     type_compiler = RedshiftTypeCompiler
     construct_arguments = [
         (sa.schema.Index, {
