@@ -390,6 +390,14 @@ class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
             return json.dumps(value)
         return value
 
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            """Process the value recieved from the connector."""
+            if value is not None:
+                value = json.loads(value)
+            return value
+        return process
+
 
 class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
     """
