@@ -5,7 +5,7 @@ history = open('CHANGES.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='sqlalchemy-redshift',
-    version='0.8.15.dev0',
+    version='0.8.16.dev0',
     description='Amazon Redshift Dialect for sqlalchemy',
     long_description=readme + '\n\n' + history,
     long_description_content_type='text/x-rst',
@@ -21,7 +21,7 @@ setup(
     install_requires=[
         # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in
         # version 0.9.2
-        'SQLAlchemy>=0.9.2,<2.0.0',
+        'SQLAlchemy>=0.9.2,<3.0.0',
         'packaging',
     ],
     classifiers=[
