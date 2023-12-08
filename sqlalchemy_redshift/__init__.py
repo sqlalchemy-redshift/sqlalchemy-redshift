@@ -2,7 +2,6 @@ from importlib.metadata import distribution as get_distribution
 from importlib.metadata import version
 
 from packaging.version import parse as parse_version
-from pkg_resources import get_distribution
 
 for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
     try:

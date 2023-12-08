@@ -1,11 +1,15 @@
+from pathlib import Path
+
 import sqlalchemy as sa
-from pkg_resources import resource_filename
 from sqlalchemy_redshift.dialect import (
     Psycopg2RedshiftDialectMixin, RedshiftDialect_redshift_connector
 )
 
 
-CERT_PATH = resource_filename("sqlalchemy_redshift", "redshift-ca-bundle.crt")
+cwd = Path(__file__).parent.resolve()
+sqlalchemy_redshift_dir = cwd.joinpath("..") / "sqlalchemy_redshift"
+sqlalchemy_redshift_dir = sqlalchemy_redshift_dir.resolve()
+CERT_PATH = str(sqlalchemy_redshift_dir / "redshift-ca-bundle.crt")
 
 
 def test_ssl_args(redshift_dialect_flavor):
