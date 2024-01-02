@@ -28,9 +28,9 @@ SECRET_ACCESS_KEY_RE = re.compile('[A-Za-z0-9/+=]{40}')
 TOKEN_RE = re.compile('[A-Za-z0-9/+=]+')
 AWS_PARTITIONS = frozenset({'aws', 'aws-cn', 'aws-us-gov'})
 AWS_ACCOUNT_ID_RE = re.compile('[0-9]{12}')
-IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@\-_]{1,64}')  # noqa
+IAM_ROLE_NAME_RE = re.compile('[A-Za-z0-9+=,.@\\-_]{1,64}')
 IAM_ROLE_ARN_RE = re.compile('arn:(aws|aws-cn|aws-us-gov):iam::'
-                             '[0-9]{12}:role/[A-Za-z0-9+=,.@\-_]{1,64}')  # noqa
+                             '[0-9]{12}:role/[A-Za-z0-9+=,.@\\-_]{1,64}')
 
 
 def _process_aws_credentials(access_key_id=None, secret_access_key=None,
