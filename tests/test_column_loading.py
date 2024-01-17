@@ -6,7 +6,7 @@ from sqlalchemy.types import NullType, VARCHAR
 
 from sqlalchemy_redshift.dialect import (
     RedshiftDialect_psycopg2, RedshiftDialect_psycopg2cffi,
-    IcebergString, IcebergBinary
+    ICEBERG_STRING, ICEBERG_BINARY
 )
 
 sa_version = Version(sa.__version__)
@@ -61,7 +61,7 @@ class TestColumnReflection(TestCase):
                 comment='test column',
                 identity=None
             )
-            assert isinstance(iceberg_string_info['type'], IcebergString)
+            assert isinstance(iceberg_string_info['type'], ICEBERG_STRING)
 
             iceberg_binary_info = dialect._get_column_info(
                 name='Iceberg Binary Column',
@@ -75,4 +75,4 @@ class TestColumnReflection(TestCase):
                 comment='test column',
                 identity=None
             )
-            assert isinstance(iceberg_binary_info['type'], IcebergBinary)
+            assert isinstance(iceberg_binary_info['type'], ICEBERG_BINARY)

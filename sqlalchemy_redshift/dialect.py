@@ -413,14 +413,14 @@ class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
         return dbapi.HLLSKETCH
 
 
-class IcebergString(sa.types.TypeDecorator):
+class ICEBERG_STRING(sa.types.TypeDecorator):
     impl = sa.types.String
 
     def load_dialect_impl(self, dialect):
         return sa.dialects.postgresql.VARCHAR(length=MAX_VARCHAR_LENGTH)
 
 
-class IcebergBinary(sa.types.TypeDecorator):
+class ICEBERG_BINARY(sa.types.TypeDecorator):
     impl = sa.types.LargeBinary
 
     def process_bind_param(self, value, dialect):
@@ -465,8 +465,8 @@ REDSHIFT_ISCHEMA_NAMES = {
     "timestamp with time zone": TIMESTAMPTZ,
     "hllsketch": HLLSKETCH,
     # iceberg types
-    "string": IcebergString,
-    "binary": IcebergBinary,
+    "string": ICEBERG_STRING,
+    "binary": ICEBERG_BINARY,
 }
 
 
