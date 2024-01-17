@@ -427,12 +427,11 @@ class ICEBERG_BINARY(sa.types.TypeDecorator):
         if value is None:
             return value
 
-        encoding = getattr(dialect, 'encoding', 'utf-8')
-
         if isinstance(value, bytes):
             return value
 
         if isinstance(value, str):
+            encoding = getattr(dialect, 'encoding', 'utf-8')
             return value.encode(encoding)
 
         return value
