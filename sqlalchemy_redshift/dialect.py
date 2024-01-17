@@ -422,7 +422,7 @@ class IcebergString(sa.types.TypeDecorator):
 
 class IcebergBinary(sa.types.TypeDecorator):
     impl = sa.types.LargeBinary
- 
+
     def process_bind_param(self, value, dialect):
         if value is None:
             return value
@@ -449,7 +449,10 @@ class IcebergBinary(sa.types.TypeDecorator):
                 encoding = getattr(dialect, 'encoding', 'utf-8')
                 return value.encode(encoding)
 
-            raise TypeError(f"Unexpected type for value in result_processor.process: {type(value)}")
+            raise TypeError(
+                "Unexpected type for value in result_processor.process: ",
+                type(value)
+            )
 
         return process
 
