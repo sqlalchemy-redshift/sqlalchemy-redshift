@@ -416,13 +416,20 @@ class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
 class ICEBERG_STRING(sa.types.TypeDecorator):
     impl = sa.types.String
 
+    @property
+    def python_type(self):
+        return str
+
     def load_dialect_impl(self, dialect):
         return sa.dialects.postgresql.VARCHAR(length=MAX_VARCHAR_LENGTH)
-
 
 class ICEBERG_BINARY(sa.types.TypeDecorator):
     impl = sa.types.LargeBinary
 
+    @property
+    def python_type(self):
+        return bytes
+ 
     def process_bind_param(self, value, dialect):
         if value is None:
             return value
