@@ -414,6 +414,13 @@ class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
 
 
 class ICEBERG_STRING(sa.types.TypeDecorator):
+    """
+    A custom SQLAlchemy type decorator for representing iceberg strings.
+
+    This type decorator is used to represent iceberg strings in a
+    Redshift/PostgreSQL database using SQLAlchemy.
+    """
+
     impl = sa.types.String
 
     @property
@@ -423,13 +430,22 @@ class ICEBERG_STRING(sa.types.TypeDecorator):
     def load_dialect_impl(self, dialect):
         return sa.dialects.postgresql.VARCHAR(length=MAX_VARCHAR_LENGTH)
 
+
 class ICEBERG_BINARY(sa.types.TypeDecorator):
+    """
+    A custom SQLAlchemy type decorator for storing/querying binary data in an
+    Iceberg database.
+
+    This type decorator is used to represent iceberg binary data in a
+    Redshift/PostgreSQL database using SQLAlchemy.
+    """
+
     impl = sa.types.LargeBinary
 
     @property
     def python_type(self):
         return bytes
- 
+
     def process_bind_param(self, value, dialect):
         if value is None:
             return value
