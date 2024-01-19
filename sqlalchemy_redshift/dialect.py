@@ -415,9 +415,7 @@ class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
 
 class ICEBERG_STRING(sa.types.TypeDecorator):
     """
-    A custom SQLAlchemy type decorator for representing iceberg strings.
-
-    This type decorator is used to represent iceberg strings in a
+    ICEBERG_STRING is used to represent iceberg strings in a
     Redshift/PostgreSQL database using SQLAlchemy.
     """
 
@@ -433,10 +431,7 @@ class ICEBERG_STRING(sa.types.TypeDecorator):
 
 class ICEBERG_BINARY(sa.types.TypeDecorator):
     """
-    A custom SQLAlchemy type decorator for storing/querying binary data in an
-    Iceberg database.
-
-    This type decorator is used to represent iceberg binary data in a
+    ICEBERG_BINARY is used to represent iceberg binary data in a
     Redshift/PostgreSQL database using SQLAlchemy.
     """
 
