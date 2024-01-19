@@ -1,7 +1,8 @@
 0.8.15 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Add support for Iceberg string and binary types
+  (`Pull #297 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/297>`_)
 
 
 0.8.14 (2023-04-07)
