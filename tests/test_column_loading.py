@@ -5,7 +5,8 @@ import sqlalchemy as sa
 from sqlalchemy.types import NullType, VARCHAR
 
 from sqlalchemy_redshift.dialect import (
-    RedshiftDialect_psycopg2, RedshiftDialect_psycopg2cffi
+    RedshiftDialect_psycopg2, RedshiftDialect_psycopg2cffi,
+    ICEBERG_STRING, ICEBERG_BINARY
 )
 
 sa_version = Version(sa.__version__)
@@ -47,3 +48,31 @@ class TestColumnReflection(TestCase):
                 identity=None
             )
             assert isinstance(varchar_info['type'], VARCHAR)
+
+            iceberg_string_info = dialect._get_column_info(
+                name='Iceberg String Column',
+                format_type='string',
+                default=None,
+                notnull=False,
+                domains={},
+                enums=[],
+                schema='default',
+                encode='',
+                comment='test column',
+                identity=None
+            )
+            assert isinstance(iceberg_string_info['type'], ICEBERG_STRING)
+
+            iceberg_binary_info = dialect._get_column_info(
+                name='Iceberg Binary Column',
+                format_type='binary',
+                default=None,
+                notnull=False,
+                domains={},
+                enums=[],
+                schema='default',
+                encode='',
+                comment='test column',
+                identity=None
+            )
+            assert isinstance(iceberg_binary_info['type'], ICEBERG_BINARY)

@@ -290,6 +290,9 @@ REFLECTION_SQL = """\
     """
 
 
+MAX_VARCHAR_LENGTH = 65535
+
+
 class RedshiftTypeEngine(TypeEngine):
 
     def _default_dialect(self, default=None):
@@ -410,6 +413,67 @@ class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
         return dbapi.HLLSKETCH
 
 
+class ICEBERG_STRING(sa.types.TypeDecorator):
+    """
+    ICEBERG_STRING is used to represent iceberg strings in a
+    Redshift/PostgreSQL database using SQLAlchemy.
+    """
+
+    impl = sa.types.String
+
+    @property
+    def python_type(self):
+        return str
+
+    def load_dialect_impl(self, dialect):
+        return sa.dialects.postgresql.VARCHAR(length=MAX_VARCHAR_LENGTH)
+
+
+class ICEBERG_BINARY(sa.types.TypeDecorator):
+    """
+    ICEBERG_BINARY is used to represent iceberg binary data in a
+    Redshift/PostgreSQL database using SQLAlchemy.
+    """
+
+    impl = sa.types.LargeBinary
+
+    @property
+    def python_type(self):
+        return bytes
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+
+        if isinstance(value, bytes):
+            return value
+
+        if isinstance(value, str):
+            encoding = getattr(dialect, 'encoding', 'utf-8')
+            return value.encode(encoding)
+
+        return value
+
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            if value is None:
+                return value
+
+            if isinstance(value, bytes):
+                return value
+
+            if isinstance(value, str):
+                encoding = getattr(dialect, 'encoding', 'utf-8')
+                return value.encode(encoding)
+
+            raise TypeError(
+                "Unexpected type for value in result_processor.process: ",
+                type(value)
+            )
+
+        return process
+
+
 # Mapping for database schema inspection of Amazon Redshift datatypes
 REDSHIFT_ISCHEMA_NAMES = {
     "geometry": GEOMETRY,
@@ -417,6 +481,9 @@ REDSHIFT_ISCHEMA_NAMES = {
     "time with time zone": TIMETZ,
     "timestamp with time zone": TIMESTAMPTZ,
     "hllsketch": HLLSKETCH,
+    # iceberg types
+    "string": ICEBERG_STRING,
+    "binary": ICEBERG_BINARY,
 }
 
 
