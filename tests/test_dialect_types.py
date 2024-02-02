@@ -31,8 +31,8 @@ def test_defined_types():
         is sqlalchemy.sql.sqltypes.TIMESTAMP
     assert sqlalchemy_redshift.dialect.DOUBLE_PRECISION \
         is sqlalchemy.dialects.postgresql.DOUBLE_PRECISION
-    assert sqlalchemy_redshift.dialect.Numeric \
-        is sqlalchemy.sql.sqltypes.Numeric
+    assert sqlalchemy_redshift.dialect.NUMERIC \
+        is sqlalchemy.sql.sqltypes.NUMERIC
 
     assert sqlalchemy_redshift.dialect.GEOMETRY \
         is not sqlalchemy.sql.sqltypes.TEXT
