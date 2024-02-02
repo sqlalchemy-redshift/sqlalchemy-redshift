@@ -21,7 +21,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import (BinaryExpression, BooleanClauseList,
                                        Delete)
 from sqlalchemy.sql.type_api import TypeEngine
-from sqlalchemy.types import (BIGINT, BOOLEAN, CHAR, DATE, DECIMAL, INTEGER,
+from sqlalchemy.types import (BIGINT, BOOLEAN, CHAR, DATE, DECIMAL,NUMERIC, INTEGER,
                               REAL, SMALLINT, TIMESTAMP, VARCHAR, NullType)
 
 from .commands import (AlterTableAppendCommand, Compression, CopyCommand,
@@ -53,6 +53,7 @@ else:
 # with its __all__ collection
 # https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
 __all__ = (
+    'NUMERIC',
     'SMALLINT',
     'INTEGER',
     'BIGINT',
