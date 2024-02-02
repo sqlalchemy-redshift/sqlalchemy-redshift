@@ -1,7 +1,8 @@
 0.8.15 (unreleased)
 -------------------
 
-- Nothing changed yet.
+- Added Numeric type support
+  (`Pull #298 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/298>`_)
 
 
 0.8.14 (2023-04-07)
