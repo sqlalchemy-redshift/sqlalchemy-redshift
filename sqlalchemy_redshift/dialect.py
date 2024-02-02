@@ -53,6 +53,7 @@ else:
 # with its __all__ collection
 # https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
 __all__ = (
+    'NUMERIC',
     'SMALLINT',
     'INTEGER',
     'BIGINT',
