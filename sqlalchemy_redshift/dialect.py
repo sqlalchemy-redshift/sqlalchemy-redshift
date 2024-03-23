@@ -666,6 +666,7 @@ class RedshiftDialectMixin(DefaultDialect):
 
     name = 'redshift'
     max_identifier_length = 127
+    cte_follows_insert = True
 
     statement_compiler = RedshiftCompiler
     ddl_compiler = RedshiftDDLCompiler
