@@ -26,7 +26,8 @@ phases:
       - cd $orig_dir
   pre_build:
     commands:
-      - pip install tox
+      - pip install uv
+      - uv sync --dev
   build:
     commands:
-      - tox $TEST_COMMAND
+      - uv run pytest tests/ --dbdriver psycopg2 --dbdriver psycopg2cffi --dbdriver redshift_connector $TEST_COMMAND

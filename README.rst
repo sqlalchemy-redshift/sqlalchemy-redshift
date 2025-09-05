@@ -37,11 +37,18 @@ for details on Redshift-specific features the dialect supports.
 
 Running Tests
 -------------
-Tests are ran via tox and can be run with the following command::
+This project uses `uv <https://docs.astral.sh/uv/>`_ for dependency management and testing.
+
+To install dependencies and run tests::
+
+    $ uv sync --dev
+    $ uv run pytest tests/
+
+Alternatively, you can still use tox::
 
     $ tox
 
-However, this will not run integration tests unless the following
+However, integration tests will not run unless the following
 environment variables are set:
 
 * REDSHIFT_HOST
@@ -78,11 +85,9 @@ also the following settings::
 
 To perform a release, run the following::
 
-    python -m venv ~/.virtualenvs/dist
-    workon dist
-    pip install -U pip setuptools wheel
-    pip install -U tox zest.releaser
-    fullrelease  # follow prompts, use semver ish with versions.
+    uv sync --dev
+    uv add zest.releaser
+    uv run fullrelease  # follow prompts, use semver ish with versions.
 
 The releaser will handle updating version data on the package and in
 CHANGES.rst along with tagging the repo and uploading to PyPI.
