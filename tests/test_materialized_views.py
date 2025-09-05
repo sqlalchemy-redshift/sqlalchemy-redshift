@@ -11,7 +11,7 @@ def selectable():
                   MetaData(),
                   Column('id', Integer, primary_key=True),
                   Column('name', String))
-    return select([table.c.id, table.c.name], from_obj=table)
+    return select(table.c.id, table.c.name).select_from(table)
 
 
 def test_basic_materialized_view(selectable, stub_redshift_dialect):
@@ -63,7 +63,7 @@ def test_distkey_materialized_view(selectable, stub_redshift_dialect):
     DISTKEY (id)
     AS SELECT t1.id, t1.name FROM t1
     """
-    for key in ("id", selectable.c.id):
+    for key in ("id", selectable.selected_columns.id):
         view = dialect.CreateMaterializedView(
             "test_view",
             selectable,
@@ -79,7 +79,7 @@ def test_sortkey_materialized_view(selectable, stub_redshift_dialect):
     SORTKEY (id)
     AS SELECT t1.id, t1.name FROM t1
     """
-    for key in ("id", selectable.c.id):
+    for key in ("id", selectable.selected_columns.id):
         view = dialect.CreateMaterializedView(
             "test_view",
             selectable,
@@ -97,7 +97,7 @@ def test_interleaved_sortkey_materialized_view(
     INTERLEAVED SORTKEY (id)
     AS SELECT t1.id, t1.name FROM t1
     """
-    for key in ("id", selectable.c.id):
+    for key in ("id", selectable.selected_columns.id):
         view = dialect.CreateMaterializedView(
             "test_view",
             selectable,

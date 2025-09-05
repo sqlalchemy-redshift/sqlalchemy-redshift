@@ -3,6 +3,7 @@ import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 
 from sqlalchemy_redshift import dialect
+from sqlalchemy_redshift.commands import Format, Compression
 from rs_sqla_test_utils.utils import clean, compile_query
 
 access_key_id = 'IO1IWSZL5YRFM3BEW256'
@@ -174,7 +175,7 @@ def test_format(stub_redshift_dialect):
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        format='JSON',
+        format=Format.json,
         truncate_columns=True,
         delimiter=',',
         ignore_header=0,
@@ -246,7 +247,7 @@ def test_compression(stub_redshift_dialect):
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        compression='LZOP',
+        compression=Compression.lzop,
         truncate_columns=True,
         delimiter=',',
         ignore_header=0,
@@ -285,7 +286,7 @@ def test_ascii_nul_as_redshift_null(stub_redshift_dialect):
         data_location='s3://mybucket/data/listing/',
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        compression='BZIP2',
+        compression=Compression.bzip2,
         dangerous_null_delimiter=u'\000',
         truncate_columns=True,
         delimiter=',',
@@ -313,9 +314,9 @@ def test_json_upload_with_manifest_ordered_columns(stub_redshift_dialect):
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         manifest=True,
-        format='JSON',
+        format=Format.json,
         path_file='s3://mybucket/data/jsonpath.json',
-        compression='GZIP',
+        compression=Compression.gzip,
         time_format='auto',
         accept_any_date=True,
     )

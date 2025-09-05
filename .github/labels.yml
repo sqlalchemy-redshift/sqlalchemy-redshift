@@ -1,0 +1,150 @@
+# Standard labels
+- name: bug
+  color: d73a4a
+  description: Something isn't working
+
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to documentation
+
+- name: duplicate
+  color: cfd3d7
+  description: This issue or pull request already exists
+
+- name: enhancement
+  color: a2eeef
+  description: New feature or request
+
+- name: good first issue
+  color: 7057ff
+  description: Good for newcomers
+
+- name: help wanted
+  color: 008672
+  description: Extra attention is needed
+
+- name: invalid
+  color: e4e669
+  description: This doesn't seem right
+
+- name: question
+  color: d876e3
+  description: Further information is requested
+
+- name: wontfix
+  color: ffffff
+  description: This will not be worked on
+
+# Priority labels
+- name: priority/low
+  color: 0e8a16
+  description: Low priority
+
+- name: priority/medium
+  color: fbca04
+  description: Medium priority
+
+- name: priority/high
+  color: d93f0b
+  description: High priority
+
+- name: priority/critical
+  color: b60205
+  description: Critical priority
+
+# Type labels
+- name: type/feature
+  color: a2eeef
+  description: New feature
+
+- name: type/bug
+  color: d73a4a
+  description: Bug fix
+
+- name: type/maintenance
+  color: fef2c0
+  description: Maintenance work
+
+- name: type/security
+  color: d73a4a
+  description: Security related
+
+# Status labels
+- name: status/needs-triage
+  color: f9d0c4
+  description: Needs to be triaged
+
+- name: status/in-progress
+  color: c2e0c6
+  description: Work in progress
+
+- name: status/blocked
+  color: b60205
+  description: Blocked by something
+
+- name: status/waiting-for-feedback
+  color: fbca04
+  description: Waiting for feedback
+
+# Component labels
+- name: component/core
+  color: 5319e7
+  description: Core dialect functionality
+
+- name: component/ddl
+  color: 5319e7
+  description: DDL compilation (CREATE, ALTER, DROP)
+
+- name: component/copy
+  color: 5319e7
+  description: COPY command functionality
+
+- name: component/reflection
+  color: 5319e7
+  description: Table reflection/introspection
+
+- name: component/types
+  color: 5319e7
+  description: Data types
+
+- name: component/tests
+  color: 5319e7
+  description: Test suite
+
+# Dependencies
+- name: dependencies
+  color: 0366d6
+  description: Pull requests that update a dependency file
+
+- name: python
+  color: 3776ab
+  description: Python related
+
+- name: github-actions
+  color: 2088ff
+  description: GitHub Actions related
+
+# Special labels
+- name: breaking-change
+  color: b60205
+  description: Breaking change
+
+- name: backwards-compatible
+  color: 0e8a16
+  description: Backwards compatible change
+
+- name: needs-docs
+  color: f9d0c4
+  description: Needs documentation
+
+- name: needs-tests
+  color: f9d0c4
+  description: Needs tests
+
+- name: stale
+  color: 888888
+  description: Stale issue or PR
+
+- name: pinned
+  color: 000000
+  description: Pinned issue or PR

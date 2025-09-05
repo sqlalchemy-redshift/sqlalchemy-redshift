@@ -101,19 +101,21 @@ Resources:
     Properties:
       RouteTableId: !Ref DemoVPCPrivateRouteTable
       SubnetId: !Ref DemoVPCPrivateSubnetB
-  DemoVPCRSSubnetGroup:
-    Type: AWS::Redshift::ClusterSubnetGroup
+  RedshiftServerlessNamespace:
+    Type: AWS::RedshiftServerless::Namespace
     Properties:
-      Description: "Subnet group for Redshift Devops Demo VPC."
-      SubnetIds:
-        - !Ref DemoVPCPrivateSubnetA
-        - !Ref DemoVPCPrivateSubnetB
-  TestRedshiftClusterSecrets:
+      NamespaceName: sqlalchemy-redshift-test
+      AdminUsername: !Ref TestRedshiftUsername
+      AdminUserPassword: !Ref TestRedshiftPassword
+      DbName: dev
+      IamRoles:
+        - !GetAtt RedshiftIngestIAMRole.Arn
+  TestRedshiftServerlessSecrets:
     Type: AWS::SecretsManager::Secret
     Properties:
       SecretString: !Sub
-        - '{"username": "${username}", "password": "${password}", "host": "${host}", "port": ${port}, "dbName": "${dbName}"}'
-        - {username: !Ref TestRedshiftUsername, password: !Ref TestRedshiftPassword, host: !GetAtt TestRedshiftCluster.Endpoint.Address, port: !GetAtt TestRedshiftCluster.Endpoint.Port, dbName: "dev"}
+        - '{"username": "${username}", "password": "${password}", "host": "${host}", "port": 5439, "dbName": "${dbName}"}'
+        - {username: !Ref TestRedshiftUsername, password: !Ref TestRedshiftPassword, host: !GetAtt RedshiftServerlessWorkgroup.Workgroup.Endpoint.Address, dbName: "dev"}
   CodePipelineIAMRole:
     Type: AWS::IAM::Role
     Properties:
@@ -142,24 +144,22 @@ Resources:
               - Action: ["codecommit:GetRepository", "codecommit:CancelUploadArchive", "codecommit:GetBranch", "codecommit:GetCommit", "codecommit:GetUploadArchiveStatus", "codecommit:UploadArchive"]
                 Resource: "*"
                 Effect: Allow
-  TestRedshiftCluster:
-    Type: AWS::Redshift::Cluster
+  RedshiftServerlessWorkgroup:
+    Type: AWS::RedshiftServerless::Workgroup
     Properties:
-      VpcSecurityGroupIds:
-        - !Ref RSClusterSecurityGroup
-      ClusterSubnetGroupName: !Ref DemoVPCRSSubnetGroup
-      ClusterType: "single-node"
-      NodeType: "dc2.large"
-      IamRoles:
-        - !GetAtt RedshiftIngestIAMRole.Arn
-      MasterUsername: !Ref TestRedshiftUsername
-      MasterUserPassword: !Ref TestRedshiftPassword
-      DBName: "dev"
-      Encrypted: true
-  RSClusterSecurityGroup:
+      WorkgroupName: sqlalchemy-redshift-test
+      NamespaceName: !Ref RedshiftServerlessNamespace
+      BaseCapacity: 8
+      SecurityGroupIds:
+        - !Ref RSServerlessSecurityGroup
+      SubnetIds:
+        - !Ref DemoVPCPrivateSubnetA
+        - !Ref DemoVPCPrivateSubnetB
+      PubliclyAccessible: false
+  RSServerlessSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Security group for Redshift clusters"
+      GroupDescription: "Security group for Redshift Serverless"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 5439
@@ -240,7 +240,17 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource:
-                  - !Ref TestRedshiftClusterSecrets
+                  - !Ref TestRedshiftServerlessSecrets
+              - Effect: Allow
+                Action:
+                  - redshift-serverless:GetWorkgroup
+                  - redshift-serverless:GetNamespace
+                  - redshift-serverless:CreateSnapshot
+                  - redshift-serverless:DeleteSnapshot
+                  - redshift-serverless:ListSnapshots
+                  - redshift-serverless:ListWorkgroups
+                  - redshift-serverless:ListNamespaces
+                Resource: "*"
               - Effect: Allow
                 Action:
                   - ec2:CreateNetworkInterfacePermission
@@ -283,27 +293,27 @@ Resources:
           - Name: REDSHIFT_HOST
             Value: !Sub
               - '${arn}:host'
-              - {arn: !Ref TestRedshiftClusterSecrets}
+              - {arn: !Ref TestRedshiftServerlessSecrets}
             Type: SECRETS_MANAGER
           - Name: REDSHIFT_USERNAME
             Value: !Sub
               - '${arn}:username'
-              - {arn: !Ref TestRedshiftClusterSecrets}
+              - {arn: !Ref TestRedshiftServerlessSecrets}
             Type: SECRETS_MANAGER
           - Name: PGPASSWORD
             Value: !Sub
               - '${arn}:password'
-              - {arn: !Ref TestRedshiftClusterSecrets}
+              - {arn: !Ref TestRedshiftServerlessSecrets}
             Type: SECRETS_MANAGER
           - Name: REDSHIFT_PORT
             Value: !Sub
               - '${arn}:port'
-              - {arn: !Ref TestRedshiftClusterSecrets}
+              - {arn: !Ref TestRedshiftServerlessSecrets}
             Type: SECRETS_MANAGER
           - Name: REDSHIFT_DATABASE
             Value: !Sub
               - '${arn}:dbName'
-              - {arn: !Ref TestRedshiftClusterSecrets}
+              - {arn: !Ref TestRedshiftServerlessSecrets}
             Type: SECRETS_MANAGER
           - Name: REDSHIFT_IAM_ROLE_NAME
             Value: !GetAtt RedshiftIngestIAMRole.Arn

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://sqlalchemy-redshift.readthedocs.io/
+    about: Check the documentation for usage examples and API reference
+  - name: 💬 Discussions
+    url: https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🔒 Security Issues
+    url: https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/security/advisories/new
+    about: Report security vulnerabilities privately

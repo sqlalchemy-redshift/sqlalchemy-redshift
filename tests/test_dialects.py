@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import (
 )
 from sqlalchemy.dialects.postgresql.base import PGDialect
 
-from redshift_sqlalchemy import dialect
+from sqlalchemy_redshift import dialect
 from rs_sqla_test_utils.utils import make_mock_engine
 
 

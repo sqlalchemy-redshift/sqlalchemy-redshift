@@ -3,7 +3,7 @@ version: 0.2
 phases:
   install:
     commands:
-      # start install test dependencies (specific for Python 3.10)
+      # start install test dependencies (specific for Python 3.13)
       - yum -y install bzip2-devel libffi-devel
       - yum -y groupinstall "Development Tools"
       - orig_dir=$PWD
@@ -15,7 +15,7 @@ phases:
       - ./config --prefix=/opt/openssl && make && make install
       # end install test dependencies
       # start install Python
-      - version=3.10.10
+      - version=3.13.1
       - wget https://www.python.org/ftp/python/$version/Python-$version.tar.xz
       - tar xJf Python-$version.tar.xz
       - cd Python-$version

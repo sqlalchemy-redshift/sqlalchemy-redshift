@@ -3,8 +3,9 @@ import json
 import re
 from collections import defaultdict, namedtuple
 from logging import getLogger
+from pathlib import Path
 
-import pkg_resources
+# Removed pkg_resources usage - see __init__.py for version handling
 import sqlalchemy as sa
 from packaging.version import Version
 from sqlalchemy import inspect
@@ -980,30 +981,80 @@ class RedshiftDialectMixin(DefaultDialect):
                 relation_names.append(key.name)
         return relation_names
 
-    def _get_column_info(self, *args, **kwargs):
-        kw = kwargs.copy()
-        encode = kw.pop('encode', None)
-        if sa_version >= Version('1.3.16'):
-            # SQLAlchemy 1.3.16 introduced generated columns,
-            # not supported in redshift
-            kw['generated'] = ''
-
-        if sa_version < Version('1.4.0') and 'identity' in kw:
-            del kw['identity']
-        elif sa_version >= Version('1.4.0') and 'identity' not in kw:
-            kw['identity'] = None
-
-        column_info = super(RedshiftDialectMixin, self)._get_column_info(
-            *args,
-            **kw
-        )
-        if isinstance(column_info['type'], VARCHAR):
-            if column_info['type'].length is None:
-                column_info['type'] = NullType()
-        if 'info' not in column_info:
-            column_info['info'] = {}
+    def _get_column_info(self, name, format_type, default, notnull, domains, enums, schema=None, encode=None, comment=None, identity=None, **kwargs):
+        """
+        Custom column info processing for Redshift.
+        
+        In SQLAlchemy 2.0, the parent _get_column_info method was removed,
+        so we implement the logic directly.
+        """
+        # Process the PostgreSQL format_type to get the base type
+        attype = format_type
+        nullable = not notnull
+        
+        # Handle array types
+        if attype.endswith('[]'):
+            attype = attype[:-2]
+        
+        # Map the format_type to a SQLAlchemy type
+        try:
+            coltype = self.ischema_names.get(attype)
+            if coltype is None:
+                # Fallback for unknown types
+                coltype = VARCHAR  # Use VARCHAR as default
+        except (KeyError, AttributeError):
+            coltype = VARCHAR  # fallback for unknown types
+        
+        # Handle length specification for types like varchar(30)
+        type_args = []
+        
+        if '(' in format_type and format_type.endswith(')'):
+            # Extract length/precision from format_type like varchar(30) or numeric(10,2)
+            args_part = format_type[format_type.index('(')+1:-1]
+            if args_part:
+                try:
+                    if ',' in args_part:
+                        # For types like numeric(10,2)
+                        type_args = [int(x.strip()) for x in args_part.split(',')]
+                    else:
+                        # For types like varchar(30)
+                        type_args = [int(args_part)]
+                except ValueError:
+                    pass  # ignore parse errors
+        
+        # Create the column type instance
+        if type_args and isinstance(coltype, type):
+            coltype = coltype(*type_args)
+        elif isinstance(coltype, type):
+            coltype = coltype()
+        
+        # Redshift-specific handling: VARCHAR with no length becomes NullType
+        if isinstance(coltype, VARCHAR):
+            if not hasattr(coltype, 'length') or coltype.length is None:
+                coltype = NullType()
+        
+        # Build column info dict
+        column_info = {
+            'name': name,
+            'type': coltype,
+            'nullable': nullable,
+            'default': default,
+        }
+        
+        # Add identity info for SQLAlchemy 2.0+
+        if identity is not None:
+            column_info['identity'] = identity
+        
+        # Add comment if present
+        if comment is not None:
+            column_info['comment'] = comment
+        
+        # Handle encode parameter (Redshift-specific)
         if encode and encode != 'none':
+            if 'info' not in column_info:
+                column_info['info'] = {}
             column_info['info']['encode'] = encode
+        
         return column_info
 
     def _get_redshift_relation(self, connection, table_name,
@@ -1212,10 +1263,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         """
         default_args = {
             'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                __name__,
-                'redshift-ca-bundle.crt'
-            ),
+            'sslrootcert': str(Path(__file__).parent / 'redshift-ca-bundle.crt'),
         }
         cargs, cparams = (
             super(Psycopg2RedshiftDialectMixin, self).create_connect_args(
@@ -1226,7 +1274,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         return cargs, default_args
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         try:
             return importlib.import_module(cls.driver)
         except ImportError:
@@ -1234,11 +1282,20 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
                 'No module named {}'.format(cls.driver)
             )
 
+    @classmethod  
+    def dbapi(cls):
+        # Backward compatibility - calls import_dbapi
+        return cls.import_dbapi()
+
 
 class RedshiftDialect_psycopg2(
     Psycopg2RedshiftDialectMixin, PGDialect_psycopg2
 ):
     supports_statement_cache = False
+    
+    @classmethod
+    def import_dbapi(cls):
+        return super().import_dbapi()
 
 
 # Add RedshiftDialect synonym for backwards compatibility.
@@ -1309,7 +1366,7 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         self.client_encoding = client_encoding
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         try:
             driver_module = importlib.import_module(cls.driver)
 
@@ -1322,9 +1379,13 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
             return driver_module
         except ImportError:
             raise ImportError(
-                'No module named redshift_connector. Please install '
-                'redshift_connector to use this sqlalchemy dialect.'
+                'No module named {}'.format(cls.driver)
             )
+
+    @classmethod
+    def dbapi(cls):
+        # Backward compatibility - calls import_dbapi
+        return cls.import_dbapi()
 
     def set_client_encoding(self, connection, client_encoding):
         """

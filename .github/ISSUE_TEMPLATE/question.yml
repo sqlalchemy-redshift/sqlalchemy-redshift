@@ -1,0 +1,66 @@
+name: ❓ Question
+description: Ask a question about using sqlalchemy-redshift
+title: "[Question]: "
+labels: ["question", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about using sqlalchemy-redshift? We're here to help!
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I have read the documentation and couldn't find the answer
+          required: true
+        - label: I have searched existing issues and discussions
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+      placeholder: Ask your question here...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide any relevant context about what you're trying to accomplish
+      placeholder: |
+        What are you trying to do? 
+        What have you already tried?
+        Any relevant background information?
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code Sample
+      description: If applicable, provide a code sample related to your question
+      render: python
+      placeholder: |
+        import sqlalchemy as sa
+        from sqlalchemy_redshift import dialect
+        
+        # Your code here...
+
+  - type: input
+    id: sqlalchemy_redshift_version
+    attributes:
+      label: sqlalchemy-redshift Version
+      description: What version are you using?
+      placeholder: "0.8.14"
+
+  - type: input
+    id: sqlalchemy_version
+    attributes:
+      label: SQLAlchemy Version
+      description: What version of SQLAlchemy are you using?
+      placeholder: "2.0.43"

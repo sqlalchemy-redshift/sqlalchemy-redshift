@@ -1,14 +1,19 @@
-from pkg_resources import DistributionNotFound, get_distribution, parse_version
+import importlib.metadata as metadata
+from packaging.version import Version
 
 for package in ['psycopg2', 'psycopg2-binary', 'psycopg2cffi']:
     try:
-        if get_distribution(package).parsed_version < parse_version('2.5'):
+        version = metadata.version(package)
+        if Version(version) < Version('2.5'):
             raise ImportError('Minimum required version for psycopg2 is 2.5')
         break
-    except DistributionNotFound:
+    except metadata.PackageNotFoundError:
         pass
 
-__version__ = get_distribution('sqlalchemy-redshift').version
+try:
+    __version__ = metadata.version('sqlalchemy-redshift')
+except metadata.PackageNotFoundError:
+    __version__ = '0.8.15.dev0'  # fallback for development
 
 from sqlalchemy.dialects import registry  # noqa
 

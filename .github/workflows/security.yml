@@ -1,0 +1,71 @@
+name: Security Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security checks every day at 3 AM UTC
+    - cron: '0 3 * * *'
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    name: Security Analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run safety check for known vulnerabilities
+      run: |
+        uv add --dev safety
+        uv run safety check --json --output safety-report.json || true
+        
+    - name: Run bandit security linter
+      run: |
+        uv add --dev bandit[toml]
+        uv run bandit -r sqlalchemy_redshift/ -f json -o bandit-report.json || true
+        
+    - name: Upload safety report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: safety-report
+        path: safety-report.json
+        retention-days: 30
+        
+    - name: Upload bandit report  
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: bandit-report
+        path: bandit-report.json
+        retention-days: 30
+
+    - name: Run pip-audit for known vulnerabilities
+      run: |
+        uv add --dev pip-audit
+        uv run pip-audit --format=json --output=pip-audit-report.json || true
+        
+    - name: Upload pip-audit report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pip-audit-report
+        path: pip-audit-report.json
+        retention-days: 30

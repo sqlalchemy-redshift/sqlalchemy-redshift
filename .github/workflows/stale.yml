@@ -1,0 +1,56 @@
+name: Mark stale issues and pull requests
+
+on:
+  schedule:
+  - cron: '0 0 * * *'  # Run daily at midnight
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/stale@v9
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        
+        # Issues
+        days-before-issue-stale: 60
+        days-before-issue-close: 14
+        stale-issue-label: 'stale'
+        stale-issue-message: |
+          This issue has been automatically marked as stale because it has not had recent activity. 
+          It will be closed if no further activity occurs within 14 days. 
+          
+          If this issue is still relevant, please comment to keep it open.
+          Thank you for your contributions!
+        close-issue-message: |
+          This issue has been automatically closed due to inactivity. 
+          
+          If you believe this issue is still relevant, please reopen it or create a new issue 
+          with updated information.
+        
+        # Pull requests
+        days-before-pr-stale: 30
+        days-before-pr-close: 7
+        stale-pr-label: 'stale'
+        stale-pr-message: |
+          This pull request has been automatically marked as stale because it has not had recent activity.
+          It will be closed if no further activity occurs within 7 days.
+          
+          If this PR is still relevant, please comment or push new commits to keep it open.
+          Thank you for your contributions!
+        close-pr-message: |
+          This pull request has been automatically closed due to inactivity.
+          
+          If you believe this PR is still relevant, please reopen it or create a new PR
+          with updated changes.
+        
+        # Exemptions
+        exempt-issue-labels: 'pinned,security,blocked'
+        exempt-pr-labels: 'pinned,security,blocked,work-in-progress'
+        exempt-all-assignees: true
+        exempt-draft-pr: true

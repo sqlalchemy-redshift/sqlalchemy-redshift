@@ -44,11 +44,7 @@ To install dependencies and run tests::
     $ uv sync --dev
     $ uv run pytest tests/
 
-Alternatively, you can still use tox::
-
-    $ tox
-
-However, integration tests will not run unless the following
+Integration tests will not run unless the following
 environment variables are set:
 
 * REDSHIFT_HOST

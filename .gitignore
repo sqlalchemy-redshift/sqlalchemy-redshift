@@ -36,10 +36,10 @@ pip-delete-this-directory.txt
 
 # Unit test / coverage reports
 htmlcov/
-.tox/
 .coverage
 .coverage.*
 .cache
+.pytest_cache/
 nosetests.xml
 coverage.xml
 *,cover
@@ -59,3 +59,7 @@ target/
 
 # IDE
 .idea/
+
+# uv
+.python-version
+uv.lock
