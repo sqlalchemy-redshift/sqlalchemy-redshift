@@ -10,6 +10,7 @@ Contents:
    ddl-compiler
    dialect
    commands
+   alembic
 
 Indices and tables
 ==================

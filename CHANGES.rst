@@ -2,6 +2,9 @@
 -------------------
 
 - Fix SQLAlchemy V2 support (https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/293)
+- Add Alembic support with Redshift-aware ALTER COLUMN handling. VARCHAR size changes
+  are supported natively; other type changes raise CommandError immediately with detailed
+  migration instructions to prevent invalid SQL generation
 
 
 0.8.14 (2023-04-07)

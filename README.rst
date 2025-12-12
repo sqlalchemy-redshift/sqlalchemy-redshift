@@ -35,6 +35,19 @@ See the `RedshiftDDLCompiler documentation
 <https://sqlalchemy-redshift.readthedocs.org/en/latest/ddl-compiler.html>`_
 for details on Redshift-specific features the dialect supports.
 
+Alembic Support
+---------------
+The dialect supports `Alembic <https://alembic.sqlalchemy.org/>`_ for database
+migrations. Note that Redshift has limited support for ALTER COLUMN operations:
+
+* **Supported**: VARCHAR size changes
+* **Not supported**: Arbitrary type changes (e.g., VARCHAR to INTEGER)
+
+For unsupported operations, the dialect will raise an error immediately with
+detailed instructions for manual migration. See the `Alembic documentation
+<https://sqlalchemy-redshift.readthedocs.org/en/latest/alembic.html>`_ for
+complete details and examples.
+
 Running Tests
 -------------
 Tests are ran via tox and can be run with the following command::
