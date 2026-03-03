@@ -1,34 +1,66 @@
-import importlib
-import json
-import re
 from collections import defaultdict, namedtuple
+import importlib
+from importlib.resources import files
+import json
 from logging import getLogger
+import re
+from typing import cast
 
-import pkg_resources
-import sqlalchemy as sa
 from packaging.version import Version
+import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import inspect
-from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
-from sqlalchemy.dialects.postgresql.base import (PGCompiler, PGDDLCompiler,
-                                                 PGDialect, PGExecutionContext,
-                                                 PGIdentifierPreparer,
-                                                 PGTypeCompiler)
+from sqlalchemy.dialects.postgresql import (
+    DOUBLE_PRECISION,
+)
+from sqlalchemy.dialects.postgresql import TEXT as PG_TEXT
+from sqlalchemy.dialects.postgresql import TIME as PG_TIME
+from sqlalchemy.dialects.postgresql import TIMESTAMP as PG_TIMESTAMP
+from sqlalchemy.dialects.postgresql.base import (
+    PGCompiler,
+    PGDDLCompiler,
+    PGDialect,
+    PGExecutionContext,
+    PGIdentifierPreparer,
+    PGTypeCompiler,
+)
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.psycopg2cffi import PGDialect_psycopg2cffi
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.engine.interfaces import (
+    DBAPIModule,
+    ReflectedPrimaryKeyConstraint,
+    ReflectedUniqueConstraint,
+)
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import (BinaryExpression, BooleanClauseList,
-                                       Delete)
+from sqlalchemy.sql.expression import BinaryExpression, BooleanClauseList, Delete
 from sqlalchemy.sql.type_api import TypeEngine
-from sqlalchemy.types import (BIGINT, BOOLEAN, CHAR, DATE, DECIMAL, INTEGER,
-                              REAL, SMALLINT, TIMESTAMP, VARCHAR, NullType)
+from sqlalchemy.types import (
+    BIGINT,
+    BOOLEAN,
+    CHAR,
+    DATE,
+    DECIMAL,
+    INTEGER,
+    REAL,
+    SMALLINT,
+    TIMESTAMP,
+    VARCHAR,
+    NullType,
+)
 
-from .commands import (AlterTableAppendCommand, Compression, CopyCommand,
-                       CreateLibraryCommand, Encoding, Format,
-                       RefreshMaterializedView, UnloadFromSelect)
-from .ddl import (CreateMaterializedView, DropMaterializedView,
-                  get_table_attributes)
+from .commands import (
+    AlterTableAppendCommand,
+    Compression,
+    CopyCommand,
+    CreateLibraryCommand,
+    Encoding,
+    Format,
+    RefreshMaterializedView,
+    UnloadFromSelect,
+)
+from .ddl import CreateMaterializedView, DropMaterializedView, get_table_attributes
 
 sa_version = Version(sa.__version__)
 logger = getLogger(__name__)
@@ -302,7 +334,7 @@ class RedshiftTypeEngine(TypeEngine):
         return RedshiftDialectMixin()
 
 
-class TIMESTAMPTZ(RedshiftTypeEngine, sa.dialects.postgresql.TIMESTAMP):
+class TIMESTAMPTZ(RedshiftTypeEngine, PG_TIMESTAMP):
     """
     Redshift defines a TIMTESTAMPTZ column type as an alias
     of TIMESTAMP WITH TIME ZONE.
@@ -323,7 +355,7 @@ class TIMESTAMPTZ(RedshiftTypeEngine, sa.dialects.postgresql.TIMESTAMP):
         super(TIMESTAMPTZ, self).__init__(timezone=True, precision=precision)
 
 
-class TIMETZ(RedshiftTypeEngine, sa.dialects.postgresql.TIME):
+class TIMETZ(RedshiftTypeEngine, PG_TIME):
     """
     Redshift defines a TIMTETZ column type as an alias
     of TIME WITH TIME ZONE.
@@ -344,7 +376,7 @@ class TIMETZ(RedshiftTypeEngine, sa.dialects.postgresql.TIME):
         super(TIMETZ, self).__init__(timezone=True, precision=precision)
 
 
-class GEOMETRY(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
+class GEOMETRY(RedshiftTypeEngine, PG_TEXT):
     """
     Redshift defines a GEOMETRY column type
     https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
@@ -363,7 +395,7 @@ class GEOMETRY(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
         return dbapi.GEOMETRY
 
 
-class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
+class SUPER(RedshiftTypeEngine, PG_TEXT):
     """
     Redshift defines a SUPER column type
     https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
@@ -391,7 +423,7 @@ class SUPER(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
         return value
 
 
-class HLLSKETCH(RedshiftTypeEngine, sa.dialects.postgresql.TEXT):
+class HLLSKETCH(RedshiftTypeEngine, PG_TEXT):
     """
     Redshift defines a HLLSKETCH column type
     https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
@@ -433,7 +465,10 @@ class RelationKey(namedtuple('RelationKey', ('name', 'schema'))):
         if schema is None and connection is None:
             raise ValueError("Must specify either schema or connection")
         if schema is None:
-            schema = inspect(connection).default_schema_name
+            inspection_obj = inspect(connection)
+            if inspection_obj is None:
+                raise ValueError("Could not inspect connection to determine default schema")
+            schema = inspection_obj.default_schema_name
         return super(RelationKey, cls).__new__(cls, name, schema)
 
     def __str__(self):
@@ -580,7 +615,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
     <BLANKLINE>
     """
 
-    def post_create_table(self, table):
+    def post_create_table(self, table): # type: ignore[override]
         kwargs = ["diststyle", "distkey", "sortkey", "interleaved_sortkey"]
         info = table.dialect_options['redshift']
         info = {key: info.get(key) for key in kwargs}
@@ -707,7 +742,7 @@ class RedshiftDialectMixin(DefaultDialect):
         :meth:`~sqlalchemy.engine.dialects.postgresql.base.PGDialect._get_column_info`.
         """
         return {
-            **super(RedshiftDialectMixin, self).ischema_names,
+            **super(RedshiftDialectMixin, self).ischema_names, # type: ignore[union-attr]
             **REDSHIFT_ISCHEMA_NAMES
         }
 
@@ -825,10 +860,10 @@ class RedshiftDialectMixin(DefaultDialect):
         m = PRIMARY_KEY_RE.match(pk_constraint.condef)
         colstring = m.group('columns')
         constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
-        return {
-            'constrained_columns': constrained_columns,
-            'name': pk_constraint.conname,
-        }
+        ReflectedPrimaryKeyConstraint(
+            constrained_columns=constrained_columns,
+            name=pk_constraint.conname,
+        )
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
@@ -894,9 +929,9 @@ class RedshiftDialectMixin(DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
         """
         view = self._get_redshift_relation(connection, view_name, schema, **kw)
-        return sa.text(view.view_definition)
+        return view.view_definition
 
-    def get_indexes(self, connection, table_name, schema, **kw):
+    def get_indexes(self, connection, table_name, schema = None, **kw,):
         """
         Return information about indexes in `table_name`.
 
@@ -925,14 +960,17 @@ class RedshiftDialectMixin(DefaultDialect):
             uniques[con.conname]["key"] = con.conkey
             uniques[con.conname]["cols"][con.attnum] = con.attname
 
+
         return [
-            {'name': name,
-             'column_names': [uc["cols"][i] for i in uc["key"]]}
+            ReflectedUniqueConstraint(
+                name=name,
+                column_names=[uc["cols"][i] for i in uc["key"]]
+            )
             for name, uc in uniques.items()
         ]
 
     @reflection.cache
-    def get_table_options(self, connection, table_name, schema, **kw):
+    def get_table_options(self, connection, table_name, schema=None, **kw):
         """
         Return a dictionary of options specified when the table of the
         given name was created.
@@ -1019,7 +1057,7 @@ class RedshiftDialectMixin(DefaultDialect):
         try:
             return all_relations[key]
         except KeyError:
-            raise sa.exc.NoSuchTableError(key)
+            raise sa_exc.NoSuchTableError(key)
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get('info_cache')
@@ -1212,10 +1250,9 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         """
         default_args = {
             'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                __name__,
+            'sslrootcert': str(files("sqlalchemy_redshift").joinpath(
                 'redshift-ca-bundle.crt'
-            ),
+            )),
         }
         cargs, cparams = (
             super(Psycopg2RedshiftDialectMixin, self).create_connect_args(
@@ -1226,13 +1263,16 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         return cargs, default_args
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         try:
-            return importlib.import_module(cls.driver)
-        except ImportError:
+            return cast(
+                DBAPIModule,
+                importlib.import_module(cls.driver)
+            )
+        except ImportError as exc:
             raise ImportError(
                 'No module named {}'.format(cls.driver)
-            )
+            ) from exc
 
 
 class RedshiftDialect_psycopg2(
@@ -1309,7 +1349,7 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         self.client_encoding = client_encoding
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         try:
             driver_module = importlib.import_module(cls.driver)
 
@@ -1319,12 +1359,12 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
             else:
                 cls.description_encoding = None
 
-            return driver_module
-        except ImportError:
+            return cast(DBAPIModule, driver_module)
+        except ImportError as exc:
             raise ImportError(
                 'No module named redshift_connector. Please install '
                 'redshift_connector to use this sqlalchemy dialect.'
-            )
+            ) from exc
 
     def set_client_encoding(self, connection, client_encoding):
         """
@@ -1339,7 +1379,7 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         cursor.execute("COMMIT")
         cursor.close()
 
-    def set_isolation_level(self, connection, level):
+    def set_isolation_level(self, dbapi_connection, level):
         """
         Sets the isolation level for the current transaction.
 
@@ -1353,16 +1393,16 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         level = level.replace("_", " ")
 
         # adjust for ConnectionFairy possibly being present
-        if hasattr(connection, "connection"):
-            connection = connection.connection
+        if hasattr(dbapi_connection, "connection"):
+            dbapi_connection = dbapi_connection.connection
 
         if level == "AUTOCOMMIT":
-            connection.autocommit = True
+            dbapi_connection.autocommit = True
         else:
-            connection.autocommit = False
+            dbapi_connection.autocommit = False
             super(
                 RedshiftDialect_redshift_connector, self
-            ).set_isolation_level(connection, level)
+            ).set_isolation_level(dbapi_connection, level)
 
     def on_connect(self):
         fns = []
@@ -1370,7 +1410,7 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         def on_connect(conn):
             from sqlalchemy import util
             from sqlalchemy.sql.elements import quoted_name
-            conn.py_types[quoted_name] = conn.py_types[util.text_type]
+            conn.py_types[quoted_name] = conn.py_types[str]
 
         fns.append(on_connect)
 

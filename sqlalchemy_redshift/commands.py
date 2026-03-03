@@ -1,17 +1,13 @@
+from collections.abc import Iterable
 import enum
 import numbers
 import re
 import warnings
-try:
-    from collections.abc import Iterable
-except ImportError:
-    from collections import Iterable
 
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.ext import compiler as sa_compiler
 from sqlalchemy.sql import expression as sa_expression
-
 
 # At the time of this implementation, no specification for a session token was
 # found. After looking at a few session tokens they appear to be the same as
@@ -708,7 +704,7 @@ def visit_copy_command(element, compiler, **kw):
         {format}
         {parameters}"""
     parameters = []
-    bindparams = [
+    bindparams: list[sa.BindParameter] = [
         sa.bindparam(
             'data_location',
             value=element.data_location,

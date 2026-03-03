@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.ext import compiler as sa_compiler
 from sqlalchemy.schema import DDLElement
 
@@ -57,28 +58,28 @@ def get_table_attributes(preparer,
     if diststyle:
         diststyle = diststyle.upper()
         if diststyle not in ('EVEN', 'KEY', 'ALL'):
-            raise sa.exc.ArgumentError(
-                u"diststyle {0} is invalid".format(diststyle)
+            raise sa_exc.ArgumentError(
+                f"diststyle {diststyle} is invalid"
             )
         if diststyle != 'KEY' and has_distkey:
-            raise sa.exc.ArgumentError(
-                u"DISTSTYLE EVEN/ALL is not compatible with a DISTKEY."
+            raise sa_exc.ArgumentError(
+                "DISTSTYLE EVEN/ALL is not compatible with a DISTKEY."
             )
         if diststyle == 'KEY' and not has_distkey:
-            raise sa.exc.ArgumentError(
-                u"DISTKEY specification is required for DISTSTYLE KEY"
+            raise sa_exc.ArgumentError(
+                "DISTKEY specification is required for DISTSTYLE KEY"
             )
         text += " DISTSTYLE " + diststyle
 
     if has_distkey:
         if isinstance(distkey, sa.Column):
             distkey = distkey.name
-        text += " DISTKEY ({0})".format(preparer.quote(distkey))
+        text += f" DISTKEY ({preparer.quote(distkey)})"
 
     has_sortkey = _check_if_key_exists(sortkey)
     has_interleaved = _check_if_key_exists(interleaved_sortkey)
     if has_sortkey and has_interleaved:
-        raise sa.exc.ArgumentError(
+        raise sa_exc.ArgumentError(
             "Parameters sortkey and interleaved_sortkey are "
             "mutually exclusive; you may not specify both."
         )
@@ -88,12 +89,12 @@ def get_table_attributes(preparer,
         if isinstance(keys, (str, sa.Column)):
             keys = [keys]
         keys = [key.name if isinstance(key, sa.Column) else key
-                for key in keys]
+                for key in keys or []]
         if has_interleaved:
             text += " INTERLEAVED"
         sortkey_string = ", ".join(preparer.quote(key)
                                    for key in keys)
-        text += " SORTKEY ({0})".format(sortkey_string)
+        text += f" SORTKEY ({sortkey_string})"
     return text
 
 
