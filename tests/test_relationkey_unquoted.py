@@ -1,23 +1,12 @@
 import pytest
+
 from sqlalchemy_redshift.dialect import RelationKey
 
 raw_names = [
-    (
-        "table",
-        '"schema"'
-    ),
-    (
-        '"table"',
-        "schema"
-    ),
-    (
-        '"table"',
-        '"schema"'
-    ),
-    (
-        "table",
-        "schema"
-    )
+    ("table", '"schema"'),
+    ('"table"', "schema"),
+    ('"table"', '"schema"'),
+    ("table", "schema"),
 ]
 
 

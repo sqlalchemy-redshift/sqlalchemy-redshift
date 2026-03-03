@@ -1,5 +1,6 @@
 import pytest
-from sqlalchemy import exc as sa_exc, Integer, Column
+from sqlalchemy import Column, Integer
+from sqlalchemy import exc as sa_exc
 
 from sqlalchemy_redshift import ddl, dialect
 
@@ -17,36 +18,31 @@ def test_table_attributes_empty(preparer):
     assert expected == text
 
 
-@pytest.mark.parametrize('distkey', (
-    "a_key",
-    Column("a_key", Integer)))
+@pytest.mark.parametrize("distkey", ("a_key", Column("a_key", Integer)))
 def test_table_attributes_dist_key(preparer, distkey):
     text = ddl.get_table_attributes(preparer, distkey=distkey)
     assert text == " DISTKEY (a_key)"
 
 
-@pytest.mark.parametrize('sortkey', (
-    "b_key",
-    ["b_key"],
-    Column("b_key", Integer)))
+@pytest.mark.parametrize("sortkey", ("b_key", ["b_key"], Column("b_key", Integer)))
 def test_table_attributes_dist_key_one_sort_key(preparer, sortkey):
     text = ddl.get_table_attributes(preparer, distkey="a_key", sortkey=sortkey)
     assert text == " DISTKEY (a_key) SORTKEY (b_key)"
 
 
-@pytest.mark.parametrize('sortkey', ("b_key", ["b_key"]))
+@pytest.mark.parametrize("sortkey", ("b_key", ["b_key"]))
 def test_table_attributes__one_sort_key(preparer, sortkey):
     text = ddl.get_table_attributes(preparer, sortkey=sortkey)
     assert text == " SORTKEY (b_key)"
 
 
-@pytest.mark.parametrize('sortkey', (("b_key", "c_key"), ["b_key", "c_key"]))
+@pytest.mark.parametrize("sortkey", (("b_key", "c_key"), ["b_key", "c_key"]))
 def test_table_attributes_two_sort_key(preparer, sortkey):
     text = ddl.get_table_attributes(preparer, sortkey=sortkey)
     assert text == " SORTKEY (b_key, c_key)"
 
 
-@pytest.mark.parametrize('sortkey', ("b_key", ["b_key"]))
+@pytest.mark.parametrize("sortkey", ("b_key", ["b_key"]))
 def test_table_attributes_one_sort_key_interleaved(preparer, sortkey):
     # A single interleaved key doesn't make too much sense, but redshift
     # doesn't complain, so neither should we.
@@ -54,7 +50,7 @@ def test_table_attributes_one_sort_key_interleaved(preparer, sortkey):
     assert text == " INTERLEAVED SORTKEY (b_key)"
 
 
-@pytest.mark.parametrize('sortkey', (("b_key", "c_key"), ["b_key", "c_key"]))
+@pytest.mark.parametrize("sortkey", (("b_key", "c_key"), ["b_key", "c_key"]))
 def test_table_attributes_two_sort_key_interleaved(preparer, sortkey):
     text = ddl.get_table_attributes(preparer, interleaved_sortkey=sortkey)
     assert text == " INTERLEAVED SORTKEY (b_key, c_key)"
@@ -62,9 +58,7 @@ def test_table_attributes_two_sort_key_interleaved(preparer, sortkey):
 
 def test_table_attributes_one_sort_one_interleaved_raises(preparer):
     with pytest.raises(sa_exc.ArgumentError):
-        ddl.get_table_attributes(preparer,
-                                 sortkey="b_key",
-                                 interleaved_sortkey="b_key")
+        ddl.get_table_attributes(preparer, sortkey="b_key", interleaved_sortkey="b_key")
 
 
 def test_dist_key_with_key_diststyle(preparer):
@@ -80,9 +74,7 @@ def test_no_distkey_with_key_diststyle(preparer):
 def test_distkey_with_other_diststyles(preparer):
     for style in ("EVEN", "NONE", "ALL"):
         with pytest.raises(sa_exc.ArgumentError):
-            ddl.get_table_attributes(preparer,
-                                     diststyle=style,
-                                     distkey="a_key")
+            ddl.get_table_attributes(preparer, diststyle=style, distkey="a_key")
 
 
 def test_all_diststyle(preparer):

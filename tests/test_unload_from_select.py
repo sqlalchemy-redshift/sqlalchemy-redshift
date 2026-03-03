@@ -1,28 +1,21 @@
 import pytest
+from rs_sqla_test_utils.utils import clean, compile_query
 import sqlalchemy as sa
 
 from sqlalchemy_redshift import dialect
 
-from rs_sqla_test_utils.utils import clean, compile_query
-
-
-access_key_id = 'IO1IWSZL5YRFM3BEW256'
-secret_access_key = 'A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1'
+access_key_id = "IO1IWSZL5YRFM3BEW256"
+secret_access_key = "A1Crw8=nJwEq+9SCgnwpYbqVSCnfB0cakn=lx4M1"
 creds = (
-    (
-        'aws_access_key_id={access_key_id}'
-        ';aws_secret_access_key={secret_access_key}'
-    ).format(
-        access_key_id=access_key_id,
-        secret_access_key=secret_access_key
-    )
-)
+    "aws_access_key_id={access_key_id}" ";aws_secret_access_key={secret_access_key}"
+).format(access_key_id=access_key_id, secret_access_key=secret_access_key)
 
 
 table = sa.Table(
-    't1', sa.MetaData(),
-    sa.Column('id', sa.Integer, primary_key=True),
-    sa.Column('name', sa.Unicode),
+    "t1",
+    sa.MetaData(),
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("name", sa.Unicode),
 )
 
 
@@ -31,7 +24,7 @@ def test_basic_unload_case(stub_redshift_dialect):
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
     )
@@ -42,23 +35,17 @@ def test_basic_unload_case(stub_redshift_dialect):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
-def test_iam_role(
-    stub_redshift_dialect,
-    aws_account_id,
-    iam_role_name,
-    iam_role_arn
-):
+def test_iam_role(stub_redshift_dialect, aws_account_id, iam_role_name, iam_role_arn):
     """Tests the use of iam role instead of access keys."""
 
-    creds = f'aws_iam_role={iam_role_arn}'
+    creds = f"aws_iam_role={iam_role_arn}"
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         aws_account_id=aws_account_id,
         iam_role_name=iam_role_name,
     )
@@ -69,23 +56,20 @@ def test_iam_role(
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
-def test_iam_role_partition(
-        stub_redshift_dialect, iam_role_arn_with_aws_partition
-):
+def test_iam_role_partition(stub_redshift_dialect, iam_role_arn_with_aws_partition):
     """Tests the use of iam role with a custom partition"""
 
-    creds = f'aws_iam_role={iam_role_arn_with_aws_partition}'
+    creds = f"aws_iam_role={iam_role_arn_with_aws_partition}"
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
-        aws_partition='aws-us-gov',
-        aws_account_id='000123456789',
-        iam_role_name='redshiftrole'
+        unload_location="s3://bucket/key",
+        aws_partition="aws-us-gov",
+        aws_account_id="000123456789",
+        iam_role_name="redshiftrole",
     )
 
     expected_result = """
@@ -94,21 +78,20 @@ def test_iam_role_partition(
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
 def test_iam_role_partition_validation():
     """Tests the use of iam role with an invalid partition"""
 
-    aws_partition = 'aws-invalid'
-    aws_account_id = '000123456789'
-    iam_role_name = 'redshiftrole'
+    aws_partition = "aws-invalid"
+    aws_account_id = "000123456789"
+    iam_role_name = "redshiftrole"
 
     with pytest.raises(ValueError):
         dialect.UnloadFromSelect(
             select=sa.select([sa.func.count(table.c.id)]),
-            unload_location='s3://bucket/key',
+            unload_location="s3://bucket/key",
             aws_partition=aws_partition,
             aws_account_id=aws_account_id,
             iam_role_name=iam_role_name,
@@ -122,7 +105,7 @@ def test_iam_role_arns_list(stub_redshift_dialect, iam_role_arns):
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         iam_role_arns=iam_role_arns,
     )
 
@@ -132,18 +115,17 @@ def test_iam_role_arns_list(stub_redshift_dialect, iam_role_arns):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
 def test_iam_role_arns_single(stub_redshift_dialect, iam_role_arn):
     """Tests the use of a single iam role arn instead of access keys."""
 
-    creds = f'aws_iam_role={iam_role_arn}'
+    creds = f"aws_iam_role={iam_role_arn}"
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         iam_role_arns=iam_role_arn,
     )
 
@@ -153,8 +135,7 @@ def test_iam_role_arns_single(stub_redshift_dialect, iam_role_arn):
         CREDENTIALS '{creds}'
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
 def test_all_redshift_options(stub_redshift_dialect):
@@ -162,20 +143,22 @@ def test_all_redshift_options(stub_redshift_dialect):
 
     unload = dialect.UnloadFromSelect(
         sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         manifest=True,
-        delimiter=',',
-        fixed_width=[('count_1', 50), ],
+        delimiter=",",
+        fixed_width=[
+            ("count_1", 50),
+        ],
         encrypted=True,
         gzip=True,
         add_quotes=True,
-        null='---',
+        null="---",
         escape=True,
         allow_overwrite=True,
         parallel=False,
-        region='us-west-2',
+        region="us-west-2",
         max_file_size=10 * 1024**2,
     )
 
@@ -197,8 +180,7 @@ def test_all_redshift_options(stub_redshift_dialect):
         MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
 def test_all_redshift_options_with_header(stub_redshift_dialect):
@@ -206,21 +188,21 @@ def test_all_redshift_options_with_header(stub_redshift_dialect):
 
     unload = dialect.UnloadFromSelect(
         sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         manifest=True,
         header=True,
-        delimiter=',',
+        delimiter=",",
         encrypted=True,
         gzip=True,
         add_quotes=True,
-        null='---',
+        null="---",
         escape=True,
         allow_overwrite=True,
         parallel=False,
-        region='ap-northeast-2',
-        max_file_size=10 * 1024 ** 2,
+        region="ap-northeast-2",
+        max_file_size=10 * 1024**2,
     )
 
     expected_result = """
@@ -241,8 +223,7 @@ def test_all_redshift_options_with_header(stub_redshift_dialect):
         MAXFILESIZE 10.0 MB
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
 def test_csv_format__basic(stub_redshift_dialect):
@@ -250,10 +231,10 @@ def test_csv_format__basic(stub_redshift_dialect):
 
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
-        format=dialect.Format.csv
+        format=dialect.Format.csv,
     )
 
     expected_result = """
@@ -263,29 +244,29 @@ def test_csv_format__basic(stub_redshift_dialect):
             FORMAT AS CSV
         """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
-@pytest.mark.parametrize('delimiter,fixed_width', (
-    ('\t', None),
-    (None, 'id:8,name:32'),
-    (';', 'id:8,name:32'),
-))
-def test_csv_format__bad_options_crash(
-        delimiter, fixed_width, stub_redshift_dialect
-):
+@pytest.mark.parametrize(
+    "delimiter,fixed_width",
+    (
+        ("\t", None),
+        (None, "id:8,name:32"),
+        (";", "id:8,name:32"),
+    ),
+)
+def test_csv_format__bad_options_crash(delimiter, fixed_width, stub_redshift_dialect):
     """Test that UnloadFromSelect crashes if you try to use DELIMITER and/or
     FIXEDWIDTH with the CSV format.
     """
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         format=dialect.Format.csv,
         delimiter=delimiter,
-        fixed_width=fixed_width
+        fixed_width=fixed_width,
     )
 
     with pytest.raises(ValueError):
@@ -296,7 +277,7 @@ def test_parquet_format__basic(stub_redshift_dialect):
     """Basic successful test of unloading with the Parquet format."""
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         format=dialect.Format.parquet,
@@ -309,27 +290,29 @@ def test_parquet_format__basic(stub_redshift_dialect):
         FORMAT AS PARQUET
     """.format(creds=creds)
 
-    assert clean(compile_query(unload, stub_redshift_dialect)) == \
-        clean(expected_result)
+    assert clean(compile_query(unload, stub_redshift_dialect)) == clean(expected_result)
 
 
-@pytest.mark.parametrize('kwargs', (
-    {'delimiter': '\t'},
-    {'fixed_width': 'id:8,name:32'},
-    {'gzip': True},
-    {'add_quotes': True, 'escape': True},
-    {'null': '\\N'},
-    {'header': True},
-))
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"delimiter": "\t"},
+        {"fixed_width": "id:8,name:32"},
+        {"gzip": True},
+        {"add_quotes": True, "escape": True},
+        {"null": "\\N"},
+        {"header": True},
+    ),
+)
 def test_parquet_format__bad_options_crash(kwargs, stub_redshift_dialect):
     """Verify we crash if we use the Parquet format with a bad option."""
     unload = dialect.UnloadFromSelect(
         select=sa.select([sa.func.count(table.c.id)]),
-        unload_location='s3://bucket/key',
+        unload_location="s3://bucket/key",
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
         format=dialect.Format.parquet,
-        **kwargs
+        **kwargs,
     )
 
     with pytest.raises(ValueError):

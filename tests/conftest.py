@@ -1,28 +1,25 @@
-import os
-import copy
 import contextlib
-import itertools
-import uuid
+import copy
 import functools
+import itertools
 from logging import getLogger
-
-from rs_sqla_test_utils.db import EngineDefinition
+import os
+import uuid
 
 import pytest
-import sqlalchemy as sa
-
-
 from rs_sqla_test_utils import db
+from rs_sqla_test_utils.db import EngineDefinition
 from rs_sqla_test_utils.utils import make_mock_engine
+import sqlalchemy as sa
 
 logger = getLogger(__name__)
 
-_unicode = type(u'')
+_unicode = type("")
 
 
 @pytest.fixture(scope="session")
 def connection_kwargs(redshift_dialect_flavor):
-    """ Connection parameters for running integration tests
+    """Connection parameters for running integration tests
     against an existing Redshift instance.
 
     The tests are currently designed to work with the Travis CI
@@ -63,20 +60,19 @@ def connection_kwargs(redshift_dialect_flavor):
 
 @pytest.fixture(scope="session")
 def iam_role_arn():
-    """ The iam_role_arn fixture constructs the ARN for the IAM role. If provided,
+    """The iam_role_arn fixture constructs the ARN for the IAM role. If provided,
     the following environment variable will be used.
 
     - REDSHIFT_IAM_ROLE_ARN
     """
     return os.getenv(
-        "REDSHIFT_IAM_ROLE_ARN",
-        "arn:aws:iam::000123456789:role/redshiftrole"
+        "REDSHIFT_IAM_ROLE_ARN", "arn:aws:iam::000123456789:role/redshiftrole"
     )
 
 
 @pytest.fixture(scope="session")
 def aws_account_id(iam_role_arn):
-    """ Returns the AWS account ID from the iam_role_arn. If provided,
+    """Returns the AWS account ID from the iam_role_arn. If provided,
     the following environment variable will be used.
 
     - REDSHIFT_IAM_ROLE_ARN
@@ -89,7 +85,7 @@ def aws_account_id(iam_role_arn):
 
 @pytest.fixture(scope="session")
 def iam_role_name(iam_role_arn):
-    """ Returns the IAM role name from the iam_role_arn. If provided,
+    """Returns the IAM role name from the iam_role_arn. If provided,
     the following environment variable will be used.
 
     - REDSHIFT_IAM_ROLE_ARN
@@ -102,20 +98,20 @@ def iam_role_name(iam_role_arn):
 
 @pytest.fixture(scope="session")
 def iam_role_arn_with_aws_partition():
-    """ The iam_role_arn_with_aws_partition fixture allows the developer to
+    """The iam_role_arn_with_aws_partition fixture allows the developer to
     pass in their own IAM_ROLE_ARN for other Redshift instances by setting
     the following environment variable:
     REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION
     """
     return os.getenv(
         "REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION",
-        "arn:aws-us-gov:iam::000123456789:role/redshiftrole"
+        "arn:aws-us-gov:iam::000123456789:role/redshiftrole",
     )
 
 
 @pytest.fixture(scope="session")
 def aws_partition(iam_role_arn_with_aws_partition):
-    """ Returns the AWS partition from the iam_role_arn_with_aws_partition.
+    """Returns the AWS partition from the iam_role_arn_with_aws_partition.
     If provided, the following environment variable will be used.
 
     - REDSHIFT_IAM_ROLE_ARN_WITH_AWS_PARTITION
@@ -124,8 +120,7 @@ def aws_partition(iam_role_arn_with_aws_partition):
         return iam_role_arn_with_aws_partition.split(":")[1]
     except IndexError:
         pytest.fail(
-            "Unable to parse aws_partition from "
-            "iam_role_arn_with_aws_partition"
+            "Unable to parse aws_partition from " "iam_role_arn_with_aws_partition"
         )
 
 
@@ -148,8 +143,8 @@ def iam_role_arns():
 
 
 def database_name_generator():
-    template = 'testdb_{uuid}_{count}'
-    db_uuid = _unicode(uuid.uuid1()).replace('-', '')
+    template = "testdb_{uuid}_{count}"
+    db_uuid = _unicode(uuid.uuid1()).replace("-", "")
     for i in itertools.count():
         yield template.format(
             uuid=db_uuid,
@@ -171,28 +166,24 @@ class DatabaseTool(object):
 
     def migrate(self, engine):
         from rs_sqla_test_utils import models
+
         models.Base.metadata.create_all(bind=engine)
 
     @contextlib.contextmanager
     def _database(self):
-        from sqlalchemy_redshift.dialect import \
-            RedshiftDialect_psycopg2cffi
+        from sqlalchemy_redshift.dialect import RedshiftDialect_psycopg2cffi
 
         db_name = database_name()
         opts = (
             {"isolation_level": "AUTOCOMMIT"}
-            if not isinstance(
-                self.engine.dialect, RedshiftDialect_psycopg2cffi
-            )
+            if not isinstance(self.engine.dialect, RedshiftDialect_psycopg2cffi)
             else {}
         )
 
         with self.engine.connect().execution_options(**opts) as conn:
             if isinstance(self.engine.dialect, RedshiftDialect_psycopg2cffi):
                 conn.execute(sa.text("COMMIT"))
-            conn.execute(
-                sa.text('CREATE DATABASE {db_name}'.format(db_name=db_name))
-            )
+            conn.execute(sa.text("CREATE DATABASE {db_name}".format(db_name=db_name)))
 
         dburl = copy.deepcopy(self.engine.url)
         try:
@@ -207,13 +198,9 @@ class DatabaseTool(object):
             )
         finally:
             with self.engine.connect().execution_options(**opts) as conn:
-                if isinstance(
-                        self.engine.dialect, RedshiftDialect_psycopg2cffi
-                ):
+                if isinstance(self.engine.dialect, RedshiftDialect_psycopg2cffi):
                     conn.execute(sa.text("COMMIT"))
-                conn.execute(
-                    sa.text('DROP DATABASE {db_name}'.format(db_name=db_name))
-                )
+                conn.execute(sa.text("DROP DATABASE {db_name}".format(db_name=db_name)))
 
     @contextlib.contextmanager
     def migrated_database(self):
@@ -227,8 +214,8 @@ class DatabaseTool(object):
             try:
                 self.migrate(engine)
                 yield {
-                    'definition': engine_definition,
-                    'engine': engine,
+                    "definition": engine_definition,
+                    "engine": engine,
                 }
             finally:
                 engine.dispose()
@@ -247,19 +234,20 @@ class DriverParameterizedTests:
     Helper class for generating fixture params using pytest config opts.
 
     """
-    DEFAULT_DRIVERS = ['psycopg2', 'psycopg2cffi']
+
+    DEFAULT_DRIVERS = ["psycopg2", "psycopg2cffi"]
     redshift_dialect_flavors = None
 
     @classmethod
-    def set_drivers(cls,  _drivers):
+    def set_drivers(cls, _drivers):
         DriverParameterizedTests.redshift_dialect_flavors = [
-            'redshift+{}'.format(x) for x in _drivers
+            "redshift+{}".format(x) for x in _drivers
         ]
 
 
 def pytest_generate_tests(metafunc):
 
-    if 'redshift_dialect_flavor' in metafunc.fixturenames:
+    if "redshift_dialect_flavor" in metafunc.fixturenames:
         if DriverParameterizedTests.redshift_dialect_flavors is None:
             dbdrivers = metafunc.config.getoption(
                 "--dbdriver", default=DriverParameterizedTests.DEFAULT_DRIVERS
@@ -267,55 +255,54 @@ def pytest_generate_tests(metafunc):
             DriverParameterizedTests.set_drivers(dbdrivers)
 
         metafunc.parametrize(
-            'redshift_dialect_flavor',
+            "redshift_dialect_flavor",
             DriverParameterizedTests.redshift_dialect_flavors,
             ids=DriverParameterizedTests.redshift_dialect_flavors,
-            scope="session")
+            scope="session",
+        )
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def _redshift_database_tool(connection_kwargs):
     if all([x is not None for x in connection_kwargs.values()]):
         yield DatabaseTool(
-            engine_definition=db.redshift_engine_definition(
-                **connection_kwargs
-            )
+            engine_definition=db.redshift_engine_definition(**connection_kwargs)
         )
     return
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def _redshift_engine_and_definition(_redshift_database_tool):
     with _redshift_database_tool.migrated_database() as database:
         yield database
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def redshift_engine(_redshift_engine_and_definition):
     """
     A redshift engine for a freshly migrated database.
     """
-    return _redshift_engine_and_definition['engine']
+    return _redshift_engine_and_definition["engine"]
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def redshift_engine_definition(_redshift_engine_and_definition):
     """
     A redshift engine definition for a freshly migrated database.
     """
-    return _redshift_engine_and_definition['definition']
+    return _redshift_engine_and_definition["definition"]
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def _session_scoped_redshift_engine(_redshift_database_tool):
     """
     Private fixture to maintain a db for the entire test session.
     """
     with _redshift_database_tool.migrated_database() as egs:
-        yield egs['engine']
+        yield egs["engine"]
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def redshift_session(_session_scoped_redshift_engine):
     """
     A redshift session that rolls back all operations.
@@ -335,11 +322,11 @@ def redshift_session(_session_scoped_redshift_engine):
         conn.close()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def stub_redshift_engine(redshift_dialect_flavor):
     yield make_mock_engine(redshift_dialect_flavor)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def stub_redshift_dialect(stub_redshift_engine):
     yield stub_redshift_engine.dialect

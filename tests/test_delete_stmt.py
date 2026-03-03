@@ -1,4 +1,4 @@
-__author__ = 'Haleemur Ali'
+__author__ = "Haleemur Ali"
 """
 Tests to validate that the correct delete statement is
 issued for the redshift dialect of SQL.
@@ -31,10 +31,9 @@ This same query needs to be written like this in Redshift:
 
 """
 
-import sqlalchemy as sa
 from packaging.version import Version
-
 from rs_sqla_test_utils.utils import clean, compile_query
+import sqlalchemy as sa
 
 sa_version = Version(sa.__version__)
 
@@ -42,86 +41,85 @@ sa_version = Version(sa.__version__)
 meta = sa.MetaData()
 
 customers = sa.Table(
-    'customers', meta,
-    sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
-    sa.Column('first_name', sa.String(128)),
-    sa.Column('last_name', sa.String(128)),
-    sa.Column('email', sa.String(255))
+    "customers",
+    meta,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=False),
+    sa.Column("first_name", sa.String(128)),
+    sa.Column("last_name", sa.String(128)),
+    sa.Column("email", sa.String(255)),
 )
 
 orders = sa.Table(
-    'orders', meta,
-    sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
-    sa.Column('customer_id', sa.Integer),
-    sa.Column('total_invoiced', sa.Numeric(12, 4)),
-    sa.Column('discount_invoiced', sa.Numeric(12, 4)),
-    sa.Column('grandtotal_invoiced', sa.Numeric(12, 4)),
-    sa.Column('created_at', sa.DateTime),
-    sa.Column('updated_at', sa.DateTime)
+    "orders",
+    meta,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=False),
+    sa.Column("customer_id", sa.Integer),
+    sa.Column("total_invoiced", sa.Numeric(12, 4)),
+    sa.Column("discount_invoiced", sa.Numeric(12, 4)),
+    sa.Column("grandtotal_invoiced", sa.Numeric(12, 4)),
+    sa.Column("created_at", sa.DateTime),
+    sa.Column("updated_at", sa.DateTime),
 )
 
 items = sa.Table(
-    'items', meta,
-    sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
-    sa.Column('order_id', sa.Integer),
-    sa.Column('product_id', sa.Integer),
-    sa.Column('name', sa.String(255)),
-    sa.Column('qty', sa.Numeric(12, 4)),
-    sa.Column('price', sa.Numeric(12, 4)),
-    sa.Column('total_invoiced', sa.Numeric(12, 4)),
-    sa.Column('discount_invoiced', sa.Numeric(12, 4)),
-    sa.Column('grandtotal_invoiced', sa.Numeric(12, 4)),
-    sa.Column('created_at', sa.DateTime),
-    sa.Column('updated_at', sa.DateTime)
+    "items",
+    meta,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=False),
+    sa.Column("order_id", sa.Integer),
+    sa.Column("product_id", sa.Integer),
+    sa.Column("name", sa.String(255)),
+    sa.Column("qty", sa.Numeric(12, 4)),
+    sa.Column("price", sa.Numeric(12, 4)),
+    sa.Column("total_invoiced", sa.Numeric(12, 4)),
+    sa.Column("discount_invoiced", sa.Numeric(12, 4)),
+    sa.Column("grandtotal_invoiced", sa.Numeric(12, 4)),
+    sa.Column("created_at", sa.DateTime),
+    sa.Column("updated_at", sa.DateTime),
 )
 
 product = sa.Table(
-    'products', meta,
-    sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
-    sa.Column('parent_id', sa.Integer),
-    sa.Column('name', sa.String(255)),
-    sa.Column('price', sa.Numeric(12, 4))
+    "products",
+    meta,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=False),
+    sa.Column("parent_id", sa.Integer),
+    sa.Column("name", sa.String(255)),
+    sa.Column("price", sa.Numeric(12, 4)),
 )
 
 ham = sa.Table(
-    'ham', meta,
-    sa.Column('id', sa.Integer, primary_key=True, autoincrement=False)
+    "ham", meta, sa.Column("id", sa.Integer, primary_key=True, autoincrement=False)
 )
 
 spam = sa.Table(
-    'spam', meta,
-    sa.Column('id', sa.Integer, primary_key=True, autoincrement=False)
+    "spam", meta, sa.Column("id", sa.Integer, primary_key=True, autoincrement=False)
 )
 
 hammy_spam = sa.Table(
-    'ham, spam', meta,
-    sa.Column('ham_id', sa.Integer, sa.ForeignKey('ham.id')),
-    sa.Column('spam_id', sa.Integer, sa.ForeignKey('spam.id'))
+    "ham, spam",
+    meta,
+    sa.Column("ham_id", sa.Integer, sa.ForeignKey("ham.id")),
+    sa.Column("spam_id", sa.Integer, sa.ForeignKey("spam.id")),
 )
 
 
 def test_delete_stmt_nowhereclause(stub_redshift_dialect):
     del_stmt = sa.delete(customers)
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        'DELETE FROM customers'
+    assert (
+        clean(compile_query(del_stmt, stub_redshift_dialect)) == "DELETE FROM customers"
+    )
 
 
 def test_delete_stmt_simplewhereclause1(stub_redshift_dialect):
-    del_stmt = sa.delete(customers).where(
-        customers.c.email == 'test@test.test'
-    )
+    del_stmt = sa.delete(customers).where(customers.c.email == "test@test.test")
     expected = """
         DELETE FROM customers
         WHERE customers.email = 'test@test.test'"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_simplewhereclause2(stub_redshift_dialect):
-    del_stmt = sa.delete(customers).where(
-        customers.c.email.endswith('test.com')
-    )
-    if sa_version >= Version('1.4.0'):
+    del_stmt = sa.delete(customers).where(customers.c.email.endswith("test.com"))
+    if sa_version >= Version("1.4.0"):
         expected = """
             DELETE FROM customers
             WHERE (customers.email LIKE '%%' || 'test.com')"""
@@ -129,33 +127,25 @@ def test_delete_stmt_simplewhereclause2(stub_redshift_dialect):
         expected = """
             DELETE FROM customers
             WHERE customers.email LIKE '%%' || 'test.com'"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_joinedwhereclause1(stub_redshift_dialect):
-    del_stmt = sa.delete(orders).where(
-        orders.c.customer_id == customers.c.id
-    )
+    del_stmt = sa.delete(orders).where(orders.c.customer_id == customers.c.id)
     expected = """
         DELETE FROM orders
         USING customers
         WHERE orders.customer_id = customers.id"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_joinedwhereclause2(stub_redshift_dialect):
-    del_stmt = sa.delete(
-        orders
-    ).where(
-        orders.c.customer_id == customers.c.id
-    ).where(
-        orders.c.id == items.c.order_id
-    ).where(
-        customers.c.email.endswith('test.com')
-    ).where(
-        items.c.name == 'test product'
+    del_stmt = (
+        sa.delete(orders)
+        .where(orders.c.customer_id == customers.c.id)
+        .where(orders.c.id == items.c.order_id)
+        .where(customers.c.email.endswith("test.com"))
+        .where(items.c.name == "test product")
     )
     expected = """
       DELETE FROM orders
@@ -165,23 +155,21 @@ def test_delete_stmt_joinedwhereclause2(stub_redshift_dialect):
       AND (customers.email LIKE '%%' || 'test.com')
       AND items.name = 'test product'"""
 
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
-    del_stmt = sa.delete(
-        orders
-    ).where(
-        orders.c.customer_id.in_(
-            sa.select(
-                [customers.c.id]
-            ).where(customers.c.email.endswith('test.com'))
+    del_stmt = (
+        sa.delete(orders)
+        .where(
+            orders.c.customer_id.in_(
+                sa.select([customers.c.id]).where(
+                    customers.c.email.endswith("test.com")
+                )
+            )
         )
-    ).where(
-        orders.c.id == items.c.order_id
-    ).where(
-        items.c.name == 'test product'
+        .where(orders.c.id == items.c.order_id)
+        .where(items.c.name == "test product")
     )
     expected = """
       DELETE FROM orders
@@ -192,18 +180,13 @@ def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
       WHERE (customers.email LIKE '%%' || 'test.com'))
       AND orders.id = items.order_id
       AND items.name = 'test product'"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_subquery(stub_redshift_dialect):
-    del_stmt = sa.delete(
-        orders
-    ).where(
+    del_stmt = sa.delete(orders).where(
         orders.c.customer_id.in_(
-            sa.select(
-                [customers.c.id]
-            ).where(customers.c.email.endswith('test.com'))
+            sa.select([customers.c.id]).where(customers.c.email.endswith("test.com"))
         )
     )
     expected = """
@@ -212,27 +195,17 @@ def test_delete_stmt_subquery(stub_redshift_dialect):
         (SELECT customers.id
         FROM customers
         WHERE (customers.email LIKE '%%' || 'test.com'))"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_on_subquerycomma(stub_redshift_dialect):
-    del_stmt = sa.delete(
-        ham
-    ).where(
-        ham.c.id.in_(
-            sa.select(
-                [hammy_spam.c.ham_id]
-            )
-        )
-    )
+    del_stmt = sa.delete(ham).where(ham.c.id.in_(sa.select([hammy_spam.c.ham_id])))
     expected = """
         DELETE FROM ham
         WHERE ham.id IN
         (SELECT "ham, spam".ham_id
         FROM "ham, spam")"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_on_comma(stub_redshift_dialect):
@@ -240,42 +213,35 @@ def test_delete_on_comma(stub_redshift_dialect):
     expected = """
         DELETE FROM ham USING "ham, spam"
         WHERE ham.id = "ham, spam".ham_id"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_on_alias(stub_redshift_dialect):
     parent_ = sa.alias(product)
-    del_stmt = sa.delete(
-        product
-    ).where(product.c.parent_id == parent_.c.id)
+    del_stmt = sa.delete(product).where(product.c.parent_id == parent_.c.id)
     expected = """
         DELETE FROM products
         USING products AS products_1
         WHERE products.parent_id = products_1.id"""
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
 
 
 def test_delete_stmt_with_comma_subquery_alias_join(stub_redshift_dialect):
     parent_ = sa.alias(product)
 
-    del_stmt = sa.delete(
-        items
-    ).where(
-        items.c.order_id == orders.c.id
-    ).where(
-        orders.c.customer_id.in_(
-            sa.select([customers.c.id]).where(
-                customers.c.email.endswith('test.com')
+    del_stmt = (
+        sa.delete(items)
+        .where(items.c.order_id == orders.c.id)
+        .where(
+            orders.c.customer_id.in_(
+                sa.select([customers.c.id]).where(
+                    customers.c.email.endswith("test.com")
+                )
             )
         )
-    ).where(
-        items.c.product_id == product.c.id
-    ).where(
-        product.c.parent_id == parent_.c.id
-    ).where(
-        parent_.c.id != hammy_spam.c.ham_id
+        .where(items.c.product_id == product.c.id)
+        .where(product.c.parent_id == parent_.c.id)
+        .where(parent_.c.id != hammy_spam.c.ham_id)
     )
 
     expected = """
@@ -290,5 +256,4 @@ def test_delete_stmt_with_comma_subquery_alias_join(stub_redshift_dialect):
         AND products.parent_id = products_1.id
         AND products_1.id != "ham, spam".ham_id"""
 
-    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
-        clean(expected)
+    assert clean(compile_query(del_stmt, stub_redshift_dialect)) == clean(expected)
