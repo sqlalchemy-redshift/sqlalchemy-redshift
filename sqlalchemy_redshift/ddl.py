@@ -111,7 +111,7 @@ class CreateMaterializedView(DDLElement):
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column('name', sa.String)
     ... )
-    >>> selectable = sa.select([user.c.id, user.c.name], from_obj=user)
+    >>> selectable = sa.select(user.c.id, user.c.name, from_obj=user)
     >>> view = CreateMaterializedView(
     ...     'materialized_view_of_users',
     ...     selectable,
@@ -261,7 +261,6 @@ def compile_drop_materialized_view(element, compiler, **kw):
     """
     Formats and returns the drop statement for materialized views.
     """
-    text = "DROP MATERIALIZED VIEW {if_exists}{name}{cascade}"
     if_exists = "IF EXISTS " if element.if_exists else ""
     cascade = " CASCADE" if element.cascade else ""
-    return text.format(if_exists=if_exists, name=element.name, cascade=cascade)
+    return f"DROP MATERIALIZED VIEW {if_exists}{element.name}{cascade}"

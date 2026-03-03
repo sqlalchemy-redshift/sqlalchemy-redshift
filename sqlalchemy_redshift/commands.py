@@ -56,22 +56,14 @@ def _process_aws_credentials(
             raise ValueError("invalid AWS partition")
         if not AWS_ACCOUNT_ID_RE.match(aws_account_id):
             raise ValueError(
-                "invalid AWS account ID; does not match {pattern}".format(
-                    pattern=AWS_ACCOUNT_ID_RE.pattern,
-                )
+                f"invalid AWS account ID; does not match {AWS_ACCOUNT_ID_RE.pattern}"
             )
         elif not IAM_ROLE_NAME_RE.match(iam_role_name):
             raise ValueError(
-                "invalid IAM role name; does not match {pattern}".format(
-                    pattern=IAM_ROLE_NAME_RE.pattern,
-                )
+                f"invalid IAM role name; does not match {IAM_ROLE_NAME_RE.pattern}"
             )
 
-        credentials = "aws_iam_role=arn:{0}:iam::{1}:role/{2}".format(
-            aws_partition,
-            aws_account_id,
-            iam_role_name,
-        )
+        credentials = f"aws_iam_role=arn:{aws_partition}:iam::{aws_account_id}:role/{iam_role_name}"
 
     if iam_role_arns is not None:
         if isinstance(iam_role_arns, str):
@@ -81,9 +73,7 @@ def _process_aws_credentials(
         for arn in iam_role_arns:
             if not IAM_ROLE_ARN_RE.match(arn):
                 raise ValueError(
-                    "invalid AWS account ID; does not match {pattern}".format(
-                        pattern=IAM_ROLE_ARN_RE.pattern,
-                    )
+                    f"invalid AWS account ID; does not match {IAM_ROLE_ARN_RE.pattern}"
                 )
 
         credentials = "aws_iam_role=" + ",".join(iam_role_arns)
@@ -91,30 +81,21 @@ def _process_aws_credentials(
     if access_key_id is not None and secret_access_key is not None:
         if not ACCESS_KEY_ID_RE.match(access_key_id):
             raise ValueError(
-                "invalid access_key_id; does not match {pattern}".format(
-                    pattern=ACCESS_KEY_ID_RE.pattern,
-                )
+                f"invalid access_key_id; does not match {ACCESS_KEY_ID_RE.pattern}"
             )
         if not SECRET_ACCESS_KEY_RE.match(secret_access_key):
             raise ValueError(
-                "invalid secret_access_key; does not match {pattern}".format(
-                    pattern=SECRET_ACCESS_KEY_RE.pattern,
-                )
+                f"invalid secret_access_key; does not match {SECRET_ACCESS_KEY_RE.pattern}"
             )
 
-        credentials = "aws_access_key_id={0};aws_secret_access_key={1}".format(
-            access_key_id,
-            secret_access_key,
-        )
+        credentials = f"aws_access_key_id={access_key_id};aws_secret_access_key={secret_access_key}"
 
         if session_token is not None:
             if not TOKEN_RE.match(session_token):
                 raise ValueError(
-                    "invalid session_token; does not match {pattern}".format(
-                        pattern=TOKEN_RE.pattern,
-                    )
+                    f"invalid session_token; does not match {TOKEN_RE.pattern}"
                 )
-            credentials += ";token={0}".format(session_token)
+            credentials += f";token={session_token}"
 
     if credentials is None:
         raise TypeError(
@@ -126,7 +107,7 @@ def _process_aws_credentials(
 
 
 def _process_fixed_width(spec):
-    return ",".join(("{0}:{1:d}".format(col, width) for col, width in spec))
+    return ",".join((f"{col}:{width:d}" for col, width in spec))
 
 
 class _ExecutableClause(sa_expression.Executable, sa_expression.ClauseElement):
@@ -358,11 +339,11 @@ def visit_unload_from_select(element, compiler, **kw):
     if el.format is None:
         format_ = ""
     elif el.format == Format.csv:
-        format_ = "FORMAT AS {}".format(el.format.value)
+        format_ = f"FORMAT AS {el.format.value}"
         if el.delimiter is not None or el.fixed_width is not None:
             raise ValueError("CSV format cannot be used with delimiter or fixed_width")
     elif el.format == Format.parquet:
-        format_ = "FORMAT AS {}".format(el.format.value)
+        format_ = f"FORMAT AS {el.format.value}"
         if any(
             (
                 el.delimiter,
@@ -485,8 +466,7 @@ def _check_enum(Enum, val):
 
     cleaned = Enum(val)
     if cleaned is not val:
-        tpl = "{val!r} should be, {cleaned!r}, an instance of {Enum!r}"
-        msg = tpl.format(val=val, cleaned=cleaned, Enum=Enum)
+        msg = f"{val!r} should be, {cleaned!r}, an instance of {Enum!r}"
         warnings.warn(msg, DeprecationWarning)
 
     return cleaned
@@ -1118,5 +1098,4 @@ def compile_refresh_materialized_view(element, compiler, **kw):
     """
     Formats and returns the refresh statement for materialized views.
     """
-    text = "REFRESH MATERIALIZED VIEW {name}"
-    return text.format(name=element.name)
+    return f"REFRESH MATERIALIZED VIEW {element.name}"

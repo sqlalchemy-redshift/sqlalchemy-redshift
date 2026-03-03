@@ -1,7 +1,7 @@
 from setuptools import setup
 
-readme = open("README.rst").read()
-history = open("CHANGES.rst").read().replace(".. :changelog:", "")
+readme = open("README.rst", encoding="utf-8").read()
+history = open("CHANGES.rst", encoding="utf-8").read().replace(".. :changelog:", "")
 
 setup(
     name="sqlalchemy-redshift",
@@ -28,7 +28,13 @@ setup(
         "dev": [
             "black",
             "isort",
-        ]
+        ],
+        "tests": [
+            "pytest",
+            "alembic",
+            "psycopg2-binary",
+            "psycopg2cffi",
+        ],
     },
     classifiers=[
         "Development Status :: 4 - Beta",

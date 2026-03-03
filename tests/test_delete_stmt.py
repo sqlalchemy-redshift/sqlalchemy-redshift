@@ -163,7 +163,7 @@ def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
         sa.delete(orders)
         .where(
             orders.c.customer_id.in_(
-                sa.select([customers.c.id]).where(
+                sa.select(customers.c.id,).where(
                     customers.c.email.endswith("test.com")
                 )
             )
@@ -186,7 +186,7 @@ def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
 def test_delete_stmt_subquery(stub_redshift_dialect):
     del_stmt = sa.delete(orders).where(
         orders.c.customer_id.in_(
-            sa.select([customers.c.id]).where(customers.c.email.endswith("test.com"))
+            sa.select(customers.c.id,).where(customers.c.email.endswith("test.com"))
         )
     )
     expected = """
@@ -199,7 +199,7 @@ def test_delete_stmt_subquery(stub_redshift_dialect):
 
 
 def test_delete_stmt_on_subquerycomma(stub_redshift_dialect):
-    del_stmt = sa.delete(ham).where(ham.c.id.in_(sa.select([hammy_spam.c.ham_id])))
+    del_stmt = sa.delete(ham).where(ham.c.id.in_(sa.select(hammy_spam.c.ham_id,)))
     expected = """
         DELETE FROM ham
         WHERE ham.id IN
@@ -234,7 +234,7 @@ def test_delete_stmt_with_comma_subquery_alias_join(stub_redshift_dialect):
         .where(items.c.order_id == orders.c.id)
         .where(
             orders.c.customer_id.in_(
-                sa.select([customers.c.id]).where(
+                sa.select(customers.c.id,).where(
                     customers.c.email.endswith("test.com")
                 )
             )

@@ -13,7 +13,7 @@ def selectable():
         Column("id", Integer, primary_key=True),
         Column("name", String),
     )
-    return select([table.c.id, table.c.name], from_obj=table)
+    return select(table.c.id, table.c.name).select_from(table)
 
 
 def test_basic_materialized_view(selectable, stub_redshift_dialect):

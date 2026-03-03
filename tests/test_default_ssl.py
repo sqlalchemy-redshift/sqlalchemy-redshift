@@ -1,4 +1,4 @@
-from pkg_resources import resource_filename
+from importlib.resources import files
 import sqlalchemy as sa
 
 from sqlalchemy_redshift.dialect import (
@@ -6,8 +6,7 @@ from sqlalchemy_redshift.dialect import (
     RedshiftDialect_redshift_connector,
 )
 
-CERT_PATH = resource_filename("sqlalchemy_redshift", "redshift-ca-bundle.crt")
-
+CERT_PATH = str(files("sqlalchemy_redshift").joinpath("redshift-ca-bundle.crt"))
 
 def test_ssl_args(redshift_dialect_flavor):
     engine = sa.create_engine("{}://test".format(redshift_dialect_flavor))

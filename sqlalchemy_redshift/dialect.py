@@ -785,7 +785,8 @@ class RedshiftDDLCompiler(PGDDLCompiler):
             # Identity constraints show up as *default* when reflected.
             m = IDENTITY_RE.match(default)
             if m:
-                colspec += " IDENTITY({seed},{step})".format(**m.groupdict())
+                groups = m.groupdict()
+                colspec += f" IDENTITY({groups['seed']},{groups['step']})"
             else:
                 colspec += " DEFAULT " + default
 
@@ -806,7 +807,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
         identity = info.get("identity")
         if identity:
-            text += " IDENTITY({0},{1})".format(identity[0], identity[1])
+            text += f" IDENTITY({identity[0]},{identity[1]})"
 
         encode = info.get("encode")
         if encode:
@@ -956,9 +957,9 @@ class RedshiftDialectMixin(DefaultDialect):
                         FROM
                             pg_catalog.pg_constraint cons
                         WHERE
-                            cons.conrelid = {} AND
+                            cons.conrelid = {table_oid} AND
                             cons.contype = 'c'
-                        """.format(table_oid)))
+                        """))
         ret = []
         for name, src in result:
             # samples:
@@ -987,11 +988,11 @@ class RedshiftDialectMixin(DefaultDialect):
     def get_table_oid(self, connection, table_name, schema=None, **kw):
         """Fetch the oid for schema.table_name.
         Return null if not found (external table does not have table oid)"""
-        schema_field = '"{schema}".'.format(schema=schema) if schema else ""
+        schema_field = f'"{schema}".' if schema else ""
 
-        result = connection.execute(sa.text("""
+        result = connection.execute(sa.text(f"""
                 select '{schema_field}"{table_name}"'::regclass::oid;
-                """.format(schema_field=schema_field, table_name=table_name)))
+                """))
 
         return result.scalar()
 
@@ -1235,15 +1236,15 @@ class RedshiftDialectMixin(DefaultDialect):
     def _get_all_relation_info(self, connection, **kw):
         schema = kw.get("schema", None)
         schema_clause = (
-            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+            f"AND schema = '{schema}'" if schema else ""
         )
 
         table_name = kw.get("table_name", None)
         table_clause = (
-            "AND relname = '{table}'".format(table=table_name) if table_name else ""
+            f"AND relname = '{table_name}'" if table_name else ""
         )
 
-        result = connection.execute(sa.text("""
+        result = connection.execute(sa.text(f"""
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -1281,7 +1282,7 @@ class RedshiftDialectMixin(DefaultDialect):
             JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
         where 1 {schema_clause} {table_clause}
         ORDER BY "relkind", "schema_oid", "schema";
-        """.format(schema_clause=schema_clause, table_clause=table_clause)))
+        """))
         relations = {}
         for rel in result:
             key = RelationKey(rel.relname, rel.schema, connection)
@@ -1294,12 +1295,12 @@ class RedshiftDialectMixin(DefaultDialect):
     def _get_schema_column_info(self, connection, **kw):
         schema = kw.get("schema", None)
         schema_clause = (
-            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+            f"AND schema = '{schema}'" if schema else ""
         )
 
         table_name = kw.get("table_name", None)
         table_clause = (
-            "AND table_name = '{table}'".format(table=table_name) if table_name else ""
+            f"AND table_name = '{table_name}'" if table_name else ""
         )
 
         all_columns = defaultdict(list)
@@ -1321,15 +1322,15 @@ class RedshiftDialectMixin(DefaultDialect):
     def _get_all_constraint_info(self, connection, **kw):
         schema = kw.get("schema", None)
         schema_clause = (
-            "AND schema = '{schema}'".format(schema=schema) if schema else ""
+            f"AND schema = '{schema}'" if schema else ""
         )
 
         table_name = kw.get("table_name", None)
         table_clause = (
-            "AND table_name = '{table}'".format(table=table_name) if table_name else ""
+            f"AND table_name = '{table_name}'" if table_name else ""
         )
 
-        result = connection.execute(sa.text("""
+        result = connection.execute(sa.text(f"""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",
@@ -1366,7 +1367,7 @@ class RedshiftDialectMixin(DefaultDialect):
             JOIN svv_external_schemas s ON s.schemaname = c.schemaname
         where 1 {schema_clause} {table_clause}
         ORDER BY "schema", "table_name"
-        """.format(schema_clause=schema_clause, table_clause=table_clause)))
+        """))
         all_constraints = defaultdict(list)
         for con in result:
             key = RelationKey(con.table_name, con.schema, connection)
@@ -1410,7 +1411,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         try:
             return cast(DBAPIModule, importlib.import_module(cls.driver))
         except ImportError as exc:
-            raise ImportError("No module named {}".format(cls.driver)) from exc
+            raise ImportError(f"No module named {cls.driver}") from exc
 
 
 class RedshiftDialect_psycopg2(Psycopg2RedshiftDialectMixin, PGDialect_psycopg2):
@@ -1694,13 +1695,11 @@ def visit_delete_stmt(element, compiler, **kwargs):
         if element.whereclause is not None:
             clause = compiler.process(element.whereclause, **kwargs)
             if clause:
-                whereclause = " WHERE {clause}".format(clause=clause)
+                whereclause = f" WHERE {clause}"
     else:
         whereclause_tuple = element.get_children()
         if whereclause_tuple:
-            whereclause = " WHERE {clause}".format(
-                clause=compiler.process(*whereclause_tuple, **kwargs)
-            )
+            whereclause = f" WHERE {compiler.process(*whereclause_tuple, **kwargs)}"
 
     if whereclause:
         usingclause_tables = []
@@ -1710,8 +1709,6 @@ def visit_delete_stmt(element, compiler, **kwargs):
             if table != delete_stmt_table and table not in usingclause_tables:
                 usingclause_tables.append(table)
         if usingclause_tables:
-            usingclause = " USING {clause}".format(clause=", ".join(usingclause_tables))
+            usingclause = f" USING {', '.join(usingclause_tables)}"
 
-    return "DELETE FROM {table}{using}{where}".format(
-        table=delete_stmt_table, using=usingclause, where=whereclause
-    )
+    return f"DELETE FROM {delete_stmt_table}{usingclause}{whereclause}"

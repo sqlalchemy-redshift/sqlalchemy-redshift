@@ -226,7 +226,11 @@ def pytest_addoption(parser):
     Pytest option to define which dbdrivers to run the test suite with.
 
     """
-    parser.addoption("--dbdriver", action="append")
+    parser.addoption(
+        "--dbdriver",
+        action="append",
+        default=None,
+    )
 
 
 class DriverParameterizedTests:
@@ -241,7 +245,7 @@ class DriverParameterizedTests:
     @classmethod
     def set_drivers(cls, _drivers):
         DriverParameterizedTests.redshift_dialect_flavors = [
-            "redshift+{}".format(x) for x in _drivers
+            f"redshift+{x}" for x in _drivers
         ]
 
 
@@ -249,9 +253,9 @@ def pytest_generate_tests(metafunc):
 
     if "redshift_dialect_flavor" in metafunc.fixturenames:
         if DriverParameterizedTests.redshift_dialect_flavors is None:
-            dbdrivers = metafunc.config.getoption(
-                "--dbdriver", default=DriverParameterizedTests.DEFAULT_DRIVERS
-            )
+            dbdrivers = metafunc.config.getoption("--dbdriver")
+            if dbdrivers is None:
+                dbdrivers = DriverParameterizedTests.DEFAULT_DRIVERS
             DriverParameterizedTests.set_drivers(dbdrivers)
 
         metafunc.parametrize(
