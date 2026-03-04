@@ -60,3 +60,4 @@ target/
 
 # IDE
 .idea/
+.vscode/
