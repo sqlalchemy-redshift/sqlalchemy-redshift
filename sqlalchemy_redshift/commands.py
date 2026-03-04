@@ -434,7 +434,7 @@ def visit_unload_from_select(element, compiler, **kw):
                 type_=sa.String,
             ),
         ),
-        **kw
+        **kw,
     )
 
 

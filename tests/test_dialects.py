@@ -17,4 +17,3 @@ def test_dialect_inherits_from_sqlalchemy_dialect(name, expected_dialect):
     engine = make_mock_engine(name)
 
     assert isinstance(engine.dialect, expected_dialect)
-

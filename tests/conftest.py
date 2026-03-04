@@ -183,7 +183,7 @@ class DatabaseTool(object):
         with self.engine.connect().execution_options(**opts) as conn:
             if isinstance(self.engine.dialect, RedshiftDialect_psycopg2cffi):
                 conn.execute(sa.text("COMMIT"))
-            conn.execute(sa.text("CREATE DATABASE {db_name}".format(db_name=db_name)))
+            conn.execute(sa.text(f"CREATE DATABASE {db_name}"))
 
         dburl = copy.deepcopy(self.engine.url)
         try:

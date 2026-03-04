@@ -1176,25 +1176,43 @@ class RedshiftDialectMixin(DefaultDialect):
                 relation_names.append(key.name)
         return relation_names
 
-    def _get_column_info(self, *args, **kwargs):
-        kw = kwargs.copy()
-        encode = kw.pop("encode", None)
-        if sa_version >= Version("1.3.16"):
-            # SQLAlchemy 1.3.16 introduced generated columns,
-            # not supported in redshift
-            kw["generated"] = ""
+    def _get_column_info(
+        self,
+        name,
+        format_type,
+        default,
+        notnull,
+        domains,
+        enums,
+        schema,
+        encode=None,
+        comment=None,
+        identity=None,
+    ):
+        if not self._domains:
+            self._domains = domains
+        coltype = self._reflect_type(
+            format_type,
+            domains,
+            enums,
+            type_description=f"column '{name}'",
+            collation=None,
+        )
 
-        if sa_version < Version("1.4.0") and "identity" in kw:
-            del kw["identity"]
-        elif sa_version >= Version("1.4.0") and "identity" not in kw:
-            kw["identity"] = None
+        if isinstance(coltype, VARCHAR) and coltype.length is None:
+            coltype = NullType()
 
-        column_info = super(RedshiftDialectMixin, self)._get_column_info(*args, **kw)
-        if isinstance(column_info["type"], VARCHAR):
-            if column_info["type"].length is None:
-                column_info["type"] = NullType()
-        if "info" not in column_info:
-            column_info["info"] = {}
+        column_info = {
+            "name": name,
+            "type": coltype,
+            "nullable": not notnull,
+            "default": default,
+            "autoincrement": identity is not None,
+            "comment": comment,
+        }
+        if identity is not None:
+            column_info["identity"] = identity
+        column_info["info"] = {}
         if encode and encode != "none":
             column_info["info"]["encode"] = encode
         return column_info
@@ -1235,14 +1253,10 @@ class RedshiftDialectMixin(DefaultDialect):
     @reflection.cache
     def _get_all_relation_info(self, connection, **kw):
         schema = kw.get("schema", None)
-        schema_clause = (
-            f"AND schema = '{schema}'" if schema else ""
-        )
+        schema_clause = f"AND schema = '{schema}'" if schema else ""
 
         table_name = kw.get("table_name", None)
-        table_clause = (
-            f"AND relname = '{table_name}'" if table_name else ""
-        )
+        table_clause = f"AND relname = '{table_name}'" if table_name else ""
 
         result = connection.execute(sa.text(f"""
         SELECT
@@ -1294,14 +1308,10 @@ class RedshiftDialectMixin(DefaultDialect):
     @reflection.cache
     def _get_schema_column_info(self, connection, **kw):
         schema = kw.get("schema", None)
-        schema_clause = (
-            f"AND schema = '{schema}'" if schema else ""
-        )
+        schema_clause = f"AND schema = '{schema}'" if schema else ""
 
         table_name = kw.get("table_name", None)
-        table_clause = (
-            f"AND table_name = '{table_name}'" if table_name else ""
-        )
+        table_clause = f"AND table_name = '{table_name}'" if table_name else ""
 
         all_columns = defaultdict(list)
         result = connection.execute(
@@ -1321,14 +1331,10 @@ class RedshiftDialectMixin(DefaultDialect):
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
         schema = kw.get("schema", None)
-        schema_clause = (
-            f"AND schema = '{schema}'" if schema else ""
-        )
+        schema_clause = f"AND schema = '{schema}'" if schema else ""
 
         table_name = kw.get("table_name", None)
-        table_clause = (
-            f"AND table_name = '{table_name}'" if table_name else ""
-        )
+        table_clause = f"AND table_name = '{table_name}'" if table_name else ""
 
         result = connection.execute(sa.text(f"""
         SELECT
