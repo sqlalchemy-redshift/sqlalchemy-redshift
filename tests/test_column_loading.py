@@ -1,14 +1,10 @@
 from unittest import TestCase
 
-from packaging.version import Version
-import sqlalchemy as sa
 from sqlalchemy.types import NullType, VARCHAR
 
 from sqlalchemy_redshift.dialect import (
     RedshiftDialect_psycopg2, RedshiftDialect_psycopg2cffi
 )
-
-sa_version = Version(sa.__version__)
 
 
 class TestColumnReflection(TestCase):

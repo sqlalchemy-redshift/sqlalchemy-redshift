@@ -3,11 +3,7 @@ __author__ = 'haleemur'
 import re
 
 import sqlalchemy as sa
-from packaging.version import Version
 from sqlalchemy.engine import url as sa_url
-
-
-sa_version = Version(sa.__version__)
 
 
 def clean(query):
@@ -24,9 +20,6 @@ def compile_query(q, _dialect):
 
 
 def get_url_builder():
-    if sa_version < Version('1.4.0'):
-        return sa_url.URL
-
     # Changed in version 1.4: The URL object is now an immutable object.
     # To create a URL, use make_url() or URL.create()
     return sa_url.URL.create
@@ -38,11 +31,6 @@ def make_mock_engine(name):
 
     """
     url_builder = get_url_builder()
-    if Version(sa.__version__) >= Version('1.4.0'):
-        return sa.create_mock_engine(url_builder(
-            drivername=name
-        ), executor=None)
-    else:
-        return sa.create_engine(url_builder(
-            drivername=name,
-        ), strategy='mock', executor=None)
+    return sa.create_mock_engine(url_builder(
+        drivername=name
+    ), executor=None)

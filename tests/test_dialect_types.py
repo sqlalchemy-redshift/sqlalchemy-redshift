@@ -165,7 +165,7 @@ redshift_specific_datatypes = [
 def test_custom_types_reflection_inspection(
         custom_datatype, redshift_engine
 ):
-    metadata = MetaData(bind=redshift_engine)
+    metadata = MetaData()
     sqlalchemy.Table(
         't1',
         metadata,
@@ -174,8 +174,8 @@ def test_custom_types_reflection_inspection(
         sqlalchemy.Column('test_col', custom_datatype),
         schema='public'
     )
-    metadata.create_all()
-    inspect = reflection.Inspector.from_engine(redshift_engine)
+    metadata.create_all(redshift_engine)
+    inspect = reflection.inspect(redshift_engine)
 
     actual = inspect.get_columns(table_name='t1', schema='public')
     assert len(actual) == 3

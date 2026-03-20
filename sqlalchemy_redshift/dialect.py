@@ -4,9 +4,8 @@ import re
 from collections import defaultdict, namedtuple
 from logging import getLogger
 
-import pkg_resources
+from importlib.resources import files as _resource_files
 import sqlalchemy as sa
-from packaging.version import Version
 from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 from sqlalchemy.dialects.postgresql.base import (PGCompiler, PGDDLCompiler,
@@ -30,11 +29,10 @@ from .commands import (AlterTableAppendCommand, Compression, CopyCommand,
 from .ddl import (CreateMaterializedView, DropMaterializedView,
                   get_table_attributes)
 
-sa_version = Version(sa.__version__)
 logger = getLogger(__name__)
 
 try:
-    import alembic
+    import alembic  # noqa: F401
 except ImportError:
     pass
 else:
@@ -42,9 +40,8 @@ else:
     from alembic.ddl.base import RenameTable
     compiles(RenameTable, 'redshift')(postgresql.visit_rename_table)
 
-    if Version(alembic.__version__) >= Version('1.0.6'):
-        from alembic.ddl.base import ColumnComment
-        compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
+    from alembic.ddl.base import ColumnComment
+    compiles(ColumnComment, 'redshift')(postgresql.visit_column_comment)
 
     class RedshiftImpl(postgresql.PostgresqlImpl):
         __dialect__ = 'redshift'
@@ -608,12 +605,7 @@ class RedshiftDDLCompiler(PGDDLCompiler):
 
     def _fetch_redshift_column_attributes(self, column):
         text = ""
-        if sa_version >= Version('1.3.0'):
-            info = column.dialect_options['redshift']
-        else:
-            if not hasattr(column, 'info'):
-                return text
-            info = column.info
+        info = column.dialect_options['redshift']
 
         identity = info.get('identity')
         if identity:
@@ -980,31 +972,85 @@ class RedshiftDialectMixin(DefaultDialect):
                 relation_names.append(key.name)
         return relation_names
 
-    def _get_column_info(self, *args, **kwargs):
-        kw = kwargs.copy()
-        encode = kw.pop('encode', None)
-        if sa_version >= Version('1.3.16'):
-            # SQLAlchemy 1.3.16 introduced generated columns,
-            # not supported in redshift
-            kw['generated'] = ''
+    def _get_column_info(self, name, format_type, default, notnull,
+                         domains, enums, schema, encode=None,
+                         comment=None, identity=None, **kw):
+        """Build column info dict from reflected column attributes.
 
-        if sa_version < Version('1.4.0') and 'identity' in kw:
-            del kw['identity']
-        elif sa_version >= Version('1.4.0') and 'identity' not in kw:
-            kw['identity'] = None
+        SA 2.0 removed the parent _get_column_info method, so we handle
+        type resolution directly.
+        """
+        # Resolve the column type from the format_type string
+        coltype = self._resolve_type(format_type, domains)
 
-        column_info = super(RedshiftDialectMixin, self)._get_column_info(
-            *args,
-            **kw
-        )
-        if isinstance(column_info['type'], VARCHAR):
-            if column_info['type'].length is None:
-                column_info['type'] = NullType()
-        if 'info' not in column_info:
-            column_info['info'] = {}
+        # Redshift VARCHAR with no length is treated as NullType
+        if isinstance(coltype, VARCHAR) and coltype.length is None:
+            coltype = NullType()
+
+        column_info = {
+            'name': name,
+            'type': coltype,
+            'nullable': not notnull,
+            'default': default,
+            'autoincrement': False,
+            'comment': comment,
+            'info': {},
+        }
         if encode and encode != 'none':
             column_info['info']['encode'] = encode
         return column_info
+
+    def _resolve_type(self, format_type, domains):
+        """Resolve a Redshift format_type string to a SQLAlchemy type."""
+        # Check custom ischema_names first
+        ischema = self.ischema_names
+        if format_type in ischema:
+            return ischema[format_type]()
+
+        # Handle common Redshift/PostgreSQL types
+        if format_type == 'boolean':
+            return BOOLEAN()
+        if format_type == 'smallint':
+            return SMALLINT()
+        if format_type == 'integer':
+            return INTEGER()
+        if format_type == 'bigint':
+            return BIGINT()
+        if format_type == 'real':
+            return REAL()
+        if format_type == 'double precision':
+            return DOUBLE_PRECISION()
+        if format_type == 'date':
+            return DATE()
+        if format_type == 'timestamp without time zone':
+            return TIMESTAMP()
+        if format_type == 'timestamp with time zone':
+            return TIMESTAMPTZ()
+        if format_type == 'time with time zone':
+            return TIMETZ()
+
+        # character varying / varchar with optional length
+        m = re.match(r'^character varying(?:\((\d+)\))?$', format_type)
+        if m:
+            length = int(m.group(1)) if m.group(1) else None
+            return VARCHAR(length=length)
+
+        # character / char with optional length
+        m = re.match(r'^character(?:\((\d+)\))?$', format_type)
+        if m:
+            length = int(m.group(1)) if m.group(1) else None
+            return CHAR(length=length)
+
+        # numeric / decimal with optional precision/scale
+        m = re.match(r'^numeric(?:\((\d+)(?:,(\d+))?\))?$', format_type)
+        if m:
+            precision = int(m.group(1)) if m.group(1) else None
+            scale = int(m.group(2)) if m.group(2) else None
+            return DECIMAL(precision=precision, scale=scale)
+
+        # Fallback: return NullType for unknown types
+        logger.warning("Unknown column type: %s", format_type)
+        return NullType()
 
     def _get_redshift_relation(self, connection, table_name,
                                schema=None, **kw):
@@ -1212,10 +1258,7 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
         """
         default_args = {
             'sslmode': 'verify-full',
-            'sslrootcert': pkg_resources.resource_filename(
-                __name__,
-                'redshift-ca-bundle.crt'
-            ),
+            'sslrootcert': str(_resource_files('sqlalchemy_redshift').joinpath('redshift-ca-bundle.crt')),
         }
         cargs, cparams = (
             super(Psycopg2RedshiftDialectMixin, self).create_connect_args(
@@ -1314,10 +1357,8 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
             driver_module = importlib.import_module(cls.driver)
 
             # Starting v2.0.908 driver converts description column names to str
-            if Version(driver_module.__version__) < Version('2.0.908'):
-                cls.description_encoding = "use_encoding"
-            else:
-                cls.description_encoding = None
+            # We require modern versions, so just set to None
+            cls.description_encoding = None
 
             return driver_module
         except ImportError:
@@ -1514,17 +1555,10 @@ def visit_delete_stmt(element, compiler, **kwargs):
     #   which they first appear in the where clause.
     delete_stmt_table = compiler.process(element.table, asfrom=True, **kwargs)
 
-    if sa_version >= Version('1.4.0'):
-        if element.whereclause is not None:
-            clause = compiler.process(element.whereclause, **kwargs)
-            if clause:
-                whereclause = ' WHERE {clause}'.format(clause=clause)
-    else:
-        whereclause_tuple = element.get_children()
-        if whereclause_tuple:
-            whereclause = ' WHERE {clause}'.format(
-                clause=compiler.process(*whereclause_tuple, **kwargs)
-            )
+    if element.whereclause is not None:
+        clause = compiler.process(element.whereclause, **kwargs)
+        if clause:
+            whereclause = ' WHERE {clause}'.format(clause=clause)
 
     if whereclause:
         usingclause_tables = []

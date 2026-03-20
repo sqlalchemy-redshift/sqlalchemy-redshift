@@ -31,18 +31,53 @@ The DSN format is similar to that of regular Postgres::
     >>> sa.create_engine('redshift+psycopg2://username@host.amazonaws.com:5439/database')
     Engine(redshift+psycopg2://username@host.amazonaws.com:5439/database)
 
+Three drivers are supported::
+
+    # psycopg2 (default)
+    engine = sa.create_engine('redshift+psycopg2://user:pass@host:5439/db')
+
+    # psycopg2cffi (PyPy compatible)
+    engine = sa.create_engine('redshift+psycopg2cffi://user:pass@host:5439/db')
+
+    # redshift_connector (Amazon's native driver)
+    engine = sa.create_engine('redshift+redshift_connector://user:pass@host:5439/db')
+
 See the `RedshiftDDLCompiler documentation
 <https://sqlalchemy-redshift.readthedocs.org/en/latest/ddl-compiler.html>`_
 for details on Redshift-specific features the dialect supports.
 
+Materialized Views
+~~~~~~~~~~~~~~~~~~
+
+Create and manage materialized views::
+
+    from sqlalchemy_redshift.ddl import (
+        CreateMaterializedView, DropMaterializedView, RefreshMaterializedView
+    )
+
+    create = CreateMaterializedView('my_view', selectable, distkey='id')
+    refresh = RefreshMaterializedView('my_view')
+    drop = DropMaterializedView('my_view', if_exists=True)
+
+Requirements
+------------
+
+* Python 3.10+
+* SQLAlchemy >= 1.4.0, < 3
+* One of: ``psycopg2``, ``psycopg2-binary``, ``psycopg2cffi``, or ``redshift_connector``
+
 Running Tests
 -------------
-Tests are ran via tox and can be run with the following command::
+Tests are run via tox and can be run with the following command::
 
     $ tox
 
-However, this will not run integration tests unless the following
-environment variables are set:
+You can also run tests directly with pytest::
+
+    $ pip install -e .
+    $ pytest tests/ --dbdriver psycopg2 -v
+
+To run integration tests, set the following environment variables:
 
 * REDSHIFT_HOST
 * REDSHIFT_PORT
@@ -52,17 +87,24 @@ environment variables are set:
 * REDSHIFT_IAM_ROLE_ARN
 
 Note that the IAM role specified will need to be associated with
-redshift cluster and have the correct permissions to create databases
-and tables as well drop them. Exporting these environment variables in
-your shell and running ``tox`` will run the integration tests against
-a real redshift instance. Practice caution when running these tests
+the Redshift cluster and have the correct permissions to create databases
+and tables as well as drop them. Practice caution when running these tests
 against a production instance.
+
+Development
+-----------
+
+Pre-commit hooks are configured for this project::
+
+    $ pip install pre-commit
+    $ pre-commit install
 
 Continuous Integration (CI)
 ---------------------------
 
-Project CI is built using AWS CodePipeline and CloudFormation. Please see the ``ci/`` folder and included ``README.txt``
-for details on how to spin up the project's CI.
+Tests are run automatically via GitHub Actions on every push and pull request.
+The CI matrix tests across Python 3.10, 3.11, and 3.12 with both
+SQLAlchemy 1.4 and 2.0.
 
 Releasing
 ---------

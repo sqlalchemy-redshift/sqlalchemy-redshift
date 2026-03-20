@@ -17,8 +17,6 @@ from rs_sqla_test_utils.utils import make_mock_engine
 
 logger = getLogger(__name__)
 
-_unicode = type(u'')
-
 
 @pytest.fixture(scope="session")
 def connection_kwargs(redshift_dialect_flavor):
@@ -149,7 +147,7 @@ def iam_role_arns():
 
 def database_name_generator():
     template = 'testdb_{uuid}_{count}'
-    db_uuid = _unicode(uuid.uuid1()).replace('-', '')
+    db_uuid = str(uuid.uuid1()).replace('-', '')
     for i in itertools.count():
         yield template.format(
             uuid=db_uuid,

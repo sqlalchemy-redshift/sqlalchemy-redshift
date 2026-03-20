@@ -15,14 +15,13 @@ setup(
     maintainer_email='sqlalchemy-redshift@graingert.co.uk',
     license="MIT",
     url='https://github.com/sqlalchemy-redshift/sqlalchemy-redshift',
-    packages=['sqlalchemy_redshift', 'redshift_sqlalchemy'],
+    packages=['sqlalchemy_redshift'],
     package_data={'sqlalchemy_redshift': ['redshift-ca-bundle.crt']},
-    python_requires='>=3.4',
+    python_requires='>=3.10',
     install_requires=[
         # requires sqlalchemy.sql.base.DialectKWArgs.dialect_options, new in
         # version 0.9.2
-        'SQLAlchemy>=0.9.2,<2.0.0',
-        'packaging',
+        'SQLAlchemy>=1.4.0,<3',
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -32,13 +31,10 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
     entry_points={
         'sqlalchemy.dialects': [

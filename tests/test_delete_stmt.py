@@ -32,11 +32,8 @@ This same query needs to be written like this in Redshift:
 """
 
 import sqlalchemy as sa
-from packaging.version import Version
 
 from rs_sqla_test_utils.utils import clean, compile_query
-
-sa_version = Version(sa.__version__)
 
 
 meta = sa.MetaData()
@@ -121,14 +118,9 @@ def test_delete_stmt_simplewhereclause2(stub_redshift_dialect):
     del_stmt = sa.delete(customers).where(
         customers.c.email.endswith('test.com')
     )
-    if sa_version >= Version('1.4.0'):
-        expected = """
+    expected = """
             DELETE FROM customers
             WHERE (customers.email LIKE '%%' || 'test.com')"""
-    else:
-        expected = """
-            DELETE FROM customers
-            WHERE customers.email LIKE '%%' || 'test.com'"""
     assert clean(compile_query(del_stmt, stub_redshift_dialect)) == \
         clean(expected)
 
@@ -175,7 +167,7 @@ def test_delete_stmt_subqueryplusjoin(stub_redshift_dialect):
     ).where(
         orders.c.customer_id.in_(
             sa.select(
-                [customers.c.id]
+                customers.c.id
             ).where(customers.c.email.endswith('test.com'))
         )
     ).where(
@@ -202,7 +194,7 @@ def test_delete_stmt_subquery(stub_redshift_dialect):
     ).where(
         orders.c.customer_id.in_(
             sa.select(
-                [customers.c.id]
+                customers.c.id
             ).where(customers.c.email.endswith('test.com'))
         )
     )
@@ -222,7 +214,7 @@ def test_delete_stmt_on_subquerycomma(stub_redshift_dialect):
     ).where(
         ham.c.id.in_(
             sa.select(
-                [hammy_spam.c.ham_id]
+                hammy_spam.c.ham_id
             )
         )
     )
@@ -266,7 +258,7 @@ def test_delete_stmt_with_comma_subquery_alias_join(stub_redshift_dialect):
         items.c.order_id == orders.c.id
     ).where(
         orders.c.customer_id.in_(
-            sa.select([customers.c.id]).where(
+            sa.select(customers.c.id).where(
                 customers.c.email.endswith('test.com')
             )
         )
