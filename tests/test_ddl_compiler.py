@@ -19,8 +19,8 @@ class TestDDLCompiler(object):
         assert expected is not None, "Expected was None"
         assert actual is not None, "Actual was None"
 
-        a = [(c, c.encode("hex")) if c is not None else None for c in expected]
-        b = [(c, c.encode("hex")) if c is not None else None for c in actual]
+        a = [(c, c.encode.hex()) if c is not None else None for c in expected]
+        b = [(c, c.encode.hex()) if c is not None else None for c in actual]
         return "-expected, +actual\n" + "\n".join(difflib.ndiff(a, b))
 
     def test_create_table_simple(self, compiler):

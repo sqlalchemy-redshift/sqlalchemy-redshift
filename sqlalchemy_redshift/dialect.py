@@ -908,7 +908,7 @@ class RedshiftDialectMixin(DefaultDialect):
     def _load_domains(self, connection, schema=None, **kw):
         """Redshift does not support user-created domains and its catalog
         lacks pg_collation and array_agg(text). Return empty list."""
-        return []
+        return {}
 
     @reflection.cache
     def _load_enums(self, connection, schema=None, **kw):
@@ -1021,7 +1021,7 @@ class RedshiftDialectMixin(DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
         """
         cols = self._get_redshift_columns(connection, table_name, schema, **kw)
-        if not self._domains:
+        if self._domains is None:
             self._domains = self._load_domains(connection)
         domains = self._domains
         columns = []
@@ -1057,7 +1057,8 @@ class RedshiftDialectMixin(DefaultDialect):
         table_oid = self.get_table_oid(
             connection, table_name, schema, info_cache=kw.get("info_cache")
         )
-        table_oid = "NULL" if not table_oid else table_oid
+        if not table_oid:
+            return []
 
         result = connection.execute(
             sa.text("""
