@@ -24,10 +24,10 @@ SECRET_ACCESS_KEY_RE = re.compile("[A-Za-z0-9/+=]{40}")
 TOKEN_RE = re.compile("[A-Za-z0-9/+=]+")
 AWS_PARTITIONS = frozenset({"aws", "aws-cn", "aws-us-gov"})
 AWS_ACCOUNT_ID_RE = re.compile("[0-9]{12}")
-IAM_ROLE_NAME_RE = re.compile("[A-Za-z0-9+=,.@\-_]{1,64}")  # noqa
+IAM_ROLE_NAME_RE = re.compile(r"[A-Za-z0-9+=,.@\-_]{1,64}")
 IAM_ROLE_ARN_RE = re.compile(
-    "arn:(aws|aws-cn|aws-us-gov):iam::" "[0-9]{12}:role/[A-Za-z0-9+=,.@\-_]{1,64}"
-)  # noqa
+    r"arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role/[A-Za-z0-9+=,.@\-_]{1,64}"
+)
 
 
 def _process_aws_credentials(
@@ -63,7 +63,10 @@ def _process_aws_credentials(
                 f"invalid IAM role name; does not match {IAM_ROLE_NAME_RE.pattern}"
             )
 
-        credentials = f"aws_iam_role=arn:{aws_partition}:iam::{aws_account_id}:role/{iam_role_name}"
+        credentials = (
+            f"aws_iam_role=arn:{aws_partition}:iam::{aws_account_id}:role/"
+            f"{iam_role_name}"
+        )
 
     if iam_role_arns is not None:
         if isinstance(iam_role_arns, str):
@@ -85,10 +88,14 @@ def _process_aws_credentials(
             )
         if not SECRET_ACCESS_KEY_RE.match(secret_access_key):
             raise ValueError(
-                f"invalid secret_access_key; does not match {SECRET_ACCESS_KEY_RE.pattern}"
+                "invalid secret_access_key; does not match "
+                f"{SECRET_ACCESS_KEY_RE.pattern}"
             )
 
-        credentials = f"aws_access_key_id={access_key_id};aws_secret_access_key={secret_access_key}"
+        credentials = (
+            f"aws_access_key_id={access_key_id};"
+            f"aws_secret_access_key={secret_access_key}"
+        )
 
         if session_token is not None:
             if not TOKEN_RE.match(session_token):

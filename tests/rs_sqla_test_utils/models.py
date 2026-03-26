@@ -1,8 +1,8 @@
 import sqlalchemy as sa
 from sqlalchemy import DDL, event
-from sqlalchemy.ext import declarative
+from sqlalchemy.orm import declarative_base
 
-Base = declarative.declarative_base()
+Base = declarative_base()
 event.listen(
     Base.metadata, "before_create", DDL("CREATE SCHEMA IF NOT EXISTS other_schema")
 )

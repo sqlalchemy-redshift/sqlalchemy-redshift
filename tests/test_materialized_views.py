@@ -51,7 +51,7 @@ def test_distkey_materialized_view(selectable, stub_redshift_dialect):
     DISTKEY (id)
     AS SELECT t1.id, t1.name FROM t1
     """
-    for key in ("id", selectable.c.id):
+    for key in ("id", selectable.subquery().c.id):
         view = dialect.CreateMaterializedView("test_view", selectable, distkey=key)
         assert clean(expected_result) == clean(
             compile_query(view, stub_redshift_dialect)
@@ -64,7 +64,7 @@ def test_sortkey_materialized_view(selectable, stub_redshift_dialect):
     SORTKEY (id)
     AS SELECT t1.id, t1.name FROM t1
     """
-    for key in ("id", selectable.c.id):
+    for key in ("id", selectable.subquery().c.id):
         view = dialect.CreateMaterializedView("test_view", selectable, sortkey=key)
         assert clean(expected_result) == clean(
             compile_query(view, stub_redshift_dialect)
@@ -77,7 +77,7 @@ def test_interleaved_sortkey_materialized_view(selectable, stub_redshift_dialect
     INTERLEAVED SORTKEY (id)
     AS SELECT t1.id, t1.name FROM t1
     """
-    for key in ("id", selectable.c.id):
+    for key in ("id", selectable.subquery().c.id):
         view = dialect.CreateMaterializedView(
             "test_view", selectable, interleaved_sortkey=key
         )

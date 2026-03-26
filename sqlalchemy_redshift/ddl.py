@@ -111,7 +111,7 @@ class CreateMaterializedView(DDLElement):
     ...     sa.Column('id', sa.Integer, primary_key=True),
     ...     sa.Column('name', sa.String)
     ... )
-    >>> selectable = sa.select(user.c.id, user.c.name, from_obj=user)
+    >>> selectable = sa.select(user.c.id, user.c.name).select_from(user)
     >>> view = CreateMaterializedView(
     ...     'materialized_view_of_users',
     ...     selectable,

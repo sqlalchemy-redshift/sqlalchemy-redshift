@@ -229,22 +229,27 @@ def test_definition(model, ddl, stub_redshift_dialect):
 @pytest.mark.parametrize("model, ddl", models_and_ddls)
 def test_reflection(redshift_session, model, ddl):
     _dialect = redshift_session.bind.dialect
-    metadata = MetaData(bind=redshift_session.bind)
+    metadata = MetaData()
     schema = model.__table__.schema
-    table = Table(model.__tablename__, metadata, schema=schema, autoload=True)
+    table = Table(
+        model.__tablename__,
+        metadata,
+        schema=schema,
+        autoload_with=redshift_session.bind,
+    )
     introspected_ddl = table_to_ddl(table, _dialect)
     assert utils.clean(introspected_ddl) == utils.clean(ddl)
 
 
 def test_no_table_reflection(redshift_session):
-    metadata = MetaData(bind=redshift_session.bind)
+    metadata = MetaData()
     with pytest.raises(NoSuchTableError):
-        Table("foobar", metadata, autoload=True)
+        Table("foobar", metadata, autoload_with=redshift_session.bind)
 
 
 def test_no_search_path_leak(redshift_session):
-    metadata = MetaData(bind=redshift_session.bind)
-    Table("basic", metadata, autoload=True)
+    metadata = MetaData()
+    Table("basic", metadata, autoload_with=redshift_session.bind)
     result = redshift_session.execute(sa.text("SHOW search_path"))
     search_path = result.scalar()
     assert "other_schema" not in search_path

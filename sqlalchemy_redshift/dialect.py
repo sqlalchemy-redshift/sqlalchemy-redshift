@@ -30,7 +30,6 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.interfaces import (
     DBAPIModule,
-    ReflectedPrimaryKeyConstraint,
     ReflectedUniqueConstraint,
 )
 from sqlalchemy.ext.compiler import compiles
@@ -899,9 +898,119 @@ class RedshiftDialectMixin(DefaultDialect):
         :meth:`~sqlalchemy.engine.dialects.postgresql.base.PGDialect._get_column_info`.
         """
         return {
-            **super(RedshiftDialectMixin, self).ischema_names,  # type: ignore[union-attr]
+            **super(  # type: ignore[union-attr]
+                RedshiftDialectMixin, self
+            ).ischema_names,
             **REDSHIFT_ISCHEMA_NAMES,
         }
+
+    @reflection.cache
+    def _load_domains(self, connection, schema=None, **kw):
+        """Redshift does not support user-created domains and its catalog
+        lacks pg_collation and array_agg(text). Return empty list."""
+        return []
+
+    @reflection.cache
+    def _load_enums(self, connection, schema=None, **kw):
+        """Redshift does not support user-created enums and its catalog
+        lacks ordered aggregate syntax in array_agg. Return empty list."""
+        return []
+
+    # SQLAlchemy 2.0's PGDialect overrides get_multi_* methods with batched
+    # SQL that uses PostgreSQL-specific syntax (ordered aggregates, pg_collation,
+    # etc.) unsupported by Redshift. Route these back to DefaultDialect's
+    # fallback which calls our single-table overrides in a loop.
+    # Signatures match PGDialect so positional args are properly captured.
+    def get_multi_columns(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_columns(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
+
+    def get_multi_pk_constraint(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_pk_constraint(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
+
+    def get_multi_foreign_keys(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_foreign_keys(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
+
+    def get_multi_indexes(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_indexes(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
+
+    def get_multi_unique_constraints(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_unique_constraints(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
+
+    def get_multi_check_constraints(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_check_constraints(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
+
+    def get_multi_table_comment(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_table_comment(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
@@ -950,16 +1059,19 @@ class RedshiftDialectMixin(DefaultDialect):
         )
         table_oid = "NULL" if not table_oid else table_oid
 
-        result = connection.execute(sa.text("""
+        result = connection.execute(
+            sa.text("""
                         SELECT
                             cons.conname as name,
                             pg_get_constraintdef(cons.oid) as src
                         FROM
                             pg_catalog.pg_constraint cons
                         WHERE
-                            cons.conrelid = {table_oid} AND
+                            cons.conrelid = :table_oid AND
                             cons.contype = 'c'
-                        """))
+                        """),
+            {"table_oid": table_oid},
+        )
         ret = []
         for name, src in result:
             # samples:
@@ -1014,10 +1126,10 @@ class RedshiftDialectMixin(DefaultDialect):
         m = PRIMARY_KEY_RE.match(pk_constraint.condef)
         colstring = m.group("columns")
         constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
-        ReflectedPrimaryKeyConstraint(
-            constrained_columns=constrained_columns,
-            name=pk_constraint.conname,
-        )
+        return {
+            "constrained_columns": constrained_columns,
+            "name": pk_constraint.conname,
+        }
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
@@ -1129,6 +1241,27 @@ class RedshiftDialectMixin(DefaultDialect):
         ]
 
     @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        """Return table comment via pg_description.
+        Overrides PGDialect.get_table_comment to avoid recursion through
+        get_multi_table_comment."""
+        schema = schema or self.default_schema_name
+        result = connection.execute(
+            sa.text("""
+            SELECT d.description
+            FROM pg_catalog.pg_description d
+            JOIN pg_catalog.pg_class c ON c.oid = d.objoid
+            JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE d.objsubid = 0
+              AND c.relname = :table_name
+              AND n.nspname = :schema
+        """),
+            {"table_name": table_name, "schema": schema},
+        )
+        row = result.fetchone()
+        return {"text": row[0] if row else None}
+
+    @reflection.cache
     def get_table_options(self, connection, table_name, schema=None, **kw):
         """
         Return a dictionary of options specified when the table of the
@@ -1227,8 +1360,8 @@ class RedshiftDialectMixin(DefaultDialect):
             key = key.unquoted()
         try:
             return all_relations[key]
-        except KeyError:
-            raise sa_exc.NoSuchTableError(key)
+        except KeyError as exc:
+            raise sa_exc.NoSuchTableError(key) from exc
 
     def _get_redshift_columns(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get("info_cache")
@@ -1238,7 +1371,10 @@ class RedshiftDialectMixin(DefaultDialect):
         key = RelationKey(table_name, schema, connection)
         if key not in all_schema_columns.keys():
             key = key.unquoted()
-        return all_schema_columns[key]
+        try:
+            return all_schema_columns[key]
+        except KeyError as exc:
+            raise sa_exc.NoSuchTableError(table_name) from exc
 
     def _get_redshift_constraints(self, connection, table_name, schema=None, **kw):
         info_cache = kw.get("info_cache")
@@ -1523,6 +1659,9 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         cursor.execute("COMMIT")
         cursor.close()
 
+    def get_isolation_level_values(self, dbapi_conn):
+        return super().get_isolation_level_values(dbapi_conn) + ("AUTOCOMMIT",)
+
     def set_isolation_level(self, dbapi_connection, level):
         """
         Sets the isolation level for the current transaction.
@@ -1552,7 +1691,6 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
         fns = []
 
         def on_connect(conn):
-            from sqlalchemy import util
             from sqlalchemy.sql.elements import quoted_name
 
             conn.py_types[quoted_name] = conn.py_types[str]

@@ -23,9 +23,7 @@ def test_view_reflection(redshift_engine):
             assert clean(
                 compile_query(view_definition, redshift_engine.dialect)
             ) == clean(view_query)
-            view = Table(
-                "my_view", MetaData(), autoload=True, autoload_with=redshift_engine
-            )
+            view = Table("my_view", MetaData(), autoload_with=redshift_engine)
             assert len(view.columns) == 2
         finally:
             conn.execute(sa.text("DROP TABLE IF EXISTS my_table CASCADE"))
@@ -50,9 +48,7 @@ def test_late_binding_view_reflection(redshift_engine):
             assert clean(
                 compile_query(view_definition, redshift_engine.dialect)
             ) == clean(view_ddl)
-            view = Table(
-                "my_late_view", MetaData(), autoload=True, autoload_with=redshift_engine
-            )
+            view = Table("my_late_view", MetaData(), autoload_with=redshift_engine)
             assert len(view.columns) == 2
         finally:
             conn.execute(sa.text("DROP TABLE IF EXISTS my_table CASCADE"))

@@ -16,6 +16,8 @@ def clean(query):
 
 
 def compile_query(q, _dialect):
+    if isinstance(q, str):
+        return q
     return str(q.compile(dialect=_dialect, compile_kwargs={"literal_binds": True}))
 
 
