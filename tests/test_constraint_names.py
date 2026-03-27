@@ -1,20 +1,16 @@
-
-
 def test_pk_name(redshift_session):
     dialect = redshift_session.bind.dialect
     pk = dialect.get_pk_constraint(
-        redshift_session.connection(),
-        "reflection_named_pk_constraint"
+        redshift_session.connection(), "reflection_named_pk_constraint"
     )
-    assert pk['name'] == "reflection_named_pk_constraint__pkey"
-    assert pk['constrained_columns'] == ["col1", "col2"]
+    assert pk["name"] == "reflection_named_pk_constraint__pkey"
+    assert pk["constrained_columns"] == ["col1", "col2"]
 
 
 def test_fk_name(redshift_session):
     dialect = redshift_session.bind.dialect
     fks = dialect.get_foreign_keys(
-        redshift_session.connection(),
-        "reflection_named_fk_constraint"
+        redshift_session.connection(), "reflection_named_fk_constraint"
     )
     assert len(fks) == 1
     assert fks[0]["name"] == "reflection_named_fk_constraint__fk"
