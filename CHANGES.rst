@@ -1,4 +1,4 @@
-1.0.0 (unreleased)
+1.0.0 (2026-04-27)
 ------------------
 
 - Migrate to SQLAlchemy 2.0 and Python 3.10+; remove legacy
