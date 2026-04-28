@@ -1,12 +1,6 @@
 1.0.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
-
-
-1.0.0a1 (2026-04-27)
---------------------
-
 - Migrate to SQLAlchemy 2.0 and Python 3.10+; remove legacy
   ``redshift_sqlalchemy`` compatibility package
   (`Pull #326 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/326>`_)
