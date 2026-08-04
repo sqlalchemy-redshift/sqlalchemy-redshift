@@ -1461,12 +1461,9 @@ class Psycopg2RedshiftDialectMixin(RedshiftDialectMixin):
 
     @classmethod
     def dbapi(cls):
-        # driver_module = importlib.import_module(cls.driver)
-        # if Version(driver_module.__version__) < Version("2.0.908"):
-        #     cls.description_encoding = "use_encoding"
-        # else:
-        #     cls.description_encoding = None
-        cls.description_encoding = "use_encoding"
+        driver_module = importlib.import_module(cls.driver)
+        cls.description_encoding = None
+        return driver_module
 
 
 class RedshiftDialect_psycopg2(Psycopg2RedshiftDialectMixin, PGDialect_psycopg2):
@@ -1542,21 +1539,9 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
 
     @classmethod
     def dbapi(cls):
-        try:
-            driver_module = importlib.import_module(cls.driver)
-
-            # Starting v2.0.908 driver converts description column names to str
-            if Version(driver_module.__version__) < Version("2.0.908"):
-                cls.description_encoding = "use_encoding"
-            else:
-                cls.description_encoding = None
-
-            return driver_module
-        except ImportError:
-            raise ImportError(
-                "No module named redshift_connector. Please install "
-                "redshift_connector to use this sqlalchemy dialect."
-            )
+        driver_module = importlib.import_module(cls.driver)
+        cls.description_encoding = None
+        return driver_module
 
     def set_client_encoding(self, connection, client_encoding):
         """
