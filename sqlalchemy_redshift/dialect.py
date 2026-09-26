@@ -1,5 +1,6 @@
 from collections import defaultdict, namedtuple
 import importlib
+from inspect import signature as inspect_signature
 from importlib.resources import files
 import json
 from logging import getLogger
@@ -1571,6 +1572,83 @@ class RedshiftDialect_psycopg2cffi(
     supports_statement_cache = False
 
 
+def _redshift_connector_parameter_kinds(connect):
+    """Map each typed ``redshift_connector.connect`` keyword to bool/int/list."""
+    kinds = {}
+    for name, parameter in inspect_signature(connect).parameters.items():
+        annotation = str(parameter.annotation)
+        if annotation in ("typing.Optional[bool]", "bool"):
+            kinds[name] = "bool"
+        elif annotation in ("typing.Optional[int]", "int"):
+            kinds[name] = "int"
+        elif annotation.startswith("typing.Optional[typing.List["):
+            kinds[name] = "list"
+    return kinds
+
+
+def _restore_percents(statement, has_parameters):
+    """Undo ``%%`` escaping wherever redshift_connector will not undo it.
+
+    The compiler doubles every literal ``%`` for the "format" paramstyle.
+    redshift_connector only turns ``%%`` back into ``%`` when the statement has
+    bind parameters, and then only outside quoted strings, quoted identifiers
+    and comments (``redshift_connector.core.convert_paramstyle``). This mirrors
+    that scanner and restores the ``%`` everywhere the driver would not.
+    """
+    if "%%" not in statement:
+        return statement
+    outside, single, identifier, escaped, line_comment, block_comment = range(6)
+    state = outside
+    out = []
+    prev = ""
+    i = 0
+    length = len(statement)
+    while i < length:
+        char = statement[i]
+        nxt = statement[i + 1] if i + 1 < length else ""
+        if char == "%" and nxt == "%":
+            if state == outside and has_parameters:
+                out.append("%%")
+            else:
+                out.append("%")
+            prev = "%"
+            i += 2
+            continue
+        if state == outside:
+            if char == "'":
+                state = escaped if prev == "E" else single
+            elif char == '"':
+                state = identifier
+            elif char == "-" and prev == "-":
+                state = line_comment
+            elif char == "*" and prev == "/":
+                state = block_comment
+        elif state == single:
+            if char == "'":
+                if nxt == "'":
+                    out.append("''")
+                    prev = "'"
+                    i += 2
+                    continue
+                state = outside
+        elif state == identifier:
+            if char == '"':
+                state = outside
+        elif state == escaped:
+            if char == "'" and prev != "\\":
+                state = outside
+        elif state == line_comment:
+            if char == "\n":
+                state = outside
+        elif state == block_comment:
+            if char == "/" and prev == "*":
+                state = outside
+        out.append(char)
+        prev = char
+        i += 1
+    return "".join(out)
+
+
 class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
 
     class RedshiftCompiler_redshift_connector(RedshiftCompiler, PGCompiler):
@@ -1622,6 +1700,17 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
 
     supports_statement_cache = False
     use_setinputsizes = False  # not implemented in redshift_connector
+
+    # redshift_connector returns decimal.Decimal for NUMERIC; without this,
+    # Numeric results are converted through float and lose precision.
+    supports_native_decimal = True
+
+    # Raised by redshift_connector once the server has closed the socket.
+    _disconnect_messages = (
+        "BrokenPipe: server socket closed",
+        "connection is closed",
+        "communication error",
+    )
 
     def __init__(self, client_encoding=None, **kwargs):
         super(RedshiftDialect_redshift_connector, self).__init__(
@@ -1750,6 +1839,41 @@ class RedshiftDialect_redshift_connector(RedshiftDialectMixin, PGDialect):
 
         default_args.update(cparams)
         return cargs, default_args
+
+    def connect(self, *cargs, **cparams):
+        """
+        Convert string connection arguments to the types redshift_connector
+        checks. URL query values are always strings, but the driver compares
+        ``ssl``, ``iam`` and ``is_serverless`` with ``is True``, so
+        ``?ssl=true`` disabled TLS and ``?timeout=15`` raised ``TypeError``.
+        """
+        kinds = _redshift_connector_parameter_kinds(self.loaded_dbapi.connect)
+        for key, value in list(cparams.items()):
+            if not isinstance(value, str) or key not in kinds:
+                continue
+            if kinds[key] == "bool":
+                cparams[key] = sa.util.asbool(value)
+            elif kinds[key] == "int":
+                cparams[key] = int(value)
+            else:
+                cparams[key] = [v.strip() for v in value.split(",") if v.strip()]
+        return super().connect(*cargs, **cparams)
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        if context is not None and context.compiled is not None:
+            statement = _restore_percents(statement, bool(parameters))
+        cursor.execute(statement, parameters)
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        if context is not None and context.compiled is not None:
+            statement = _restore_percents(statement, True)
+        cursor.executemany(statement, parameters)
+
+    def is_disconnect(self, e, connection, cursor):
+        if isinstance(e, self.loaded_dbapi.InterfaceError):
+            message = str(e)
+            return any(text in message for text in self._disconnect_messages)
+        return False
 
 
 def gen_columns_from_children(root):
