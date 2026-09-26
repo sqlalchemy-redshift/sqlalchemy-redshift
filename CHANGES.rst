@@ -1,7 +1,11 @@
 1.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- ``redshift+redshift_connector``: convert string connection arguments
+  (URL query values and ``connect_args``) to the types the driver checks, so
+  ``?ssl=true`` no longer disables TLS; keep literal ``%`` signs in compiled
+  statements; return NUMERIC results as exact ``Decimal`` values; recognise the
+  driver's dead-connection errors so ``pool_pre_ping`` reconnects.
 
 
 1.0.0 (2026-04-27)
