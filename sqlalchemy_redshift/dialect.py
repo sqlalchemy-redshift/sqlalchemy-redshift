@@ -473,6 +473,60 @@ REFLECTION_SQL = """\
     ORDER BY "schema", "table_name", "attnum";
     """
 
+DATASHARE_TABLES_SQL = """\
+    SELECT
+        CASE table_type WHEN 'VIEW' THEN 'v' ELSE 'r' END AS "relkind",
+        null AS "schema_oid",
+        schema_name AS "schema",
+        null AS "rel_oid",
+        table_name AS "relname",
+        null AS "diststyle",
+        null AS "owner_id",
+        null AS "owner_name",
+        null AS "view_definition",
+        null AS "privileges",
+        remarks AS "comment"
+    FROM svv_all_tables
+    WHERE database_name = :database AND schema_name IN :schemas
+        {table_clause}
+    """
+
+DATASHARE_COLUMNS_SQL = """\
+    SELECT
+        schema_name AS "schema",
+        table_name AS "table_name",
+        column_name AS "name",
+        null AS "encode",
+        -- Unsized varchar would reflect as NullType; use Redshift's max.
+        CASE
+            WHEN data_type = 'character varying'
+            THEN 'character varying(' || CASE
+                WHEN character_maximum_length > 0
+                THEN character_maximum_length ELSE 65535 END::varchar
+                || ')'
+            WHEN data_type = 'character'
+                AND character_maximum_length > 0
+            THEN 'character(' || character_maximum_length::varchar || ')'
+            WHEN data_type = 'numeric' AND numeric_precision > 0
+            THEN 'numeric(' || numeric_precision::varchar || ','
+                || COALESCE(numeric_scale, 0)::varchar || ')'
+            ELSE data_type
+        END AS "format_type",
+        false AS "distkey",
+        0 AS "sortkey",
+        is_nullable = 'NO' AS "notnull",
+        remarks AS "comment",
+        null AS "adsrc",
+        ordinal_position AS "attnum",
+        column_default AS "default",
+        null AS "schema_oid",
+        null AS "table_oid"
+    FROM svv_all_columns
+    WHERE database_name = :database AND schema_name IN :schemas
+        {table_clause}
+    ORDER BY schema_name, table_name, ordinal_position
+    """
+
 
 class RedshiftTypeEngine(TypeEngine):
 
@@ -1101,6 +1155,12 @@ class RedshiftDialectMixin(DefaultDialect):
     def get_table_oid(self, connection, table_name, schema=None, **kw):
         """Fetch the oid for schema.table_name.
         Return null if not found (external table does not have table oid)"""
+        # Datashare relations have no oid; ::regclass would raise.
+        datashare = self._get_datashare_info(
+            connection, info_cache=kw.get("info_cache")
+        )
+        if schema in datashare["schemas"]:
+            return None
         schema_field = f'"{schema}".' if schema else ""
 
         result = connection.execute(sa.text(f"""
@@ -1166,6 +1226,21 @@ class RedshiftDialectMixin(DefaultDialect):
             }
             fkeys.append(fkey_d)
         return fkeys
+
+    def get_schema_names(self, connection, **kw):
+        """
+        Return the schema names, including datashare schemas.
+
+        Overrides interface
+        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_schema_names`.
+        """
+        datashare = self._get_datashare_info(
+            connection, info_cache=kw.get("info_cache")
+        )
+        if datashare["remote"]:
+            return datashare["schemas"]
+        schemas = super().get_schema_names(connection, **kw)
+        return schemas + [s for s in datashare["schemas"] if s not in schemas]
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
@@ -1245,8 +1320,17 @@ class RedshiftDialectMixin(DefaultDialect):
     def get_table_comment(self, connection, table_name, schema=None, **kw):
         """Return table comment via pg_description.
         Overrides PGDialect.get_table_comment to avoid recursion through
-        get_multi_table_comment."""
+        get_multi_table_comment.
+
+        Datashare tables are not in pg_description; their comment is the
+        `remarks` column of SVV_ALL_TABLES."""
         schema = schema or self.default_schema_name
+        datashare = self._get_datashare_info(
+            connection, info_cache=kw.get("info_cache")
+        )
+        if schema in datashare["schemas"]:
+            relation = self._get_redshift_relation(connection, table_name, schema, **kw)
+            return {"text": relation.comment}
         result = connection.execute(
             sa.text("""
             SELECT d.description
@@ -1395,7 +1479,8 @@ class RedshiftDialectMixin(DefaultDialect):
         table_name = kw.get("table_name", None)
         table_clause = f"AND relname = '{table_name}'" if table_name else ""
 
-        result = connection.execute(sa.text(f"""
+        remote = self._is_remote_database(connection, **kw)
+        result = [] if remote else connection.execute(sa.text(f"""
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -1438,6 +1523,10 @@ class RedshiftDialectMixin(DefaultDialect):
         for rel in result:
             key = RelationKey(rel.relname, rel.schema, connection)
             relations[key] = rel
+
+        for rel in self._query_datashare(connection, DATASHARE_TABLES_SQL, **kw):
+            key = RelationKey(rel.relname, rel.schema, connection)
+            relations.setdefault(key, rel)
         return relations
 
     # We fetch column info an entire schema at a time to improve performance
@@ -1451,10 +1540,15 @@ class RedshiftDialectMixin(DefaultDialect):
         table_clause = f"AND table_name = '{table_name}'" if table_name else ""
 
         all_columns = defaultdict(list)
-        result = connection.execute(
-            sa.text(
-                REFLECTION_SQL.format(
-                    schema_clause=schema_clause, table_clause=table_clause
+        remote = self._is_remote_database(connection, **kw)
+        result = (
+            []
+            if remote
+            else connection.execute(
+                sa.text(
+                    REFLECTION_SQL.format(
+                        schema_clause=schema_clause, table_clause=table_clause
+                    )
                 )
             )
         )
@@ -1463,7 +1557,76 @@ class RedshiftDialectMixin(DefaultDialect):
             key = RelationKey(col.table_name, col.schema, connection)
             all_columns[key].append(col)
 
+        datashare_columns = defaultdict(list)
+        for col in self._query_datashare(connection, DATASHARE_COLUMNS_SQL, **kw):
+            key = RelationKey(col.table_name, col.schema, connection)
+            datashare_columns[key].append(col)
+        for key, cols in datashare_columns.items():
+            all_columns.setdefault(key, cols)
+
         return dict(all_columns)
+
+    # Objects of a datashare consumer database are not in pg_class or
+    # pg_namespace, so the pg_catalog queries above miss them. Redshift only
+    # exposes them through the SVV_ALL_* views. Reflect from there any schema
+    # of the reflected database that pg_namespace does not know about.
+    #
+    # The reflected database is the one named in the URL. It can differ from
+    # the connected one ("remote") when the URL name is an alias, e.g. a
+    # connection pooler entry that lands on a database able to query it with
+    # cross-database names. pg_catalog then describes the wrong database, so
+    # a remote database is reflected from SVV_ALL_* only.
+    @reflection.cache
+    def _get_datashare_info(self, connection, **kw):
+        connected = connection.execute(sa.text("SELECT current_database()")).scalar()
+        url = getattr(getattr(connection, "engine", connection), "url", None)
+        database = getattr(url, "database", None) or connected
+        remote = database != connected
+        local_schemas = (
+            set()
+            if remote
+            else {
+                name
+                for name, in connection.execute(
+                    sa.text("SELECT nspname FROM pg_catalog.pg_namespace")
+                )
+            }
+        )
+        result = connection.execute(
+            sa.text(
+                "SELECT schema_name FROM svv_all_schemas "
+                "WHERE database_name = :database ORDER BY schema_name"
+            ),
+            {"database": database},
+        )
+        schemas = [name for name, in result if name not in local_schemas]
+        return {"database": database, "schemas": schemas, "remote": remote}
+
+    def _is_remote_database(self, connection, **kw):
+        """Whether the reflected database is not the connected one."""
+        return self._get_datashare_info(connection, info_cache=kw.get("info_cache"))[
+            "remote"
+        ]
+
+    def _query_datashare(self, connection, query, **kw):
+        """Run `query` over the datashare schemas matching kw's schema."""
+        datashare = self._get_datashare_info(
+            connection, info_cache=kw.get("info_cache")
+        )
+        schema = kw.get("schema", None)
+        schemas = [s for s in datashare["schemas"] if not schema or s == schema]
+        if not schemas:
+            return []
+        table_name = kw.get("table_name", None)
+        params = {"database": datashare["database"], "schemas": schemas}
+        table_clause = ""
+        if table_name:
+            table_clause = "AND table_name = :table_name"
+            params["table_name"] = table_name
+        stmt = sa.text(query.format(table_clause=table_clause)).bindparams(
+            sa.bindparam("schemas", expanding=True)
+        )
+        return connection.execute(stmt, params).fetchall()
 
     @reflection.cache
     def _get_all_constraint_info(self, connection, **kw):
@@ -1473,7 +1636,8 @@ class RedshiftDialectMixin(DefaultDialect):
         table_name = kw.get("table_name", None)
         table_clause = f"AND table_name = '{table_name}'" if table_name else ""
 
-        result = connection.execute(sa.text(f"""
+        remote = self._is_remote_database(connection, **kw)
+        result = [] if remote else connection.execute(sa.text(f"""
         SELECT
           n.nspname as "schema",
           c.relname as "table_name",

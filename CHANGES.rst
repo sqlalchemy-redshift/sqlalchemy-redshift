@@ -1,7 +1,9 @@
 1.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Reflect datashare (consumer database) schemas, tables and columns from
+  the ``SVV_ALL_*`` views
+  (`Pull #334 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/pull/334>`_)
 
 
 1.0.0 (2026-04-27)
