@@ -28,3 +28,26 @@ def test_get_multi_table_options_uses_redshift_options(
     )
 
     assert dict(reflected) == {("public", "example"): options}
+
+
+def test_has_multi_table_uses_has_table(stub_redshift_dialect, monkeypatch):
+    """
+    has_multi_table answers through has_table, which also finds external
+    tables, rather than PGDialect's pg_class query from SQLAlchemy 2.1.
+    """
+    existing = {"example", "spectrum_table"}
+    monkeypatch.setattr(
+        stub_redshift_dialect,
+        "has_table",
+        lambda connection, table_name, schema=None, **kw: table_name in existing,
+    )
+
+    reflected = stub_redshift_dialect.has_multi_table(
+        None, ["example", "spectrum_table", "missing"], schema="public"
+    )
+
+    assert dict(reflected) == {
+        ("public", "example"): True,
+        ("public", "spectrum_table"): True,
+        ("public", "missing"): False,
+    }

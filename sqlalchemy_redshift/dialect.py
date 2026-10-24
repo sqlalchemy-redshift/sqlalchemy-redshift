@@ -1077,6 +1077,13 @@ class RedshiftDialectMixin(DefaultDialect):
 
         return True if table else False
 
+    def has_multi_table(self, connection, table_names, schema=None, **kw):
+        # SQLAlchemy 2.1's PGDialect answers this with one pg_class query, which
+        # misses the external tables has_table finds. Ask has_table per name.
+        for table_name in table_names:
+            exists = self.has_table(connection, table_name, schema=schema, **kw)
+            yield (schema, table_name), exists
+
     @reflection.cache
     def get_check_constraints(self, connection, table_name, schema=None, **kw):
         table_oid = self.get_table_oid(

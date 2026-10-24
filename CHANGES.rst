@@ -6,6 +6,9 @@
   reflect table options through the Redshift implementation on SQLAlchemy 2.1
   (`Issue #329 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/329>`_,
   `Issue #336 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/336>`_)
+- Answer ``Inspector.has_multi_table()`` (new in SQLAlchemy 2.1) through
+  ``has_table``, so it also finds external tables
+  (`Issue #336 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/336>`_)
 
 
 1.0.0 (2026-04-27)
