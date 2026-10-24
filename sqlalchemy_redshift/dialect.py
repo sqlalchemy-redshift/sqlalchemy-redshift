@@ -1,6 +1,7 @@
 from collections import defaultdict, namedtuple
 import importlib
 from importlib.resources import files
+from inspect import signature
 import json
 from logging import getLogger
 import re
@@ -844,6 +845,17 @@ class RedshiftIdentifierPreparer(PGIdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
 
+# PGDialect._reflect_type is private and its signature differs across the
+# SQLAlchemy versions this package supports: 2.0.45 added ``collation``, and
+# 2.1 replaced the ``domains, enums`` arguments with a single named-type loader
+# that exposes them as ``.domains`` and ``.enums``.
+_REFLECT_TYPE_PARAMETERS = signature(PGDialect._reflect_type).parameters
+_REFLECT_TYPE_TAKES_LOADER = "named_type_loader" in _REFLECT_TYPE_PARAMETERS
+_REFLECT_TYPE_TAKES_COLLATION = "collation" in _REFLECT_TYPE_PARAMETERS
+
+_NamedTypes = namedtuple("_NamedTypes", ("domains", "enums"))
+
+
 class RedshiftDialectMixin(DefaultDialect):
     """
     Define Redshift-specific behavior.
@@ -916,10 +928,10 @@ class RedshiftDialectMixin(DefaultDialect):
         lacks ordered aggregate syntax in array_agg. Return empty list."""
         return []
 
-    # SQLAlchemy 2.0's PGDialect overrides get_multi_* methods with batched
-    # SQL that uses PostgreSQL-specific syntax (ordered aggregates, pg_collation,
-    # etc.) unsupported by Redshift. Route these back to DefaultDialect's
-    # fallback which calls our single-table overrides in a loop.
+    # SQLAlchemy's PGDialect overrides get_multi_* methods (get_multi_table_options
+    # from 2.1) with batched SQL that uses PostgreSQL-specific syntax (ordered
+    # aggregates, pg_collation, etc.) unsupported by Redshift. Route these back to
+    # DefaultDialect's fallback which calls our single-table overrides in a loop.
     # Signatures match PGDialect so positional args are properly captured.
     def get_multi_columns(
         self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
@@ -990,6 +1002,19 @@ class RedshiftDialectMixin(DefaultDialect):
         self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
     ):
         return DefaultDialect.get_multi_check_constraints(
+            self,
+            connection,
+            schema=schema,
+            filter_names=filter_names,
+            scope=scope,
+            kind=kind,
+            **kw,
+        )
+
+    def get_multi_table_options(
+        self, connection, schema=None, filter_names=None, scope=None, kind=None, **kw
+    ):
+        return DefaultDialect.get_multi_table_options(
             self,
             connection,
             schema=schema,
@@ -1325,12 +1350,16 @@ class RedshiftDialectMixin(DefaultDialect):
     ):
         if not self._domains:
             self._domains = domains
+        if _REFLECT_TYPE_TAKES_LOADER:
+            named_types = (_NamedTypes(domains, enums),)
+        else:
+            named_types = (domains, enums)
+        collation = {"collation": None} if _REFLECT_TYPE_TAKES_COLLATION else {}
         coltype = self._reflect_type(
             format_type,
-            domains,
-            enums,
+            *named_types,
             type_description=f"column '{name}'",
-            collation=None,
+            **collation,
         )
 
         if isinstance(coltype, VARCHAR) and coltype.length is None:

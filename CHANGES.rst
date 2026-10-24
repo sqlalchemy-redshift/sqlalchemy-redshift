@@ -1,7 +1,11 @@
 1.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Fix column reflection on SQLAlchemy 2.1 and on 2.0 releases before 2.0.45,
+  where the private ``PGDialect._reflect_type`` takes different arguments, and
+  reflect table options through the Redshift implementation on SQLAlchemy 2.1
+  (`Issue #329 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/329>`_,
+  `Issue #336 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/336>`_)
 
 
 1.0.0 (2026-04-27)
