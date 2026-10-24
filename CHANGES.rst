@@ -9,6 +9,9 @@
 - Answer ``Inspector.has_multi_table()`` (new in SQLAlchemy 2.1) through
   ``has_table``, so it also finds external tables
   (`Issue #336 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/336>`_)
+- Require SQLAlchemy 2.0.42 or later, the first release this package imports
+  on (it uses ``sqlalchemy.engine.interfaces.DBAPIModule``)
+  (`Issue #336 <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift/issues/336>`_)
 
 
 1.0.0 (2026-04-27)
